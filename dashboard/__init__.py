@@ -8,7 +8,7 @@ loading Flask (M2 decoupling, known-issue #5).
 
 
 def create_app():
-    from flask import Flask, jsonify, send_from_directory
+    from flask import Flask, jsonify, request, send_from_directory
 
     from . import config, db
     from .fs_api import bp as fs_bp
@@ -22,6 +22,16 @@ def create_app():
     @app.errorhandler(413)
     def too_large(_error):
         return jsonify({"error": f"upload too large (max {config.MAX_UPLOAD_MB} MB)"}), 413
+
+    @app.after_request
+    def cache_control(response):
+        """Long immutable cache for versioned assets; revalidate entry points."""
+        path = request.path
+        if path.startswith(("/static/fonts/", "/static/vendor/")):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        elif path in ("/", "/index.html", "/config.json"):
+            response.headers["Cache-Control"] = "no-cache"
+        return response
 
     db.init_db()
     app.teardown_appcontext(db.close_db)

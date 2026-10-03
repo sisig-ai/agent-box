@@ -24,5 +24,17 @@ def test_static_js_and_css_served(client):
     assert client.get("/static/css/base.css").status_code == 200
 
 
+def test_fonts_and_vendor_are_immutable(client):
+    font = client.get("/static/fonts/FiraCodeNerdFontMono-Regular.woff2")
+    assert font.headers["Cache-Control"] == "public, max-age=31536000, immutable"
+    vendor = client.get("/static/vendor/marked.min.js")
+    assert vendor.headers["Cache-Control"] == "public, max-age=31536000, immutable"
+
+
+def test_entry_points_are_no_cache(client):
+    for path in ("/", "/index.html", "/config.json"):
+        assert client.get(path).headers["Cache-Control"] == "no-cache"
+
+
 def test_unknown_api_is_404(client):
     assert client.get("/api/does-not-exist").status_code == 404
