@@ -1,13 +1,18 @@
-"""Shared native macOS shell backend: local tmux, rooted in ~.
+"""Native macOS shell backend: local tmux, rooted in ~.
 
-Used by both the Flask HTTP API (app.py) and the websocket gateway
-(shell_ws.py) so the two transports behave identically. Stdlib only —
-no third-party deps: subprocess + the SSH key mounted into the container.
+Used by both the Flask HTTP API (dashboard.shell.api) and the websocket
+gateway (dashboard.ws) so the two transports behave identically. Stdlib only —
+no third-party deps: subprocess against the local tmux server.
 
 Persistence lives in host tmux, so every caller stays stateless: any
 process can operate on any shell session.
+
+All tmux invocations are direct argv lists (no ``sh -c`` string
+interpolation), so a validation bug can never turn a session id into a shell
+command.
 """
 
+import contextlib
 import re
 import secrets
 import subprocess
@@ -79,10 +84,10 @@ def tmux_gone(output):
     return any(frag in output for frag in _TMUX_GONE)
 
 
-def host_run(remote_cmd, input_bytes=None, timeout=15):
-    """Run one local host command. Returns CompletedProcess."""
+def tmux_run(args, input_bytes=None, timeout=15):
+    """Run one tmux argv list. Returns CompletedProcess. No shell involved."""
     return subprocess.run(
-        ["/bin/sh", "-c", remote_cmd],
+        ["tmux", *args],
         input=input_bytes,
         capture_output=True,
         timeout=timeout,
@@ -91,7 +96,7 @@ def host_run(remote_cmd, input_bytes=None, timeout=15):
 
 
 def tmux_has(sess):
-    r = host_run(f"tmux has-session -t {sess} 2>/dev/null")
+    r = tmux_run(["has-session", "-t", sess])
     return r.returncode == 0
 
 
@@ -104,8 +109,21 @@ def ensure_session(sid, cols=80, rows=24):
     sess = shell_session_name(sid)
     try:
         if not tmux_has(sess):
-            r = host_run(
-                f"tmux new-session -d -s {sess} -x {cols} -y {rows} -c {SHELL_HOME} /bin/zsh -l"
+            r = tmux_run(
+                [
+                    "new-session",
+                    "-d",
+                    "-s",
+                    sess,
+                    "-x",
+                    str(cols),
+                    "-y",
+                    str(rows),
+                    "-c",
+                    SHELL_HOME,
+                    "/bin/zsh",
+                    "-l",
+                ]
             )
             if r.returncode != 0:
                 err = (
@@ -135,23 +153,31 @@ def capture_pane(sid):
     """
     sess = shell_session_name(sid)
     try:
-        # NOTE: `tmux display-message -p` echoes its format string verbatim
-        # (rc 0) when the session is missing, so it can't be used as a liveness
-        # probe. Gate everything on capture-pane (`&&` works in sh and fish).
-        r = host_run(
-            f"tmux capture-pane -e -p -t {sess} 2>/dev/null && "
-            f"echo ---DASHCURSOR--- && "
-            f"tmux display-message -p -t {sess} "
-            f"'#{{cursor_x}} #{{cursor_y}} #{{pane_width}} #{{pane_height}} "
-            f"#{{pane_current_command}}' 2>/dev/null"
-        )
+        # Two explicit calls: capture-pane is the liveness gate. NOTE:
+        # `tmux display-message -p` echoes its format string verbatim (rc 0)
+        # when the session is missing, so it must never be the probe.
+        r = tmux_run(["capture-pane", "-e", "-p", "-t", sess])
     except subprocess.TimeoutExpired:
         return {"id": sid, "alive": False, "error": "shell command timed out"}
     out = r.stdout.decode(errors="replace")
-    if r.returncode != 0 or "---DASHCURSOR---" not in out or "no server running" in out:
+    if r.returncode != 0 or "no server running" in out:
         return {"id": sid, "alive": False}
-    text, _, meta = out.partition("---DASHCURSOR---\n")
-    parts = meta.strip().split()
+    text = out
+    try:
+        m = tmux_run(
+            [
+                "display-message",
+                "-p",
+                "-t",
+                sess,
+                "#{cursor_x} #{cursor_y} #{pane_width} #{pane_height} #{pane_current_command}",
+            ]
+        )
+    except subprocess.TimeoutExpired:
+        return {"id": sid, "alive": False, "error": "shell command timed out"}
+    if m.returncode != 0:
+        return {"id": sid, "alive": False}
+    parts = m.stdout.decode(errors="replace").strip().split()
     try:
         cx, cy, cols, rows = map(int, parts[:4])
     except (ValueError, IndexError):
@@ -173,10 +199,8 @@ def paste_text(sid, text):
     """Type literal text (stdin-piped, no shell quoting).
 
     Returns ("ok", None), ("bad", msg), ("gone", msg) or ("error", msg).
-    Single round trip: a stale session surfaces as a tmux error -> gone.
-    NOTE: wrapped in sh -c because the host login shell is fish (no `$?`),
-    and `;`-chaining would mask paste-buffer's exit status behind
-    delete-buffer's — the rc propagated must be paste-buffer's own.
+    Three explicit tmux calls: load-buffer (input on stdin), paste-buffer
+    (its rc is the one that matters), delete-buffer (best-effort cleanup).
     """
     if not isinstance(text, str) or not text:
         return "bad", "id and non-empty text required"
@@ -185,13 +209,13 @@ def paste_text(sid, text):
     sess = shell_session_name(sid)
     buf = f"buf-{sid}"
     try:
-        r = host_run(
-            f"sh -c 'tmux load-buffer -b {buf} - ; tmux paste-buffer -b {buf} -t {sess}; rc=$?; "
-            f"tmux delete-buffer -b {buf} >/dev/null 2>&1; exit $rc'",
-            input_bytes=text.encode(),
-        )
+        # rc intentionally ignored: a stale session surfaces from paste-buffer.
+        tmux_run(["load-buffer", "-b", buf, "-"], input_bytes=text.encode())
+        r = tmux_run(["paste-buffer", "-b", buf, "-t", sess])
     except subprocess.TimeoutExpired:
         return "error", "shell command timed out"
+    with contextlib.suppress(subprocess.TimeoutExpired, OSError):
+        tmux_run(["delete-buffer", "-b", buf])  # best-effort cleanup
     if r.returncode != 0:
         err = (r.stderr.decode(errors="replace") or "paste failed").strip()
         if tmux_gone(err):
@@ -206,7 +230,7 @@ def send_key(sid, key):
     if arg is None:
         return "bad", "unknown shell id or key"
     try:
-        r = host_run(f"tmux send-keys -t {shell_session_name(sid)} {arg}")
+        r = tmux_run(["send-keys", "-t", shell_session_name(sid), arg])
     except subprocess.TimeoutExpired:
         return "error", "shell command timed out"
     if r.returncode != 0:
@@ -219,7 +243,9 @@ def send_key(sid, key):
 def resize_session(sid, cols, rows):
     """Resize the pty. ("ok", {cols, rows}) or ("gone"/"error", msg)."""
     try:
-        r = host_run(f"tmux resize-window -t {shell_session_name(sid)} -x {cols} -y {rows} 2>&1")
+        r = tmux_run(
+            ["resize-window", "-t", shell_session_name(sid), "-x", str(cols), "-y", str(rows)]
+        )
     except subprocess.TimeoutExpired:
         return "error", "shell command timed out"
     if r.returncode != 0:
@@ -230,7 +256,7 @@ def resize_session(sid, cols, rows):
 def kill_session(sid):
     """Destroy the host tmux session. ("ok", {id}) or ("error", msg)."""
     try:
-        host_run(f"tmux kill-session -t {shell_session_name(sid)} 2>/dev/null")
+        tmux_run(["kill-session", "-t", shell_session_name(sid)])
     except subprocess.TimeoutExpired:
         return "error", "shell command timed out"
     return "ok", {"id": sid}
@@ -239,9 +265,12 @@ def kill_session(sid):
 def list_sessions():
     """Dashboard-owned host shell sessions. Returns {"sessions": [...]}."""
     try:
-        r = host_run(
-            "tmux ls -F '#{session_name} #{session_created} "
-            "#{?session_attached,attached,detached}' 2>/dev/null"
+        r = tmux_run(
+            [
+                "ls",
+                "-F",
+                "#{session_name} #{session_created} #{?session_attached,attached,detached}",
+            ]
         )
     except subprocess.TimeoutExpired:
         return None

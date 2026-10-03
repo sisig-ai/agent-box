@@ -6,7 +6,7 @@ Push model: each browser tab opens one connection
 the tmux pane changes — plus an immediate push after every input/key — so
 keystroke echo is a single round trip instead of a poll cycle.
 
-Same tmux-over-SSH backend as the HTTP API (shell_common): persistence
+Same tmux-over-SSH backend as the HTTP API (dashboard.shell.tmux): persistence
 lives in host tmux, so this process is disposable — clients reconnect with
 backoff and reattach to the same session.
 
@@ -27,7 +27,7 @@ import threading
 import time
 from urllib.parse import parse_qs, urlparse
 
-from shell_common import (
+from dashboard.shell.tmux import (
     capture_pane,
     check_shell_id,
     ensure_session,

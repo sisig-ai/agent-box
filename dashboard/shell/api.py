@@ -3,14 +3,13 @@
 Interactive shell tab: each browser session owns a tmux session on the host
 (started with cwd ~). Flask stays stateless — any gunicorn worker can proxy any
 shell session, since persistence lives in host tmux, not in this process. The
-backend lives in the root ``shell_common`` module (shared with the websocket
-gateway); it moves into this package in M3. No extra deps: stdlib subprocess +
-local tmux process under the dashboard user.
+backend lives in ``dashboard.shell.tmux`` (shared with the websocket gateway).
+No extra deps: stdlib subprocess + local tmux process under the dashboard user.
 """
 
 from flask import Blueprint, jsonify, request
 
-from shell_common import (
+from dashboard.shell.tmux import (
     capture_pane,
     check_shell_id,
     ensure_session,
