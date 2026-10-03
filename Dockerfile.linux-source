@@ -10,10 +10,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app.py .
-COPY shell_common.py .
+COPY dashboard/ ./dashboard/
 COPY shell_ws.py .
+COPY telemetry_collector.py .
 COPY static/ ./static/
-COPY static/index.html ./index.html
 
 EXPOSE 5555 5556
 
