@@ -15,8 +15,11 @@ def main():
         os.environ["DASH_FS_HOME"] = str(Path(folder) / "fs-home")
 
         import app
+        from dashboard import config
+        from dashboard.db import init_db
+        from dashboard.telemetry_store import record_telemetry_snapshot
 
-        app.init_db()
+        init_db()
         c = app.app.test_client()
 
         for route in ["/api/brief"]:
@@ -32,7 +35,7 @@ def main():
         assert c.get("/api/schedule?week=2026-10-01").json["content"] == "# Week"
         assert c.delete("/api/schedule?week=2026-10-01").status_code == 200
 
-        app.record_telemetry_snapshot(
+        record_telemetry_snapshot(
             15.2, 42.1, {"used_bytes": 123, "total_bytes": 456}, None, None, 8.4
         )
         h = c.get("/api/stats/history?seconds=60").json
@@ -44,7 +47,7 @@ def main():
         assert bad_key.status_code == 400
 
         # Filesystem explorer, sandboxed to a throwaway "home"
-        fs = app.FS_HOME
+        fs = config.FS_HOME
         (fs / "sub").mkdir(parents=True)
         (fs / "note.txt").write_text("hello")
         assert c.get("/api/fs/list").json["path"] == str(fs)

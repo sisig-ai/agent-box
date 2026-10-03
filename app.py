@@ -1,26 +1,18 @@
 import contextlib
-import json
 import mimetypes
 import os
 import shutil
-import sqlite3
 import stat
 import tempfile
-import time
 from datetime import datetime
 from pathlib import Path
 
 from flask import Flask, jsonify, request, send_file, send_from_directory
 
-from dashboard.config import (
-    DATA_DIR,
-    FS_HOME,
-    MAX_UPLOAD_MB,
-    STATIC_DIR,
-    TELEMETRY_RETENTION_S,
-)
-from dashboard.db import get_db, init_db
+from dashboard.config import FS_HOME, MAX_UPLOAD_MB, STATIC_DIR
+from dashboard.db import init_db
 from dashboard.notes_api import bp as notes_bp
+from dashboard.telemetry_api import bp as telemetry_bp
 from shell_common import (
     capture_pane,
     check_shell_id,
@@ -45,117 +37,7 @@ def too_large(_error):
 
 init_db()
 app.register_blueprint(notes_bp)
-
-
-# ---------------- Native macOS telemetry ----------------
-# A single background collector reads Apple Silicon IOReport/SMC via macmon.
-# Browser requests read its latest snapshot; history continues while tabs close.
-
-_TELE_LAST_WRITE = {"t": 0.0}
-
-
-@app.get("/api/stats")
-def stats():
-    try:
-        snapshot = json.loads((DATA_DIR / "latest-stats.json").read_text())
-        age = time.time() - datetime.fromisoformat(snapshot["t"]).timestamp()
-        snapshot["stale"] = age > 5
-        if snapshot["stale"]:
-            return jsonify({"error": "Telemetry sampler is reconnecting", "stale": True}), 503
-        return jsonify(snapshot)
-    except (OSError, ValueError, KeyError):
-        return jsonify({"error": "Telemetry sampler is starting", "stale": True}), 503
-
-
-def record_telemetry_snapshot(cpu_util, temp_c, mem, cpu_w, gpu_w, total_w):
-    """Append one per-second row to the telemetry ring buffer (shared sqlite).
-
-    Called on every /api/stats hit; the ts-second PRIMARY KEY dedupes the
-    occasional same-second hit from another gunicorn worker.
-    """
-    now = time.time()
-    if now - _TELE_LAST_WRITE["t"] < 1.0:
-        return
-    _TELE_LAST_WRITE["t"] = now
-    ts = int(now)
-    try:
-        with get_db() as conn:
-            conn.execute(
-                """INSERT OR IGNORE INTO telemetry
-                   (ts, cpu_util, cpu_temp, mem_used, mem_total, pwr_cpu, pwr_gpu, pwr_total)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    ts,
-                    cpu_util,
-                    temp_c,
-                    mem["used_bytes"] if mem else None,
-                    mem["total_bytes"] if mem else None,
-                    cpu_w,
-                    gpu_w,
-                    total_w,
-                ),
-            )
-            conn.execute("DELETE FROM telemetry WHERE ts < ?", (ts - TELEMETRY_RETENTION_S,))
-    except sqlite3.Error:
-        pass
-
-
-@app.get("/api/stats/history")
-def stats_history():
-    """GET /api/stats/history?seconds=3600 — dense per-second series for the graphs.
-
-    Returns {start, step, count} plus one array per metric; null = no sample
-    (tab hidden, dashboard restarted). max 3900s (retention window).
-    """
-    try:
-        seconds = max(60, min(int(request.args.get("seconds", 3600)), TELEMETRY_RETENTION_S))
-    except (TypeError, ValueError):
-        seconds = 3600
-    now = int(time.time())
-    start = now - seconds
-    n = seconds + 1
-    cpu = [None] * n
-    temp = [None] * n
-    mem_used = [None] * n
-    pwr = [None] * n
-    pwr_cpu = [None] * n
-    pwr_gpu = [None] * n
-    mem_total = None
-    try:
-        with get_db() as conn:
-            rows = conn.execute(
-                """SELECT ts, cpu_util, cpu_temp, mem_used, mem_total,
-                          pwr_cpu, pwr_gpu, pwr_total
-                   FROM telemetry WHERE ts >= ? ORDER BY ts""",
-                (start,),
-            ).fetchall()
-    except sqlite3.Error:
-        rows = []
-    for r in rows:
-        i = r["ts"] - start
-        if 0 <= i < n:
-            cpu[i] = r["cpu_util"]
-            temp[i] = r["cpu_temp"]
-            mem_used[i] = r["mem_used"]
-            pwr[i] = r["pwr_total"]
-            pwr_cpu[i] = r["pwr_cpu"]
-            pwr_gpu[i] = r["pwr_gpu"]
-            if r["mem_total"]:
-                mem_total = r["mem_total"]
-    return jsonify(
-        {
-            "start": start,
-            "step": 1,
-            "count": n,
-            "cpu": cpu,
-            "temp": temp,
-            "mem_used": mem_used,
-            "mem_total": mem_total,
-            "pwr": pwr,
-            "pwr_cpu": pwr_cpu,
-            "pwr_gpu": pwr_gpu,
-        }
-    )
+app.register_blueprint(telemetry_bp)
 
 
 # ---------------- Web shell (host tty in ~) ----------------
