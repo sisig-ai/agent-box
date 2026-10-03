@@ -181,7 +181,3 @@ export function initFiles() {
   wire();
   load(null); // server defaults to ~
 }
-
-// Commit A bridge: keep the old global until router.js switches to an import.
-window.fsEnsure = initFiles;
-if (window.currentView && window.currentView() === 'files') initFiles();

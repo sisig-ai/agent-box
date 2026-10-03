@@ -5,7 +5,5 @@ import './warpfield.js';
 import './stack.js';
 import './telemetry/poll.js';
 import './router.js';
-import './shell/shell.js';
-import './files/actions.js';
 import './notes/brief.js';
 import './notes/schedule.js';

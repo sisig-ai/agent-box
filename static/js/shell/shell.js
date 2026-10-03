@@ -112,7 +112,6 @@ export function initShell() { if (ensureImpl) ensureImpl(); }
   }
 
   function ensure() { connect(); }
-  window.shellEnsure = ensure;
 
   let typeTimer = null, typeBuf = '';
   function flushType() {
@@ -201,14 +200,4 @@ export function initShell() { if (ensureImpl) ensureImpl(); }
   });
 
   ensureImpl = ensure;
-
-  // If landing directly on #/shell, boot immediately; otherwise lazy-boot.
-  if (location.hash === '#/shell') ensure();
-  else {
-    const boot = () => {
-      if (location.hash === '#/shell') ensure();
-      window.removeEventListener('hashchange', boot);
-    };
-    window.addEventListener('hashchange', boot);
-  }
 })();
