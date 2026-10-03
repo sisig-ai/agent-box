@@ -1,0 +1,140 @@
+/* ---------- FiraCode Nerd Font Mono (vendored, offline) ---------- */
+/* Full-coverage woff2 converted from the Nerd Fonts 3.4.0 FiraCode
+   release (SIL OFL), served from ./fonts/ so the built-in shell
+   never depends on a CDN or a system-installed font. Mono variant:
+   every glyph (icons included) stays single-cell, safe for the tty. */
+@font-face {
+  font-family: "FiraCode Nerd Font Mono";
+  src: url("/static/fonts/FiraCodeNerdFontMono-Regular.woff2?v=nf3.4.0") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "FiraCode Nerd Font Mono";
+  src: url("/static/fonts/FiraCodeNerdFontMono-Medium.woff2?v=nf3.4.0") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "FiraCode Nerd Font Mono";
+  src: url("/static/fonts/FiraCodeNerdFontMono-Bold.woff2?v=nf3.4.0") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --void: #050814;
+  --blue: #72a7ff;
+  --violet: #aa87ff;
+  --text: #eff3ff;
+  --muted: #9098b8;
+  --surface: rgba(255, 255, 255, 0.04);
+  --border: rgba(255, 255, 255, 0.09);
+  --mono: "FiraCode Nerd Font Mono", "Fira Code", ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--void);
+  min-height: 100vh;
+  color: var(--text);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Deep space ---------- */
+#warpfield {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.nebula {
+  position: fixed;
+  inset: -25vmax;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.34;
+}
+
+/* The blur used to live on the .nebula parent while churn() animated its
+   children — the GPU re-ran a full-screen 90px blur every frame. The haze
+   is now baked into soft gradient stops (near-indistinguishable against
+   the near-black void), and the drift animation is gone entirely: any
+   infinite animation, however slow, forces the compositor to produce a
+   frame on every vsync tick, re-blending three viewport-sized layers
+   120x/s on ProMotion displays. Static haze rasterizes once and costs
+   nothing thereafter. */
+.nebula span {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+}
+
+.nebula span:nth-child(1) {
+  width: 52vmax; height: 52vmax; top: -4%; left: 2%;
+  background: radial-gradient(circle at 35% 35%,
+    rgba(58,87,170,0.9) 0%, rgba(58,87,170,0.45) 35%,
+    rgba(58,87,170,0.12) 60%, rgba(58,87,170,0) 78%);
+}
+.nebula span:nth-child(2) {
+  width: 44vmax; height: 44vmax; top: 8%; right: -4%;
+  background: radial-gradient(circle at 60% 40%,
+    rgba(91,53,170,0.9) 0%, rgba(91,53,170,0.45) 35%,
+    rgba(91,53,170,0.12) 60%, rgba(91,53,170,0) 78%);
+}
+.nebula span:nth-child(3) {
+  width: 46vmax; height: 46vmax; bottom: -8%; left: 28%;
+  background: radial-gradient(circle at 50% 50%,
+    rgba(36,59,131,0.9) 0%, rgba(36,59,131,0.45) 35%,
+    rgba(36,59,131,0.12) 62%, rgba(36,59,131,0) 80%);
+}
+
+/* Idle pause (toggled by the starfield JS): infinite CSS animations tick
+   at display-refresh rate forever, waking the GPU compositor even on an
+   untouched dashboard. When no pointer/key/scroll activity has happened
+   for a while, everything ambient stops and transitions are muted, so
+   the page goes genuinely still — and GPU costs drop to the 1 Hz data
+   tick. Any input event removes this class and motion resumes. */
+.bg-idle .nebula span,
+.bg-idle .pulse,
+.bg-idle .tele-live i,
+.bg-idle .pwr-badge,
+.bg-idle .shell-dot.on,
+.bg-idle .term-screen .t-cursor {
+  animation: none !important;
+}
+.bg-idle *,
+.bg-idle *::before,
+.bg-idle *::after {
+  transition: none !important;
+}
+
+/* Scrim only behind the header + a soft floor — the centre stays open
+   so the warp is actually visible through the content */
+.vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 110% 46% at 30% 0%, rgba(5,8,20,0.8) 0%, rgba(5,8,20,0.3) 55%, transparent 78%),
+    linear-gradient(to bottom, rgba(5,8,20,0.55) 0%, transparent 26%, transparent 74%, rgba(5,8,20,0.7) 100%);
+}
+
+.container {
+  position: relative;
+  z-index: 1;
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: clamp(1.25rem, 4vw, 3rem);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}

@@ -1,0 +1,162 @@
+/* ---------- View tabs (Brief / Stack / Files / Shell) ---------- */
+.view-tabs {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 1.5rem;
+  font-family: var(--mono);
+}
+
+.view-btn {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.5rem 1.1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.view-btn:hover { color: var(--text); border-color: rgba(114,167,255, 0.5); }
+.view-btn.active {
+  color: var(--text);
+  background: rgba(114,167,255, 0.12);
+  border-color: rgba(114,167,255, 0.55);
+  box-shadow: 0 0 18px -6px rgba(114,167,255, 0.6);
+}
+
+/* One panel visible at a time; telemetry stays mounted above them all. */
+body[data-view="brief"] [data-tabpanel]:not([data-tabpanel="brief"]),
+body[data-view="stack"] [data-tabpanel]:not([data-tabpanel="stack"]),
+body[data-view="shell"] [data-tabpanel]:not([data-tabpanel="shell"]),
+body[data-view="files"] [data-tabpanel]:not([data-tabpanel="files"]) { display: none; }
+
+/* ---------- Shell (host tty in ~) ---------- */
+.shell {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0.018)),
+              linear-gradient(rgba(12,18,37,0.78), rgba(8,12,27,0.72));
+  overflow: hidden;
+  margin-bottom: 1.75rem;
+}
+
+.shell-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  padding: 0.85rem 1.15rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.shell-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  min-width: 0;
+}
+
+.shell-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+  flex-shrink: 0;
+}
+
+.shell-dot.on { background: #3ddc97; box-shadow: 0 0 10px #3ddc97; }
+.shell-dot.off { background: var(--blue); box-shadow: 0 0 10px var(--blue); }
+
+.shell-title .shell-sess {
+  color: var(--muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+  text-transform: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shell-actions { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+
+.term-wrap { padding: 0.9rem 1.15rem 0.4rem; }
+
+.term {
+  background: rgba(5,8,20, 0.62);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  min-height: 380px;
+  max-height: 62vh;
+  overflow-y: auto;
+  font-family: "FiraCode Nerd Font Mono", var(--mono);
+  font-feature-settings: "calt" 1, "liga" 1; /* Fira Code ligatures (->, =>, !=, …) */
+  font-size: 0.82rem;
+  line-height: 1.5;
+  cursor: text;
+  outline: none;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.term:focus-within, .term:focus {
+  border-color: rgba(114,167,255, 0.45);
+  box-shadow: 0 0 0 3px rgba(114,167,255, 0.08);
+}
+
+/* NOTE: .term sets the face, but UA sheets pin `pre { font-family:
+   monospace }`, which beats inheritance — so the face must be repeated
+   here, or the shell silently falls back to a system mono with no
+   Nerd glyphs. */
+.term-screen {
+  white-space: pre-wrap; word-break: break-all; margin: 0;
+  font-family: "FiraCode Nerd Font Mono", var(--mono);
+}
+
+/* ANSI SGR palette for the shell snapshot renderer */
+.term {
+  --term0: #6b6b7d; --term1: #72a7ff; --term2: #3ddc97; --term3: #aa87ff;
+  --term4: #6aa8ff; --term5: #c792ea; --term6: #4fd6d6; --term7: #e8e8f0;
+  --term0b: #8b8b9e; --term1b: #a8c6ff; --term2b: #7dedb5; --term3b: #cdb8ff;
+  --term4b: #9cc4ff; --term5b: #dab8ff; --term6b: #8feced; --term7b: #ffffff;
+  --termbg0: #3a3a48; --termbg1: #5c1f2b; --termbg2: #14402e; --termbg3: #57431a;
+  --termbg4: #1e3a5f; --termbg5: #3f2a52; --termbg6: #174545; --termbg7: #4a4a58;
+  --termbg0b: #4a4a58; --termbg1b: #7a2b3a; --termbg2b: #1d5c42; --termbg3b: #75612a;
+  --termbg4b: #2c5385; --termbg5b: #583d73; --termbg6b: #206060; --termbg7b: #66667a;
+}
+
+.term-screen .t-cursor {
+  background: var(--text);
+  color: var(--void);
+  border-radius: 1px;
+}
+
+/* The cursor blinks only while the shell view is actually on screen.
+   An infinite animation anywhere on the page keeps the compositor
+   ticking at display-refresh rate even when the terminal is hidden. */
+body[data-view="shell"] .term-screen .t-cursor {
+  animation: tblink 1.1s steps(1) infinite;
+}
+
+@keyframes tblink { 50% { opacity: 0; } }
+
+.term-hint {
+  padding: 0.55rem 1.15rem 0.9rem;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
