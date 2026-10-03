@@ -48,3 +48,9 @@ def test_normalize_week():
     assert normalize_week("2026-10-01") == "2026-09-28"
     assert normalize_week(None) == week_start_for(None)
     assert normalize_week("garbage") is None
+
+
+def test_impossible_week_date_is_rejected():
+    assert normalize_week("2026-02-30") is None
+    assert week_start_for("2026-02-30") is None
+    assert normalize_week("2026-13-01") is None

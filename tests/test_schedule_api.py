@@ -66,6 +66,15 @@ def test_bad_week_is_400(client):
     assert r.get_json() == {"error": "week must be YYYY-MM-DD"}
 
 
+def test_impossible_week_is_400_not_500(client):
+    r = client.get("/api/schedule", query_string={"week": "2026-02-30"})
+    assert r.status_code == 400
+    assert r.get_json() == {"error": "week must be YYYY-MM-DD"}
+    r = client.put("/api/schedule", json={"week": "2026-02-30", "content": "x"})
+    assert r.status_code == 400
+    assert r.get_json() == {"error": "week must be YYYY-MM-DD"}
+
+
 def test_list_newest_first_and_clamp(client):
     for week in ("2026-09-21", MONDAY, "2026-10-05"):
         client.put("/api/schedule", json={"week": week, "content": week})

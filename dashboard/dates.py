@@ -23,11 +23,18 @@ def normalize_date(raw):
 
 
 def week_start_for(date_str):
-    """Return the Monday (YYYY-MM-DD) of the week containing date_str, or of today."""
+    """Return the Monday (YYYY-MM-DD) of the week containing date_str, or of today.
+
+    Returns None for a well-formed but impossible date (``2026-02-30``), so the
+    caller can reject it with a 400 instead of raising ValueError.
+    """
     if not date_str or not DATE_RE.match(date_str):
         date_str = today_str()
-    y, m, d = map(int, date_str.split("-"))
-    return (date(y, m, d) - timedelta(days=date(y, m, d).weekday())).isoformat()
+    try:
+        day = date.fromisoformat(date_str)
+    except ValueError:
+        return None
+    return (day - timedelta(days=day.weekday())).isoformat()
 
 
 def normalize_week(raw):
