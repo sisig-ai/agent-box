@@ -45,9 +45,34 @@ def _seed(args):
                 )
     finally:
         conn.close()
-    stamp = datetime.fromtimestamp(time.time() + 3600).astimezone().isoformat(timespec="seconds")
+    later = datetime.fromtimestamp(time.time() + 3600).astimezone()
+    stamp = later.isoformat(timespec="milliseconds")
     (config.DATA_DIR / "latest-stats.json").write_text(
-        json.dumps({"t": stamp, "cpu": {"util_percent": 12.5}})
+        json.dumps(
+            {
+                "t": stamp,
+                "platform": "macOS",
+                "cpu": {"util_percent": 12.5, "temp_c": 42.1, "temp_source": "CPU dies"},
+                "mem": {
+                    "total_bytes": 17179869184,
+                    "used_bytes": 9000000000,
+                    "free_bytes": 1000000000,
+                    "available_bytes": 8000000000,
+                    "util_percent": 47.6,
+                },
+                "power": {
+                    "total_w": 18.4,
+                    "cpu_w": 5.2,
+                    "gpu_w": 1.1,
+                    "ane_w": 0.2,
+                    "gpus": [],
+                    "source": "Apple SMC",
+                    "note": (
+                        "Apple SMC system power sensor; estimated device draw, not wall-plug power."
+                    ),
+                },
+            }
+        )
     )
     big = Path(args.dir)
     big.mkdir(parents=True, exist_ok=True)
