@@ -1,11 +1,11 @@
+import contextlib
+import json
 import mimetypes
 import os
 import re
-import secrets
 import shutil
 import sqlite3
 import stat
-import subprocess
 import tempfile
 import time
 from datetime import date, datetime, timedelta
@@ -13,18 +13,58 @@ from pathlib import Path
 
 from flask import Flask, jsonify, request, send_file, send_from_directory
 
+from shell_common import (
+    capture_pane,
+    check_shell_id,
+    ensure_session,
+    kill_session,
+    list_sessions,
+    new_shell_id,
+    parse_dims,
+    paste_text,
+    resize_session,
+    send_key,
+)
+
+
+def env_path(name, default):
+    """Path from an env var (tilde-expanded), or the given default."""
+    raw = os.environ.get(name)
+    return Path(raw).expanduser() if raw else default
+
+
+def env_int(name, default):
+    """Positive int from an env var, or the given default on garbage."""
+    try:
+        value = int(os.environ.get(name, default))
+    except (TypeError, ValueError):
+        return default
+    return value if value > 0 else default
+
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
-DATA_DIR = BASE_DIR / "data"
-DB_PATH = DATA_DIR / "briefs.db"
+DATA_DIR = env_path("DASH_DATA_DIR", BASE_DIR / "data")
+DB_PATH = env_path("DASH_DB_PATH", DATA_DIR / "briefs.db")
+FS_HOME = env_path("DASH_FS_HOME", Path.home())
+
+# Bound request bodies so /api/fs/upload can't take unbounded payloads.
+# Env-tunable in MB; an over-limit body surfaces as a clean 413 JSON error.
+MAX_UPLOAD_MB = env_int("DASH_MAX_UPLOAD_MB", 1024)
 
 app = Flask(__name__, static_folder=str(STATIC_DIR), static_url_path="/static")
+app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
+@app.errorhandler(413)
+def too_large(_error):
+    return jsonify({"error": f"upload too large (max {MAX_UPLOAD_MB} MB)"}), 413
+
+
 # ---------------- Daily Brief persistence ----------------
+
 
 def get_db():
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -89,14 +129,31 @@ def normalize_date(raw):
     return s if DATE_RE.match(s) else None
 
 
+def parse_limit(raw, default, maximum):
+    """Parse a ?limit= query value. None means non-numeric garbage (400)."""
+    if raw is None:
+        return default
+    try:
+        return min(int(raw), maximum)
+    except (TypeError, ValueError):
+        return None
+
+
 # ---------------- Daily-note table (daily_brief) ----------------
 # One-markdown-entry-per-day store.
 
 NOTE_TABLES = {"daily_brief"}
 
 
+def validate_note_table(table):
+    """Explicit whitelist check — an assert would vanish under python -O."""
+    if table not in NOTE_TABLES:
+        raise ValueError(f"unknown note table: {table}")
+    return table
+
+
 def fetch_note(table, date):
-    assert table in NOTE_TABLES
+    table = validate_note_table(table)
     with get_db() as conn:
         row = conn.execute(
             f"SELECT date, content, created_at, updated_at FROM {table} WHERE date = ?",
@@ -106,7 +163,7 @@ def fetch_note(table, date):
 
 
 def upsert_note(table, date, content):
-    assert table in NOTE_TABLES
+    table = validate_note_table(table)
     with get_db() as conn:
         conn.execute(
             f"""
@@ -122,14 +179,14 @@ def upsert_note(table, date, content):
 
 
 def delete_note(table, date):
-    assert table in NOTE_TABLES
+    table = validate_note_table(table)
     with get_db() as conn:
         cur = conn.execute(f"DELETE FROM {table} WHERE date = ?", (date,))
     return cur.rowcount > 0
 
 
 def list_notes(table, limit):
-    assert table in NOTE_TABLES
+    table = validate_note_table(table)
     with get_db() as conn:
         rows = conn.execute(
             f"SELECT date, content, created_at, updated_at FROM {table} ORDER BY date DESC LIMIT ?",
@@ -152,6 +209,7 @@ def delete_brief(date):
 
 # ---------------- Weekly Schedule persistence ----------------
 
+
 def week_start_for(date_str):
     """Return the Monday (YYYY-MM-DD) of the week containing date_str, or of today."""
     if not date_str or not DATE_RE.match(date_str):
@@ -173,7 +231,8 @@ def normalize_week(raw):
 def fetch_schedule(week):
     with get_db() as conn:
         row = conn.execute(
-            "SELECT week_start, content, created_at, updated_at FROM weekly_schedule WHERE week_start = ?",
+            "SELECT week_start, content, created_at, updated_at FROM weekly_schedule"
+            " WHERE week_start = ?",
             (week,),
         ).fetchone()
     return dict(row) if row else None
@@ -206,6 +265,7 @@ init_db()
 # ---------------- Daily Brief API ----------------
 # No auth: local stack, exposed only over the tailnet.
 
+
 @app.get("/api/brief")
 def brief_get():
     """GET /api/brief?date=YYYY-MM-DD (defaults to today)."""
@@ -221,7 +281,9 @@ def brief_get():
 @app.get("/api/brief/list")
 def brief_list():
     """GET /api/brief/list?limit=N — most recent days first."""
-    limit = min(int(request.args.get("limit", 30)), 365)
+    limit = parse_limit(request.args.get("limit"), 30, 365)
+    if limit is None:
+        return jsonify({"error": "limit must be a number"}), 400
     return jsonify(list_notes("daily_brief", limit))
 
 
@@ -251,9 +313,10 @@ def brief_delete():
 
 # ---------------- Weekly Schedule API ----------------
 
+
 @app.get("/api/schedule")
 def schedule_get():
-    """GET /api/schedule?week=YYYY-MM-DD — week_start is coerced to that week's Monday (defaults to this week)."""
+    """GET /api/schedule?week=YYYY-MM-DD — week_start coerces to that week's Monday."""
     week = normalize_week(request.args.get("week"))
     if week is None:
         return jsonify({"error": "week must be YYYY-MM-DD"}), 400
@@ -266,10 +329,13 @@ def schedule_get():
 @app.get("/api/schedule/list")
 def schedule_list():
     """GET /api/schedule/list?limit=N — most recent weeks first."""
-    limit = min(int(request.args.get("limit", 20)), 104)
+    limit = parse_limit(request.args.get("limit"), 20, 104)
+    if limit is None:
+        return jsonify({"error": "limit must be a number"}), 400
     with get_db() as conn:
         rows = conn.execute(
-            "SELECT week_start, content, created_at, updated_at FROM weekly_schedule ORDER BY week_start DESC LIMIT ?",
+            "SELECT week_start, content, created_at, updated_at FROM weekly_schedule"
+            " ORDER BY week_start DESC LIMIT ?",
             (limit,),
         ).fetchall()
     return jsonify([dict(r) for r in rows])
@@ -278,7 +344,7 @@ def schedule_list():
 @app.put("/api/schedule")
 @app.post("/api/schedule")
 def schedule_upsert():
-    """PUT/POST /api/schedule with JSON {"week"?, "content"} — create or replace that week's entry."""
+    """PUT/POST /api/schedule with JSON {"week"?, "content"} — upsert that week's entry."""
     body = request.get_json(silent=True) or {}
     if "content" not in body:
         return jsonify({"error": "content is required"}), 400
@@ -302,10 +368,10 @@ def schedule_delete():
 # ---------------- Native macOS telemetry ----------------
 # A single background collector reads Apple Silicon IOReport/SMC via macmon.
 # Browser requests read its latest snapshot; history continues while tabs close.
-import json
 
 TELEMETRY_RETENTION_S = 3900
 _TELE_LAST_WRITE = {"t": 0.0}
+
 
 @app.get("/api/stats")
 def stats():
@@ -337,10 +403,16 @@ def record_telemetry_snapshot(cpu_util, temp_c, mem, cpu_w, gpu_w, total_w):
                 """INSERT OR IGNORE INTO telemetry
                    (ts, cpu_util, cpu_temp, mem_used, mem_total, pwr_cpu, pwr_gpu, pwr_total)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                (ts, cpu_util, temp_c,
-                 mem["used_bytes"] if mem else None,
-                 mem["total_bytes"] if mem else None,
-                 cpu_w, gpu_w, total_w),
+                (
+                    ts,
+                    cpu_util,
+                    temp_c,
+                    mem["used_bytes"] if mem else None,
+                    mem["total_bytes"] if mem else None,
+                    cpu_w,
+                    gpu_w,
+                    total_w,
+                ),
             )
             conn.execute("DELETE FROM telemetry WHERE ts < ?", (ts - TELEMETRY_RETENTION_S,))
     except sqlite3.Error:
@@ -389,12 +461,20 @@ def stats_history():
             pwr_gpu[i] = r["pwr_gpu"]
             if r["mem_total"]:
                 mem_total = r["mem_total"]
-    return jsonify({
-        "start": start, "step": 1, "count": n,
-        "cpu": cpu, "temp": temp,
-        "mem_used": mem_used, "mem_total": mem_total,
-        "pwr": pwr, "pwr_cpu": pwr_cpu, "pwr_gpu": pwr_gpu,
-    })
+    return jsonify(
+        {
+            "start": start,
+            "step": 1,
+            "count": n,
+            "cpu": cpu,
+            "temp": temp,
+            "mem_used": mem_used,
+            "mem_total": mem_total,
+            "pwr": pwr,
+            "pwr_cpu": pwr_cpu,
+            "pwr_gpu": pwr_gpu,
+        }
+    )
 
 
 # ---------------- Web shell (host tty in ~) ----------------
@@ -404,19 +484,6 @@ def stats_history():
 # Backend lives in shell_common (shared with the websocket gateway); the
 # routes below are thin HTTP wrappers. No extra deps: stdlib subprocess +
 # local tmux process under the dashboard user.
-
-from shell_common import (
-    check_shell_id,
-    new_shell_id,
-    parse_dims,
-    capture_pane,
-    ensure_session,
-    kill_session,
-    list_sessions,
-    paste_text,
-    resize_session,
-    send_key,
-)
 
 
 @app.post("/api/shell/new")
@@ -523,8 +590,6 @@ def shell_list():
 # No chroot: the Shell tab already runs a full tty as this user, so confining
 # this to ~ would buy no real isolation. Paths are lexically normalised rather
 # than resolved, so operating on a symlink affects the link, not its target.
-
-FS_HOME = Path.home()
 
 try:
     import grp as _grp
@@ -644,15 +709,17 @@ def fs_list():
     # tagged so the UI can toggle them without re-fetching.
     entries.sort(key=lambda e: (not e["is_dir"], e["name"].lower()))
     parent = None if p.parent == p else str(p.parent)
-    return jsonify({
-        "path": str(p),
-        "name": p.name or "/",
-        "parent": parent,
-        "home": str(FS_HOME),
-        "places": fs_places(),
-        "entries": entries,
-        "total": len(entries),
-    })
+    return jsonify(
+        {
+            "path": str(p),
+            "name": p.name or "/",
+            "parent": parent,
+            "home": str(FS_HOME),
+            "places": fs_places(),
+            "entries": entries,
+            "total": len(entries),
+        }
+    )
 
 
 @app.get("/api/fs/stat")
@@ -670,27 +737,31 @@ def fs_stat():
     info["mime"] = mimetypes.guess_type(p.name)[0] or (
         "inode/directory" if info["is_dir"] else "application/octet-stream"
     )
-    info["mtime_iso"] = datetime.fromtimestamp(info["mtime"]).astimezone().isoformat(timespec="seconds")
+    info["mtime_iso"] = (
+        datetime.fromtimestamp(info["mtime"]).astimezone().isoformat(timespec="seconds")
+    )
     if info["type"] != "link":
         try:
             st = p.stat()
             info["ctime"] = st.st_ctime
-            info["ctime_iso"] = datetime.fromtimestamp(st.st_ctime).astimezone().isoformat(timespec="seconds")
+            info["ctime_iso"] = (
+                datetime.fromtimestamp(st.st_ctime).astimezone().isoformat(timespec="seconds")
+            )
             if hasattr(st, "st_birthtime"):
                 info["btime"] = st.st_birthtime
-                info["btime_iso"] = datetime.fromtimestamp(st.st_birthtime).astimezone().isoformat(timespec="seconds")
+                info["btime_iso"] = (
+                    datetime.fromtimestamp(st.st_birthtime)
+                    .astimezone()
+                    .isoformat(timespec="seconds")
+                )
             info["uid"] = st.st_uid
             info["gid"] = st.st_gid
             if _pwd is not None:
-                try:
+                with contextlib.suppress(KeyError):
                     info["owner"] = _pwd.getpwuid(st.st_uid).pw_name
-                except KeyError:
-                    pass
             if _grp is not None:
-                try:
+                with contextlib.suppress(KeyError):
                     info["group"] = _grp.getgrgid(st.st_gid).gr_name
-                except KeyError:
-                    pass
         except OSError:
             pass
     return jsonify(info)
@@ -838,6 +909,7 @@ def fs_delete():
 
 
 # ---------------- Landing page ----------------
+
 
 @app.get("/")
 @app.get("/index.html")
