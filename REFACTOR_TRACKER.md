@@ -10,9 +10,9 @@ check items off, log commits and decisions at the bottom, and keep the status bl
 | Field | Value |
 |---|---|
 | Phase | In progress |
-| Current milestone | M3 complete — M4 not started |
-| Last updated | 2026-10-03 (M3: tmux backend moved to `dashboard.shell.tmux` with argv-list subprocesses; `shell_ws.py` 413→12 SLOC behind `dashboard.ws/*`; 23 ws unit tests; scratch-port live e2e green) |
-| Blocking on | — (M3 code gate met; shell service restart via `sudo launchctl kickstart -k system/dev.macmini.dashboard.shell` + manual browser smoke pending for the human) |
+| Current milestone | M4 complete — M5 not started |
+| Last updated | 2026-10-03 (M4: `static/index.html` 4,079→267 SLOC; CSS split into 11 `static/css/*.css`, JS into 18 `static/js/**` ES modules; lazy shell/files routes; `window.currentView/shellEnsure/fsEnsure` deleted; `make sloc STRICT=1` now fully green) |
+| Blocking on | — (M4 code gate met; manual browser smoke of all four tabs remains for the human, and the shell LaunchDaemon still needs `sudo launchctl kickstart -k system/dev.macmini.dashboard.shell` after M3) |
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked/issue
 
@@ -68,13 +68,15 @@ Manual browser smoke checklist — for the human, not performed by the agent
 - [x] **Gate:** live terminal e2e (echo latency, resize, New, kill, WS reconnect with backoff) — scratch gateway on `127.0.0.1:5598`, sid `m3e2e1`: hello → `echo m3ok` pane → key `C-l` → resize 90×25 → `new` (recreated, dims preserved) → clean close → reconnect reattached; `verify.py` green at every commit (throwaway worktree); `make check` 0; `make sloc STRICT=1` fails only on `static/index.html` (M4 scope)
 
 ### M4 — Frontend decomposition (no-build ES modules)
-- [ ] CSS → `static/css/*.css` (section-marker splits, `<link>` order preserved) — smoke before any JS
-- [ ] JS IIFEs → `static/js/**` ES modules in existing init order
-- [ ] `router.js` uses imports; `window.shellEnsure/fsEnsure/currentView` globals deleted
-- [ ] Shared `dom.js` + `notes/markdown.js` (sanitizer)
-- [ ] `marked.min.js` stays vendored classic script (`window.marked`)
-- [ ] Lazy dynamic `import()` for shell/files routes
-- [ ] **Gate:** UI smoke identical to M0 baseline, zero console errors, SLOC gate on every css/js file
+- [x] CSS → `static/css/*.css` (section-marker splits, `<link>` order preserved) — smoke before any JS (`34da8f3`)
+- [x] JS IIFEs → `static/js/**` ES modules in existing init order (`80a7394`)
+- [x] `router.js` uses dynamic `import()`; `window.shellEnsure/fsEnsure/currentView` globals deleted (`3059a52`)
+- [x] Shared `dom.js` (`$`, `esc`, change-gated `setTxt`/`setBar`) + `notes/markdown.js` (M1 sanitizer + render helper)
+- [x] `marked.min.js` stays vendored classic script (`window.marked`) loaded before the modules
+- [x] Lazy dynamic `import()` for shell/files routes (promise cached; second visit a no-op)
+- [x] **Gate:** UI smoke identical to M0 baseline, zero console errors, SLOC gate on every css/js file
+  (`make sloc STRICT=1` fully green; headless Chrome smoke against scratch gunicorn `:5599`: 25/25
+  checks, JS console errors=0 warnings=0 exceptions=0)
 
 ### M5 — Test suite (pytest + ruff green)
 - [ ] `tests/conftest.py` (tmp `DATA_DIR`/`FS_HOME` via env config)
@@ -179,6 +181,35 @@ Manual browser smoke checklist — for the human, not performed by the agent
   still pending on the human:** `sudo launchctl kickstart -k system/dev.macmini.dashboard.shell`
   (plus manual browser smoke).
 
+- **2026-10-03** — **M4 done (3 commits).** `static/index.html` 4,079 → **267 SLOC** (DOM only +
+  11 ordered `<link>`s + classic `/static/vendor/marked.min.js` + `<script type="module"
+  src="/static/js/main.js">`); `make sloc STRICT=1` is now **fully green** (largest source file
+  `static/js/telemetry/graphs.js` at 289). **CSS** (`34da8f3`): the 1,765-line `<style>` block
+  split 1:1 along its section markers into `static/css/{base,header,telemetry,power-alerts,
+  scanner,fleet,brief,schedule,shell,files,modal}.css`, linked in original source order so the
+  cascade cannot shift (brief/schedule split the Daily Brief block along its internal
+  sub-markers; view-tabs joins shell.css, footer joins modal.css). Font `url()`s were the only
+  values rewritten (to `/static/fonts/...`); counts byte-for-byte equal (1,184 `;`, 291 `{`,
+  6 `@media`, 3 `@keyframes`, 3 `@font-face`). **JS** (`80a7394`): the ~2,050-line inline script
+  extracted into 18 modules, `main.js` importing them in the exact IIFE order (warpfield → stack
+  → telemetry/* → router → shell → files → notes/brief → schedule); `window.warp`, both
+  localStorage keys, the `?freezebg=1` probe + `bgver` stamp, the 1s `document.hidden`-gated
+  poll, `setTxt`/`setBar` memoization, sprite batching + 30/60fps budget + 30s idle pause all
+  copied verbatim. **Lazy routes** (`3059a52`): `router.js` dynamic-`import()`s shell/files
+  (promise cached) and the old `window.currentView/shellEnsure/fsEnsure` bridges are gone.
+  **Verification** — `make check` + `verify.py` + `gunicorn --check-config app:app` green at all
+  3 commits; 25/25-check headless-Chrome smoke against a scratch gunicorn on `127.0.0.1:5599`
+  (throwaway `DASH_DATA_DIR`/`DASH_FS_HOME`) with a scratch WS gateway on `127.0.0.1:5556`:
+  four hash routes incl. lazy tabs, stack grid + search, brief markdown preview with a clickable
+  task checkbox that flips the source, autosave state, schedule Monday coercion, files listing +
+  new-folder modal, shell `connecting…`→`connected`, telemetry cards + expand, computed-style
+  sanity (body `rgb(5,8,20)`, `h1` gradient, FiraCode `fontFamily` + `document.fonts.check`
+  true), and `/?freezebg=1` FROZEN tag — **JS console errors=0, warnings=0, uncaught
+  exceptions=0** (only expected network 503s from the absent collector). Font URLs from the
+  scratch server all 200 `font/woff2`. DOM completeness: **88/88** `id="..."` and **120/120**
+  `class="..."` tokens from pre-M4 still present in markup+JS. Lazy behaviour confirmed: the
+  shell/files modules are absent from the network log until their tab is first opened.
+
 ## Decision log
 
 - **2026-10-03** — Frontend split = no-build ES modules (no bundler/npm; stack stays offline).
@@ -234,6 +265,44 @@ Manual browser smoke checklist — for the human, not performed by the agent
   `$(PYTEST)`). It existed only while there were zero tests; now that tests exist, a pytest
   collection/exit-5 problem should fail `make check` instead of being silently tolerated. Noted
   here per the M3 task.
+- **2026-10-03 (M4)** — Commit granularity = **3 commits**: (1) CSS-only extraction so cascade
+  risk is isolated and smoke-tested before any JS moves; (2) the full JS extraction, which keeps
+  `window.currentView/shellEnsure/fsEnsure` as temporary bridges so it is a pure, behavior-
+  identical module move; (3) the small lazy-routes + globals-deletion diff. This avoids a broken
+  intermediate state while keeping the `router` change reviewable on its own.
+- **2026-10-03 (M4)** — Lazy routes: `router.js` uses `import()` with a cached promise
+  (`lazy.shell ||= import(...)`), so the shell/files modules are fetched on first tab activation
+  and a second visit only re-calls the (idempotent) `initShell`/`initFiles`. No build step.
+  Direct landings on `#/shell`/`#/files` are covered by router's initial `apply()` even though
+  the module boot is now async (a few-ms difference vs M0, invisible in practice).
+- **2026-10-03 (M4)** — Telemetry shared state across the 3-way split: `graphs.js` owns the graph
+  registry + `drawGraph`/`feed`/`placeTip`/`ensureHistory`/`toggle` **and** `fmtW`/`WINDOW`;
+  `poll.js` imports `graphs`/`feed`/`drawGraph`/`placeTip`/`fmtW` and owns the 1s tick + DOM refs
+  + power-tab wiring; `alerts.js` imports `fmtW` and owns the pwr-alert log/badge/`maybePwrAlert`.
+  Nothing new is global — the only coupling is ES imports. Import order (`poll` imports `graphs`
+  before `alerts`) guarantees the graphs module evaluates first, so the shared `fmtW` binding is
+  initialized before `alerts` self-inits.
+- **2026-10-03 (M4)** — Files split: `render.js` owns the DOM refs object + mutable `state` and
+  every render helper (`setStatus`, table/breadcrumb/places/info/sort); `api.js` owns
+  `api()`/`xhrUpload()`; `actions.js` owns navigation + create/rename/delete/upload/drag-drop and
+  the one-time `initFiles()` wiring; `modal.js` is the shared promise modal. `render.js` ↔
+  `actions.js` form a cycle, which is safe here because cross-references are only used inside
+  deferred callbacks and the cross-module functions are hoisted declarations (initialized at
+  module instantiation). Shared state moves via `export const state`/`refs`.
+- **2026-10-03 (M4)** — `dom.js` exports one `esc` (the `&<>"` superset used by the files UI).
+  The terminal's old `esc` only escaped `&<>`; the extra `"`→`&quot;` is a no-op for rendered
+  text, so the ANSI output is visually identical while one helper covers both call sites.
+- **2026-10-03 (M4)** — Asset paths are root-absolute `/static/...` for the new `<link>`s, the
+  module `<script>`, the marked classic script, and the `<link rel="preload">`; extracted CSS
+  `url()`s point at `/static/fonts/...` (relative CSS URLs would otherwise resolve against
+  `/static/css/`). `marked.min.js` still runs as a classic script before the deferred modules,
+  so `window.marked` is ready when the preview modules execute.
+- **2026-10-03 (M4)** — Smoke harness: headless Chrome over the DevTools Protocol (Node 22
+  globals, no npm/puppeteer) against a **scratch** gunicorn on `127.0.0.1:5599` with throwaway
+  `DASH_DATA_DIR`/`DASH_DB_PATH`/`DASH_FS_HOME`, plus a scratch WS gateway bound to
+  `127.0.0.1:5556` (the live shell service listens only on the tailscale IP `100.64.149.91:5556`,
+  so it was never touched). The only tmux sessions created were `dash-*` ones from the smoke,
+  all killed after; the four pre-existing sessions and all launchd services were left alone.
 
 ## Commit log
 
@@ -252,6 +321,9 @@ _(one entry per commit: `sha  milestone  message`)_
 - `41df4f71d5c654acae9aa3c2091920bcb40f3883`  **M3**  `refactor: move tmux backend to dashboard.shell.tmux with argv subprocess`
 - `df4dfe9532e672b5715144c55b1777455e3723e2`  **M3**  `refactor: split websocket gateway into dashboard.ws modules`
 - `2d3c86d8a6a66a0e4ea809d9f43e030f5b9b6810`  **M3**  `test: add websocket frame and handshake unit tests`
+- `34da8f3198f5ff5cb566d6bc03ed78400655cc70`  **M4**  `refactor(css): extract stylesheets from index.html`
+- `80a7394c8c10a27bcf2fb472e7f3fdcf24ec00e9`  **M4**  `refactor(js): extract page modules as ES modules`
+- `3059a529cdb3215ef9920d4330bd2e17b9195ff1`  **M4**  `refactor(js): lazy-load shell/files routes and drop window globals`
 
 ## Open questions
 
