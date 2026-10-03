@@ -12,7 +12,7 @@ check items off, log commits and decisions at the bottom, and keep the status bl
 | Phase | Complete |
 | Current milestone | M7 complete — refactor closed (M0–M7) |
 | Last updated | 2026-10-03 (M7: README rewritten, llm.txt synced, Dockerfile COPY corrected, caches purged, fresh-clone smoke green from `7d04ed4`; 184 tests; `make check` green) |
-| Blocking on | — (closeout done; human ops only: `sudo launchctl kickstart -k system/dev.macmini.dashboard.web` + `…shell` to load the M6/M3 code, plus the manual browser smoke) |
+| Blocking on | — (nothing; services restarted post-M7 and the manual browser smoke passed 2026-10-03) |
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked/issue
 
@@ -30,11 +30,11 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked/issue
 Manual browser smoke checklist — for the human, not performed by the agent
 (baseline reference for M4 "UI smoke identical to M0"; the automated M4/M7 headless-Chrome and
 fresh-clone smokes cover the automated portion):
-- [ ] Four tabs (`Brief`, `Stack`, `Files`, `Shell`) switch via the header nav
-- [ ] Graphs render and update on the 1s telemetry poll
-- [ ] Alerts show/clear correctly
-- [ ] Terminal: echo latency, resize, reconnect (WS backoff)
-- [ ] Files: CRUD + upload
+- [x] Four tabs (`Brief`, `Stack`, `Files`, `Shell`) switch via the header nav — human pass 2026-10-03
+- [x] Graphs render and update on the 1s telemetry poll — human pass 2026-10-03
+- [x] Alerts show/clear correctly — human pass 2026-10-03
+- [x] Terminal: echo latency, resize, reconnect (WS backoff) — human pass 2026-10-03
+- [x] Files: CRUD + upload — human pass 2026-10-03
 
 ### M1 — Best practices, latent bugs, tooling
 - [x] Safe `?limit=` parsing (400 instead of 500 on garbage input) — `parse_limit()`; defaults 30/20, caps 365/104 preserved
@@ -255,6 +255,9 @@ order is required to keep the listing deterministic).
   **not** run verbatim — it binds `:5555`, which the live web service owns; the README scratch-bind
   command was run instead. No git tag (not requested). Human ops remaining: manual browser smoke and
   `sudo launchctl kickstart -k system/dev.macmini.dashboard.{web,shell}` to load the M6/M3 code.
+- **2026-10-03** — **Session closed.** Kix restarted the web + shell services and ran the manual
+  browser smoke: everything passes (four tabs, graphs, alerts, terminal, files). All gates are
+  green and no work remains — refactor M0–M7 complete.
 
 ## Decision log
 
