@@ -16,3 +16,6 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Make the repo root importable so tests can `from dashboard...` without an
+# installed package or src layout.
+pythonpath = ["."]

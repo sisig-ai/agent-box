@@ -19,7 +19,7 @@ STRICT     ?=
 check:
 	$(RUFF) check .
 	$(RUFF) format --check .
-	$(PYTEST) || test $$? -eq 5
+	$(PYTEST)
 	$(MAKE) sloc
 
 lint:
@@ -29,7 +29,7 @@ format:
 	$(RUFF) format .
 
 test:
-	$(PYTEST) || test $$? -eq 5
+	$(PYTEST)
 
 # Run the same way the LaunchDaemon does.
 run:
