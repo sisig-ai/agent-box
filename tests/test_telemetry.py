@@ -88,6 +88,33 @@ def test_history_mem_total_from_any_row(schema):
     assert history_series(60)["mem_total"] == 1000
 
 
+def test_history_reuses_payload_within_one_second(schema, monkeypatch):
+    monkeypatch.setattr(telemetry_store.time, "time", lambda: 1000.0)
+    _insert(990, cpu_util=7.0)
+    calls = []
+    real_build = telemetry_store._build_history
+
+    def counting_build(seconds, now):
+        calls.append((seconds, now))
+        return real_build(seconds, now)
+
+    monkeypatch.setattr(telemetry_store, "_build_history", counting_build)
+    first = history_series(60)
+    second = history_series(60)
+    assert first == second
+    assert len(calls) == 1
+
+
+def test_history_cache_invalidated_by_new_row(schema, monkeypatch):
+    monkeypatch.setattr(telemetry_store.time, "time", lambda: 1000.0)
+    _insert(990, cpu_util=7.0)
+    first = history_series(60)
+    _insert(995, cpu_util=9.0)
+    second = history_series(60)
+    assert first != second
+    assert second["cpu"][995 - second["start"]] == 9.0
+
+
 def test_stats_missing_file_is_503_starting(client):
     r = client.get("/api/stats")
     assert r.status_code == 503
@@ -154,3 +181,9 @@ def test_stats_history_seconds_clamp(client):
     default = client.get("/api/stats/history", query_string={"seconds": "abc"}).get_json()
     assert default["count"] == 3601
     assert client.get("/api/stats/history").get_json()["count"] == 3601
+
+
+def test_stats_history_json_is_compact(client):
+    body = client.get("/api/stats/history", query_string={"seconds": "10"}).data
+    assert b'", "' not in body
+    assert b'": ' not in body

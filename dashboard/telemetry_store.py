@@ -21,6 +21,12 @@ _TELE_LAST_WRITE = {"t": 0.0}
 # unreadable file is retried on the next request.
 _LATEST_STATS_CACHE = {"sig": None, "snapshot": None}
 
+# Built history payload, keyed on (seconds, current second, telemetry version).
+# When the clock ticks or a new row lands, the key changes and the payload
+# rebuilds, so no stale response path exists. Plain dict, same thread argument
+# as the stats cache.
+_HISTORY_CACHE = {"key": None, "payload": None}
+
 
 def record_telemetry_snapshot(cpu_util, temp_c, mem, cpu_w, gpu_w, total_w):
     """Append one per-second row to the telemetry ring buffer (shared sqlite).
@@ -90,13 +96,35 @@ def read_latest_stats():
     return {**snapshot, "stale": False}, None
 
 
+def _telemetry_version():
+    """Cheap ``(max ts, row count)`` probe; invalidates the history cache."""
+    try:
+        with db.get_db() as conn:
+            row = conn.execute("SELECT MAX(ts), COUNT(*) FROM telemetry").fetchone()
+    except sqlite3.Error:
+        return None
+    return (row[0], row[1])
+
+
 def history_series(seconds):
     """Dense per-second series for the graphs; null = no sample.
 
     Returns ``{start, step, count}`` plus one array per metric. ``seconds`` is
-    already clamped by the caller to the retention window.
+    already clamped by the caller to the retention window. Identical multi-tab
+    polls in one telemetry second reuse the cached payload; the key carries the
+    current second plus the cheap version probe, so a new row invalidates at once.
     """
     now = int(time.time())
+    cached = _HISTORY_CACHE
+    key = (seconds, now, _telemetry_version())
+    if cached["key"] != key:
+        cached["payload"] = _build_history(seconds, now)
+        cached["key"] = key
+    return cached["payload"]
+
+
+def _build_history(seconds, now):
+    """Build the dense-array payload for one ``(seconds, now)`` pair."""
     start = now - seconds
     n = seconds + 1
     cpu = [None] * n
