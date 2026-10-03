@@ -2,17 +2,25 @@ import contextlib
 import json
 import mimetypes
 import os
-import re
 import shutil
 import sqlite3
 import stat
 import tempfile
 import time
-from datetime import date, datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 from flask import Flask, jsonify, request, send_file, send_from_directory
 
+from dashboard.config import (
+    DATA_DIR,
+    FS_HOME,
+    MAX_UPLOAD_MB,
+    STATIC_DIR,
+    TELEMETRY_RETENTION_S,
+)
+from dashboard.dates import normalize_date, normalize_week, now_iso
+from dashboard.db import get_db, init_db
 from shell_common import (
     capture_pane,
     check_shell_id,
@@ -26,36 +34,8 @@ from shell_common import (
     send_key,
 )
 
-
-def env_path(name, default):
-    """Path from an env var (tilde-expanded), or the given default."""
-    raw = os.environ.get(name)
-    return Path(raw).expanduser() if raw else default
-
-
-def env_int(name, default):
-    """Positive int from an env var, or the given default on garbage."""
-    try:
-        value = int(os.environ.get(name, default))
-    except (TypeError, ValueError):
-        return default
-    return value if value > 0 else default
-
-
-BASE_DIR = Path(__file__).resolve().parent
-STATIC_DIR = BASE_DIR / "static"
-DATA_DIR = env_path("DASH_DATA_DIR", BASE_DIR / "data")
-DB_PATH = env_path("DASH_DB_PATH", DATA_DIR / "briefs.db")
-FS_HOME = env_path("DASH_FS_HOME", Path.home())
-
-# Bound request bodies so /api/fs/upload can't take unbounded payloads.
-# Env-tunable in MB; an over-limit body surfaces as a clean 413 JSON error.
-MAX_UPLOAD_MB = env_int("DASH_MAX_UPLOAD_MB", 1024)
-
 app = Flask(__name__, static_folder=str(STATIC_DIR), static_url_path="/static")
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
-
-DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 @app.errorhandler(413)
@@ -64,69 +44,6 @@ def too_large(_error):
 
 
 # ---------------- Daily Brief persistence ----------------
-
-
-def get_db():
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA busy_timeout=5000")
-    return conn
-
-
-def init_db():
-    with get_db() as conn:
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS daily_brief (
-                date       TEXT PRIMARY KEY,
-                content    TEXT NOT NULL DEFAULT '',
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            )
-            """
-        )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS weekly_schedule (
-                week_start TEXT PRIMARY KEY,
-                content    TEXT NOT NULL DEFAULT '',
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            )
-            """
-        )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS telemetry (
-                ts        INTEGER PRIMARY KEY,
-                cpu_util  REAL,
-                cpu_temp  REAL,
-                mem_used  INTEGER,
-                mem_total INTEGER,
-                pwr_cpu   REAL,
-                pwr_gpu   REAL,
-                pwr_total REAL
-            )
-            """
-        )
-
-
-def today_str() -> str:
-    return datetime.now().astimezone().strftime("%Y-%m-%d")
-
-
-def now_iso() -> str:
-    return datetime.now().astimezone().isoformat(timespec="seconds")
-
-
-def normalize_date(raw):
-    """Return a valid YYYY-MM-DD string, or None."""
-    if not raw:
-        return today_str()
-    s = str(raw).strip()
-    return s if DATE_RE.match(s) else None
 
 
 def parse_limit(raw, default, maximum):
@@ -208,24 +125,6 @@ def delete_brief(date):
 
 
 # ---------------- Weekly Schedule persistence ----------------
-
-
-def week_start_for(date_str):
-    """Return the Monday (YYYY-MM-DD) of the week containing date_str, or of today."""
-    if not date_str or not DATE_RE.match(date_str):
-        date_str = today_str()
-    y, m, d = map(int, date_str.split("-"))
-    return (date(y, m, d) - timedelta(days=date(y, m, d).weekday())).isoformat()
-
-
-def normalize_week(raw):
-    """Return a valid YYYY-MM-DD week-start (Monday), or None."""
-    if not raw:
-        return week_start_for(None)
-    s = str(raw).strip()
-    if not DATE_RE.match(s):
-        return None
-    return week_start_for(s)
 
 
 def fetch_schedule(week):
@@ -369,7 +268,6 @@ def schedule_delete():
 # A single background collector reads Apple Silicon IOReport/SMC via macmon.
 # Browser requests read its latest snapshot; history continues while tabs close.
 
-TELEMETRY_RETENTION_S = 3900
 _TELE_LAST_WRITE = {"t": 0.0}
 
 
