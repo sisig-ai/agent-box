@@ -10,9 +10,9 @@ check items off, log commits and decisions at the bottom, and keep the status bl
 | Field | Value |
 |---|---|
 | Phase | In progress |
-| Current milestone | M2 complete — M3 not started |
-| Last updated | 2026-10-03 (M2: app.py 927→8 SLOC behind a `create_app()` factory; `dashboard/` package; collector decoupled from Flask; SQLite `flask.g` reuse + WAL; `ensure_session` capture-retry) |
-| Blocking on | — (M2 code gate met; service restart via `launchctl kickstart` and manual browser smoke pending for the human) |
+| Current milestone | M3 complete — M4 not started |
+| Last updated | 2026-10-03 (M3: tmux backend moved to `dashboard.shell.tmux` with argv-list subprocesses; `shell_ws.py` 413→12 SLOC behind `dashboard.ws/*`; 23 ws unit tests; scratch-port live e2e green) |
+| Blocking on | — (M3 code gate met; shell service restart via `sudo launchctl kickstart -k system/dev.macmini.dashboard.shell` + manual browser smoke pending for the human) |
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked/issue
 
@@ -60,12 +60,12 @@ Manual browser smoke checklist — for the human, not performed by the agent
 - [x] **Gate:** llm.txt unchanged (scratch-server smoke matched every shape), `wc -l` gate passes for all Python except `shell_ws.py`/`static/index.html` (M3/M4 scope), `gunicorn --check-config app:app` passes. Service restart (`launchctl kickstart`, no plist edits) + manual browser smoke pending for the human
 
 ### M3 — WebSocket gateway split + shell hardening
-- [ ] `shell_common.py` → `dashboard/shell/tmux.py` with argv-list subprocess calls
-- [ ] `paste_text`: nested-sh exit-code dance → three explicit tmux calls
-- [ ] `shell_ws.py` → `dashboard/ws/{frames,handshake,session,server}.py`
-- [ ] Root `shell_ws.py` → thin `serve()` runner
-- [ ] Unit tests: frame round-trip over socketpair, handshake parsing
-- [ ] **Gate:** live terminal e2e (echo latency, resize, New, kill, WS reconnect with backoff)
+- [x] `shell_common.py` → `dashboard/shell/tmux.py` with argv-list subprocess calls (`41df4f7`)
+- [x] `paste_text`: nested-sh exit-code dance → three explicit tmux calls (`41df4f7`)
+- [x] `shell_ws.py` → `dashboard/ws/{frames,handshake,session,server}.py` (`df4dfe9`)
+- [x] Root `shell_ws.py` → thin `serve()` runner (12 SLOC) (`df4dfe9`)
+- [x] Unit tests: frame round-trip over socketpair, handshake parsing (23 tests) (`2d3c86d`)
+- [x] **Gate:** live terminal e2e (echo latency, resize, New, kill, WS reconnect with backoff) — scratch gateway on `127.0.0.1:5598`, sid `m3e2e1`: hello → `echo m3ok` pane → key `C-l` → resize 90×25 → `new` (recreated, dims preserved) → clean close → reconnect reattached; `verify.py` green at every commit (throwaway worktree); `make check` 0; `make sloc STRICT=1` fails only on `static/index.html` (M4 scope)
 
 ### M4 — Frontend decomposition (no-build ES modules)
 - [ ] CSS → `static/css/*.css` (section-marker splits, `<link>` order preserved) — smoke before any JS
@@ -99,6 +99,9 @@ Manual browser smoke checklist — for the human, not performed by the agent
 ### M7 — Closeout: git-commit ready
 - [ ] README rewritten (layout, make targets, services note)
 - [ ] `static/llm.txt` consistency pass (`truncated` field, sanitizer note)
+- [ ] `Dockerfile.linux-source` decision — it is stale/reference: it still `COPY app.py .` /
+      `COPY shell_common.py .` and predates the `dashboard/` package (would not build now). Either
+      delete it or update it to copy the package; left untouched in M3.
 - [ ] `__pycache__` purged; `git status --ignored` dry-run audit
 - [ ] Full `make check`; fresh-clone smoke (venv → `make check` → `make run`)
 - [ ] Optional annotated tag
@@ -115,7 +118,7 @@ Manual browser smoke checklist — for the human, not performed by the agent
 | 3 | `static/index.html` preview renderers (×2) | XSS sanitize = `<script>`-regex only; misses `onerror=`, `javascript:` | fixed in M1 (`26e51cd`) |
 | 4 | `app.py` | Unused imports (`secrets`, …), `import json` mid-file | fixed in M1 (`26e51cd` + `fff7147` for shell_ws/shell_common) |
 | 5 | `telemetry_collector.py` | Imports `app` → Flask + `init_db()` run in the sampler process | fixed in M2 (`0de0d59`): collector imports no Flask/app; loop moved to `dashboard/collector.py`; calls `dashboard.db.init_db()` explicitly |
-| 6 | `shell_common.py` | `sh -c` string interpolation for subprocesses (safe today via regex, fragile pattern) | M3 |
+| 6 | `shell_common.py` | `sh -c` string interpolation for subprocesses (safe today via regex, fragile pattern) | fixed in M3 (`41df4f7`): moved to `dashboard/shell/tmux.py`, all calls are direct argv lists (no shell); `capture_pane` = two explicit calls (capture-pane liveness gate + display-message), `paste_text` = load-buffer/paste-buffer/delete-buffer |
 | 7 | `shell_common.ensure_session` | Fixed `time.sleep(0.6)` blocks a worker thread | fixed in M2 (`7b641e0`): bounded capture-retry (~1s max, returns as soon as the pane paints) |
 | 8 | `verify.py` | Tests by monkeypatching module globals (`app.DATA_DIR`, `app.FS_HOME`) | env-config fixed in M1 (`26e51cd`): env set before import; pytest migration in M5 |
 | 9 | `app.py` `/api/stats` | Re-reads + re-parses `latest-stats.json` on every request | M6 |
@@ -155,6 +158,26 @@ Manual browser smoke checklist — for the human, not performed by the agent
   `127.0.0.1:5599` matched every `llm.txt` shape (brief/schedule/stats/history/fs/shell) and a
   3s live collector run wrote 2 telemetry rows + `latest-stats.json` ({t, platform, cpu, mem,
   power}). Live service restart left for the human.
+- **2026-10-03** — **Human restarted the web + telemetry launchd services after M2** (web on
+  `:5555`, telemetry collector) while M3 was being built; the shell service was **not** restarted
+  and kept serving the pre-M3 code on `:5556`.
+- **2026-10-03** — **M3 done (3 commits).** `shell_common.py` (253 SLOC, root) fully moved to
+  `dashboard/shell/tmux.py` (282 SLOC) with every tmux call now a direct argv list — no `sh -c`.
+  `capture_pane` became two explicit calls (`capture-pane` is the liveness gate; `display-message`
+  supplies cursor/dims/cmd) and `paste_text` became load-buffer → paste-buffer → best-effort
+  delete-buffer, so paste-buffer's rc is the one propagated without a nested shell. `shell_ws.py`
+  (413 SLOC) split into `dashboard/ws/{frames,handshake,session,server}.py` + a 12-SLOC root
+  launcher; the protocol surface, cadence constants, close codes, hello fallback and log lines are
+  byte-for-byte unchanged. 23 new unit tests (`tests/test_ws_frames.py`,
+  `tests/test_ws_handshake.py`) run under plain pytest over `socket.socketpair()` — no Flask, no
+  network. `make check` now runs pytest for real (exit-5 tolerance removed). `verify.py` green at
+  all 3 commits (checked in a throwaway worktree); `gunicorn --check-config app:app` OK;
+  `make sloc STRICT=1` now fails **only** on `static/index.html` (4,079; M4 scope). Scratch-port
+  live e2e (`SHELL_WS_HOST=127.0.0.1 SHELL_WS_PORT=5598`) passed: hello → input `echo m3ok`
+  pane → key `C-l` → resize 90×25 → `new` → clean close → reconnect reattached; only tmux session
+  `dash-m3e2e1` was created and removed (before/after `tmux ls` identical). **Shell service restart
+  still pending on the human:** `sudo launchctl kickstart -k system/dev.macmini.dashboard.shell`
+  (plus manual browser smoke).
 
 ## Decision log
 
@@ -188,6 +211,29 @@ Manual browser smoke checklist — for the human, not performed by the agent
   `fs_error`) live in `dashboard/fs_paths.py` and the operations stay in `dashboard/fs.py`.
 - **2026-10-03 (M2)** — `macos_metrics.py` moved to `dashboard/macos_metrics.py` (pure mapping,
   unchanged); the collector imports it from the package.
+- **2026-10-03 (M3)** — tmux argv conversion: `capture_pane` uses **two** explicit calls rather
+  than one `sh -c` chain — `tmux capture-pane -e -p -t S` is the liveness gate (it fails on a
+  missing session) and only on success does `tmux display-message -p -t S '<format>'` run, because
+  `display-message -p` echoes its format string with rc 0 on a missing session and can't be the
+  probe. A timeout on either call still maps to `{"alive": False, "error": "shell command timed
+  out"}`; a nonzero `display-message` rc falls back to gone. `paste_text` uses **three** calls —
+  `load-buffer -b B -` (stdin, rc ignored), `paste-buffer -b B -t S` (its rc is authoritative),
+  `delete-buffer -b B` (best-effort, failures suppressed) — which preserves the old nested-sh
+  exit-code semantics without a shell. `SHELL_ID_RE`/`check_shell_id`/`parse_dims`/`tmux_gone`
+  stay byte-identical and every return/status tuple is unchanged.
+- **2026-10-03 (M3)** — ws package seam + import order: `server.py` owns `WS_HOST/WS_PORT/WS_PATH`
+  and defines them before `serve()`; `serve()` imports `handle_conn` lazily, `session.py` imports
+  `STOP`/`log` from `server`, and `handshake.py` imports `WS_PATH` from `server`. This keeps the
+  constants in their planned homes without a circular import, and lets tests `import
+  dashboard.ws.handshake` standalone.
+- **2026-10-03 (M3)** — tests are stdlib-only over `socket.socketpair()` (plain pytest, no Flask,
+  no network), matching the M3 acceptance scope (frame round-trip + handshake parsing; broader API
+  tests remain M5). `pyproject.toml` got `pythonpath = ["."]` so the repo root is importable
+  without an installed package; the new `tests/` dir makes pytest's `testpaths` real.
+- **2026-10-03 (M3)** — Makefile exit-5 tolerance **removed** (`$(PYTEST) || test $$? -eq 5` →
+  `$(PYTEST)`). It existed only while there were zero tests; now that tests exist, a pytest
+  collection/exit-5 problem should fail `make check` instead of being silently tolerated. Noted
+  here per the M3 task.
 
 ## Commit log
 
@@ -203,6 +249,9 @@ _(one entry per commit: `sha  milestone  message`)_
 - `13dae634cb57c8bfa464435840e727c1bfd2b031`  **M2**  `refactor: extract shell api blueprint`
 - `7b641e011e3c70e7e934e73d65bf767351ef4f81`  **M2**  `perf: replace ensure_session fixed sleep with bounded capture-retry`
 - `e6d7a3d0aaf8a237c4ed177d376a0fa33ffe67a7`  **M2**  `refactor: add app factory and thin entrypoint`
+- `41df4f71d5c654acae9aa3c2091920bcb40f3883`  **M3**  `refactor: move tmux backend to dashboard.shell.tmux with argv subprocess`
+- `df4dfe9532e672b5715144c55b1777455e3723e2`  **M3**  `refactor: split websocket gateway into dashboard.ws modules`
+- `2d3c86d8a6a66a0e4ea809d9f43e030f5b9b6810`  **M3**  `test: add websocket frame and handshake unit tests`
 
 ## Open questions
 
@@ -210,3 +259,7 @@ _(one entry per commit: `sha  milestone  message`)_
       stays untouched ops tooling and is excluded from ruff via `[tool.ruff] exclude = ["deploy"]`.
       Not deleted — left here as a record; revisit only if M7 housekeeping reopens it.
 - [ ] Tag name preference at M7 closeout, if any?
+- [ ] **`Dockerfile.linux-source` is stale (noted M3):** it copies the pre-refactor root layout
+      (`COPY app.py .`, `COPY shell_common.py .`) and the `dashboard/` package didn't exist then,
+      so it no longer builds as-is. It is explicitly legacy/reference and was left untouched in
+      M3; decide in M7 whether to delete it or update it to copy the package tree.
