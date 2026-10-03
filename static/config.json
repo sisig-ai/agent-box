@@ -1,0 +1,26 @@
+{
+  "title": "Macmini",
+  "services": [
+    {
+      "name": "Coins.ph Agent",
+      "icon": "coinsph",
+      "description": "Trading Agent \u00b7 MLX",
+      "color": "#9b8cff",
+      "port": 7777
+    },
+    {
+      "name": "Hermes Agent",
+      "icon": "hermes",
+      "description": "Agent Runtime \u00b7 Dashboard",
+      "color": "#5eead4",
+      "port": 9119
+    },
+    {
+      "name": "Opencode",
+      "icon": "opencode",
+      "description": "Coding Agent \u00b7 CLI",
+      "color": "#ffb86b",
+      "port": 4096
+    }
+  ]
+}

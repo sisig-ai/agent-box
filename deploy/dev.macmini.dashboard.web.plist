@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>/Users/kixpanganiban</string>
+		<key>PATH</key>
+		<string>/Users/kixpanganiban/quick-arr-stack/arr-dashboard/.venv/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+		<key>PYTHONUNBUFFERED</key>
+		<string>1</string>
+		<key>SHELL_WS_HOST</key>
+		<string>100.64.149.91</string>
+		<key>SHELL_WS_PORT</key>
+		<string>5556</string>
+		<key>TZ</key>
+		<string>Asia/Manila</string>
+	</dict>
+	<key>ExitTimeOut</key>
+	<integer>20</integer>
+	<key>GroupName</key>
+	<string>staff</string>
+	<key>KeepAlive</key>
+	<true/>
+	<key>Label</key>
+	<string>dev.macmini.dashboard.web</string>
+	<key>ProcessType</key>
+	<string>Interactive</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/kixpanganiban/quick-arr-stack/arr-dashboard/.venv/bin/gunicorn</string>
+		<string>--workers</string>
+		<string>1</string>
+		<string>--threads</string>
+		<string>8</string>
+		<string>--bind</string>
+		<string>100.64.149.91:5555</string>
+		<string>--timeout</string>
+		<string>45</string>
+		<string>--access-logfile</string>
+		<string>-</string>
+		<string>--error-logfile</string>
+		<string>-</string>
+		<string>app:app</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/Users/kixpanganiban/Library/Logs/macmini-dashboard/web.err.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/kixpanganiban/Library/Logs/macmini-dashboard/web.out.log</string>
+	<key>ThrottleInterval</key>
+	<integer>5</integer>
+	<key>Umask</key>
+	<integer>63</integer>
+	<key>UserName</key>
+	<string>kixpanganiban</string>
+	<key>WorkingDirectory</key>
+	<string>/Users/kixpanganiban/quick-arr-stack/arr-dashboard</string>
+</dict>
+</plist>
