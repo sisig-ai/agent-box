@@ -10,9 +10,9 @@ check items off, log commits and decisions at the bottom, and keep the status bl
 | Field | Value |
 |---|---|
 | Phase | In progress |
-| Current milestone | M4 complete — M5 not started |
-| Last updated | 2026-10-03 (M4: `static/index.html` 4,079→267 SLOC; CSS split into 11 `static/css/*.css`, JS into 18 `static/js/**` ES modules; lazy shell/files routes; `window.currentView/shellEnsure/fsEnsure` deleted; `make sloc STRICT=1` now fully green) |
-| Blocking on | — (M4 code gate met; manual browser smoke of all four tabs remains for the human, and the shell LaunchDaemon still needs `sudo launchctl kickstart -k system/dev.macmini.dashboard.shell` after M3) |
+| Current milestone | M5 complete — M6 not started |
+| Last updated | 2026-10-03 (M5: `verify.py` retired; 174-test hermetic pytest suite over every llm.txt route + tmux/metrics/ws units; `make sloc` strict by default; `make check` green twice) |
+| Blocking on | — (M5 code gate met; manual browser smoke of all four tabs remains for the human, and the shell LaunchDaemon still needs `sudo launchctl kickstart -k system/dev.macmini.dashboard.shell` after M3) |
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked/issue
 
@@ -79,16 +79,17 @@ Manual browser smoke checklist — for the human, not performed by the agent
   checks, JS console errors=0 warnings=0 exceptions=0)
 
 ### M5 — Test suite (pytest + ruff green)
-- [ ] `tests/conftest.py` (tmp `DATA_DIR`/`FS_HOME` via env config)
-- [ ] `test_notes_api`, `test_schedule_api`
-- [ ] `test_telemetry` (ring buffer, dense history nulls, stale→503)
-- [ ] `test_fs_api` (traversal, delete guards, upload collision→409, symlink delete)
-- [ ] `test_shell_api` (bad-ID rejection, dims clamping)
-- [ ] `test_ws_frames`, `test_handshake`
-- [ ] `test_macos_metrics` (missing power ≠ 0 W)
-- [ ] `test_tmux` (mocked `subprocess.run`: gone-detection, error mapping)
-- [ ] `verify.py` assertions migrated; `verify.py` deleted; README updated
-- [ ] **Gate:** `make check` green; every llm.txt route has ≥1 test
+- [x] `tests/conftest.py` (per-test tmp `DATA_DIR`/`DB_PATH`/`FS_HOME` via monkeypatched config constants; the `FS_HOME` bound imports in `dashboard.fs`/`fs_paths` patched too; telemetry throttle reset per test)
+- [x] `test_notes_api`, `test_schedule_api`
+- [x] `test_telemetry` (ring buffer + 1s throttle, retention delete, dense history nulls/offsets, mem_total, seconds clamp, stale→503)
+- [x] `test_fs_api` (list/stat, mkdir/touch/rename/upload/download, home + root delete guards, symlink delete-removes-link)
+- [x] `test_shell_api` (bad-ID rejection, status mapping, dims clamping; backend mocked)
+- [x] `test_ws_frames`, `test_ws_handshake` (M3) + `test_ws_session` (dispatch, error frames)
+- [x] `test_macos_metrics` (missing power ≠ 0 W, SMC/IOReport source, temp bounds, mem math)
+- [x] `test_tmux` (mocked `subprocess.run`: argv shape, gone-detection, error mapping, timeouts)
+- [x] `test_dates`, `test_static_and_routes`
+- [x] `verify.py` assertions migrated; `verify.py` deleted; README points at `make check`; `make sloc` strict by default (`SLOC_STRICT=0` escape hatch)
+- [x] **Gate:** `make check` green twice back to back (174 tests); every llm.txt route has ≥1 test; all files ≤300 SLOC
 
 ### M6 — Performance pass
 - [ ] `/api/stats`: parsed-JSON cache keyed on `(mtime, size)` — measure before/after
@@ -122,7 +123,7 @@ Manual browser smoke checklist — for the human, not performed by the agent
 | 5 | `telemetry_collector.py` | Imports `app` → Flask + `init_db()` run in the sampler process | fixed in M2 (`0de0d59`): collector imports no Flask/app; loop moved to `dashboard/collector.py`; calls `dashboard.db.init_db()` explicitly |
 | 6 | `shell_common.py` | `sh -c` string interpolation for subprocesses (safe today via regex, fragile pattern) | fixed in M3 (`41df4f7`): moved to `dashboard/shell/tmux.py`, all calls are direct argv lists (no shell); `capture_pane` = two explicit calls (capture-pane liveness gate + display-message), `paste_text` = load-buffer/paste-buffer/delete-buffer |
 | 7 | `shell_common.ensure_session` | Fixed `time.sleep(0.6)` blocks a worker thread | fixed in M2 (`7b641e0`): bounded capture-retry (~1s max, returns as soon as the pane paints) |
-| 8 | `verify.py` | Tests by monkeypatching module globals (`app.DATA_DIR`, `app.FS_HOME`) | env-config fixed in M1 (`26e51cd`): env set before import; pytest migration in M5 |
+| 8 | `verify.py` | Tests by monkeypatching module globals (`app.DATA_DIR`, `app.FS_HOME`) | fixed in M1 (`26e51cd`): env set before import; `verify.py` retired in M5 — assertions migrated to `tests/`, `verify.py` deleted |
 | 9 | `app.py` `/api/stats` | Re-reads + re-parses `latest-stats.json` on every request | M6 |
 | 10 | `app.py` `/api/fs/list` | Unbounded directory listing → potentially huge JSON | M6 |
 | 11 | repo | No git repo, no `.gitignore`, no lint/format config, `__pycache__` present | M0 / M1 |
@@ -303,6 +304,27 @@ Manual browser smoke checklist — for the human, not performed by the agent
   `127.0.0.1:5556` (the live shell service listens only on the tailscale IP `100.64.149.91:5556`,
   so it was never touched). The only tmux sessions created were `dash-*` ones from the smoke,
   all killed after; the four pre-existing sessions and all launchd services were left alone.
+- **2026-10-03 (M5)** — `verify.py` retired in favor of a hermetic pytest suite (174 tests). The
+  M1 env config is not needed: `tests/conftest.py` monkeypatches `dashboard.config.DATA_DIR` /
+  `DB_PATH` / `FS_HOME` per test and also patches the two modules that bind `FS_HOME` at import
+  time (`dashboard.fs`, `dashboard.fs_paths`); `_TELE_LAST_WRITE` is reset per test. No production
+  seam was added — `create_app(config_overrides=…)` was **not** needed.
+- **2026-10-03 (M5)** — Hermeticity: no real subprocess (tmux mocked at `dashboard.shell.tmux`,
+  `dashboard.shell.api`, and `dashboard.ws.session`), no network (socketpair only), and no test
+  reads `data/`; the app fixture builds a fresh schema in a `tmp_path` database. `make check`
+  runs green twice back to back (the only prior state — the module-level telemetry throttle — is
+  reset by the fixture, so there is no order dependence).
+- **2026-10-03 (M5)** — Two spec premises did not hold and tests assert the real behavior:
+  `fs.make_dir` uses `parents=True`, so a missing parent is created (200), not 404 — the 404
+  case is `fs.touch_file`; and `POST /api/shell/new` auto-generates an id when the given one is
+  invalid instead of rejecting it (only pane/input/key/resize/kill reject). Latent bug found and
+  **not** fixed (test-only scope): `normalize_week("2026-02-30")` raises `ValueError` from
+  `date(...)` → 500 on `/api/schedule` for a syntactically valid but impossible date; candidate
+  for M6.
+- **2026-10-03 (M5)** — `make sloc` is strict by default (`SLOC_STRICT ?= 1`); `make sloc
+  SLOC_STRICT=0` still lists violations and exits 0. The old `verify` target is now an alias for
+  `test`. `make check` includes tests/, so all test files are inside the 300-SLOC gate (largest
+  is `tests/test_fs_api.py` at 296).
 
 ## Commit log
 
@@ -324,6 +346,9 @@ _(one entry per commit: `sha  milestone  message`)_
 - `34da8f3198f5ff5cb566d6bc03ed78400655cc70`  **M4**  `refactor(css): extract stylesheets from index.html`
 - `80a7394c8c10a27bcf2fb472e7f3fdcf24ec00e9`  **M4**  `refactor(js): extract page modules as ES modules`
 - `3059a529cdb3215ef9920d4330bd2e17b9195ff1`  **M4**  `refactor(js): lazy-load shell/files routes and drop window globals`
+- `76a65f00943be75acac5827cb7d7b7c889557427`  **M5**  `test: add pytest suite covering notes, schedule, telemetry, fs, shell, and metrics`
+- `9809837583edc056af9ebf0ba9ecfd1eb2ad3aa3`  **M5**  `test: add ws session dispatch tests`
+- `7272fadea556edc1812ff5218ae09123ccb2b595`  **M5**  `chore: retire verify.py and make sloc strict by default`
 
 ## Open questions
 
