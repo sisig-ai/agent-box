@@ -15,6 +15,7 @@ the rest of the dashboard. No auth: LAN/tailnet only, like /api/*.
 """
 
 import base64
+import contextlib
 import hashlib
 import json
 import os
@@ -24,7 +25,7 @@ import socket
 import struct
 import threading
 import time
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import parse_qs, urlparse
 
 from shell_common import (
     capture_pane,
@@ -43,12 +44,12 @@ WS_PATH = "/ws/shell"
 
 GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
-BURST_INTERVAL = 0.05   # snapshot cadence right after input (echo + redraws)
-IDLE_INTERVAL = 0.30    # ... then back off when the pane is quiet
+BURST_INTERVAL = 0.05  # snapshot cadence right after input (echo + redraws)
+IDLE_INTERVAL = 0.30  # ... then back off when the pane is quiet
 BURST_AFTER_INPUT = 1.5  # seconds of fast polling after each input/key
-PING_EVERY = 25.0       # server heartbeat (browsers auto-pong)
-REAP_AFTER = 120.0      # drop connections silent this long
-INBOUND_MAX = 1 << 20   # largest acceptable client message
+PING_EVERY = 25.0  # server heartbeat (browsers auto-pong)
+REAP_AFTER = 120.0  # drop connections silent this long
+INBOUND_MAX = 1 << 20  # largest acceptable client message
 
 STOP = threading.Event()
 
@@ -76,6 +77,7 @@ class HandshakeError(Exception):
 
 # ---------------- wire format ----------------
 
+
 def send_frame(sock, opcode, payload: bytes):
     """Send one server frame (never masked). Raises ConnDead on failure."""
     header = bytes([0x80 | opcode])
@@ -89,7 +91,7 @@ def send_frame(sock, opcode, payload: bytes):
     try:
         sock.sendall(header + payload)
     except OSError:
-        raise ConnDead()
+        raise ConnDead() from None
 
 
 def send_text(sock, obj):
@@ -101,8 +103,8 @@ def recv_exact(sock, n):
     while len(buf) < n:
         try:
             chunk = sock.recv(n - len(buf))
-        except socket.timeout:
-            raise ConnDead()
+        except TimeoutError:
+            raise ConnDead() from None
         if not chunk:
             raise ConnDead()
         buf += chunk
@@ -155,7 +157,7 @@ def recv_message(sock):
             try:
                 return ("text", b"".join(fragments).decode("utf-8"))
             except UnicodeDecodeError:
-                raise ProtocolError(1007)
+                raise ProtocolError(1007) from None
 
 
 def do_handshake(sock):
@@ -164,8 +166,8 @@ def do_handshake(sock):
     while b"\r\n\r\n" not in data:
         try:
             chunk = sock.recv(4096)
-        except socket.timeout:
-            raise HandshakeError(408, "handshake timeout")
+        except TimeoutError:
+            raise HandshakeError(408, "handshake timeout") from None
         if not chunk:
             raise HandshakeError(400, "empty request")
         data += chunk
@@ -185,8 +187,10 @@ def do_handshake(sock):
     url = urlparse(target)
     if method.upper() != "GET" or url.path != WS_PATH:
         raise HandshakeError(404, "not found")
-    if hdr.get("upgrade", "").lower() != "websocket" or \
-            "upgrade" not in hdr.get("connection", "").lower():
+    if (
+        hdr.get("upgrade", "").lower() != "websocket"
+        or "upgrade" not in hdr.get("connection", "").lower()
+    ):
         raise HandshakeError(400, "websocket upgrade required")
     if hdr.get("sec-websocket-version", "") != "13":
         raise HandshakeError(426, "upgrade required")
@@ -197,24 +201,34 @@ def do_handshake(sock):
     if sid is None:
         raise HandshakeError(400, "bad shell id")
     accept = base64.b64encode(hashlib.sha1((key + GUID).encode()).digest()).decode()
-    sock.sendall((
-        "HTTP/1.1 101 Switching Protocols\r\n"
-        "Upgrade: websocket\r\n"
-        "Connection: Upgrade\r\n"
-        f"Sec-WebSocket-Accept: {accept}\r\n\r\n"
-    ).encode())
+    sock.sendall(
+        (
+            "HTTP/1.1 101 Switching Protocols\r\n"
+            "Upgrade: websocket\r\n"
+            "Connection: Upgrade\r\n"
+            f"Sec-WebSocket-Accept: {accept}\r\n\r\n"
+        ).encode()
+    )
     return sid
 
 
 # ---------------- session loop ----------------
+
 
 def snap_key(snap):
     if snap.get("error"):
         return ("error", snap["error"])
     if not snap.get("alive"):
         return ("gone",)
-    return ("alive", snap["text"], snap["cursor_x"], snap["cursor_y"],
-            snap["cols"], snap["rows"], snap["cmd"])
+    return (
+        "alive",
+        snap["text"],
+        snap["cursor_x"],
+        snap["cursor_y"],
+        snap["cols"],
+        snap["rows"],
+        snap["cmd"],
+    )
 
 
 def handle_message(sock, sid, raw):
@@ -274,10 +288,8 @@ def handle_conn(sock, addr):
     try:
         sid = do_handshake(sock)
     except HandshakeError as e:
-        try:
+        with contextlib.suppress(OSError):
             sock.sendall(f"HTTP/1.1 {e.code} {e.message}\r\nContent-Length: 0\r\n\r\n".encode())
-        except OSError:
-            pass
         sock.close()
         return
     except OSError:
@@ -291,8 +303,9 @@ def handle_conn(sock, addr):
         if status == "ok":
             send_text(sock, {"t": "hello", **info})
         else:
-            send_text(sock, {"t": "hello", "id": sid, "cols": 100, "rows": 30,
-                             "cwd": "~", "warn": info})
+            send_text(
+                sock, {"t": "hello", "id": sid, "cols": 100, "rows": 30, "cwd": "~", "warn": info}
+            )
     except ConnDead:
         sock.close()
         return
@@ -315,17 +328,13 @@ def handle_conn(sock, addr):
                 try:
                     kind, payload = recv_message(sock)
                 except ProtocolError as pe:
-                    try:
+                    with contextlib.suppress(ConnDead):
                         send_frame(sock, 0x8, struct.pack("!H", pe.code))
-                    except ConnDead:
-                        pass
                     break
                 last_recv = now
                 if kind == "close":
-                    try:
+                    with contextlib.suppress(ConnDead):
                         send_frame(sock, 0x8, payload[:125])
-                    except ConnDead:
-                        pass
                     break
                 if kind == "pong":
                     continue
@@ -368,10 +377,8 @@ def handle_conn(sock, addr):
     except ConnDead:
         pass
     finally:
-        try:
+        with contextlib.suppress(OSError):
             sock.shutdown(socket.SHUT_RDWR)
-        except OSError:
-            pass
         sock.close()
         log(f"close sid={sid}")
 
@@ -393,7 +400,7 @@ def serve():
     while not STOP.is_set():
         try:
             sock, addr = srv.accept()
-        except socket.timeout:
+        except TimeoutError:
             continue
         except OSError:
             break

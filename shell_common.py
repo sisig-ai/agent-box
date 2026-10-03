@@ -8,24 +8,41 @@ Persistence lives in host tmux, so every caller stays stateless: any
 process can operate on any shell session.
 """
 
-import os
 import re
 import secrets
-from pathlib import Path
 import subprocess
 import time
+from pathlib import Path
 
 SHELL_HOME = str(Path.home())
 SHELL_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 
 # Key names accepted by the shell key endpoint/message, mapped to tmux args.
 SHELL_KEYS = {
-    "Enter": "Enter", "Backspace": "BSpace", "Tab": "Tab", "Escape": "Escape",
-    "Up": "Up", "Down": "Down", "Left": "Left", "Right": "Right",
-    "Home": "Home", "End": "End", "PageUp": "PageUp", "PageDown": "PageDown",
-    "Delete": "DC", "Insert": "IC",
-    "C-c": "C-c", "C-d": "C-d", "C-l": "C-l", "C-u": "C-u", "C-k": "C-k",
-    "C-a": "C-a", "C-e": "C-e", "C-r": "C-r", "C-w": "C-w", "C-z": "C-z",
+    "Enter": "Enter",
+    "Backspace": "BSpace",
+    "Tab": "Tab",
+    "Escape": "Escape",
+    "Up": "Up",
+    "Down": "Down",
+    "Left": "Left",
+    "Right": "Right",
+    "Home": "Home",
+    "End": "End",
+    "PageUp": "PageUp",
+    "PageDown": "PageDown",
+    "Delete": "DC",
+    "Insert": "IC",
+    "C-c": "C-c",
+    "C-d": "C-d",
+    "C-l": "C-l",
+    "C-u": "C-u",
+    "C-k": "C-k",
+    "C-a": "C-a",
+    "C-e": "C-e",
+    "C-r": "C-r",
+    "C-w": "C-w",
+    "C-z": "C-z",
 }
 
 INPUT_MAX = 4096  # max chars per input message (stdin-piped, no quoting)
@@ -87,10 +104,15 @@ def ensure_session(sid, cols=80, rows=24):
     sess = shell_session_name(sid)
     try:
         if not tmux_has(sess):
-            r = host_run(f"tmux new-session -d -s {sess} -x {cols} -y {rows} -c {SHELL_HOME} /bin/zsh -l")
+            r = host_run(
+                f"tmux new-session -d -s {sess} -x {cols} -y {rows} -c {SHELL_HOME} /bin/zsh -l"
+            )
             if r.returncode != 0:
-                err = (r.stderr.decode(errors="replace") or r.stdout.decode(errors="replace")
-                       or "tmux new-session failed").strip()
+                err = (
+                    r.stderr.decode(errors="replace")
+                    or r.stdout.decode(errors="replace")
+                    or "tmux new-session failed"
+                ).strip()
                 return "error", err[-500:]
             time.sleep(0.6)  # let the login shell paint its first frame
     except subprocess.TimeoutExpired:
@@ -113,7 +135,8 @@ def capture_pane(sid):
             f"tmux capture-pane -e -p -t {sess} 2>/dev/null && "
             f"echo ---DASHCURSOR--- && "
             f"tmux display-message -p -t {sess} "
-            f"'#{{cursor_x}} #{{cursor_y}} #{{pane_width}} #{{pane_height}} #{{pane_current_command}}' 2>/dev/null"
+            f"'#{{cursor_x}} #{{cursor_y}} #{{pane_width}} #{{pane_height}} "
+            f"#{{pane_current_command}}' 2>/dev/null"
         )
     except subprocess.TimeoutExpired:
         return {"id": sid, "alive": False, "error": "shell command timed out"}
@@ -128,8 +151,14 @@ def capture_pane(sid):
         cx, cy, cols, rows = 0, 0, 80, 24
     cmd = parts[4] if len(parts) > 4 else ""
     return {
-        "id": sid, "alive": True, "text": text,
-        "cursor_x": cx, "cursor_y": cy, "cols": cols, "rows": rows, "cmd": cmd,
+        "id": sid,
+        "alive": True,
+        "text": text,
+        "cursor_x": cx,
+        "cursor_y": cy,
+        "cols": cols,
+        "rows": rows,
+        "cmd": cmd,
     }
 
 
@@ -203,7 +232,10 @@ def kill_session(sid):
 def list_sessions():
     """Dashboard-owned host shell sessions. Returns {"sessions": [...]}."""
     try:
-        r = host_run("tmux ls -F '#{session_name} #{session_created} #{?session_attached,attached,detached}' 2>/dev/null")
+        r = host_run(
+            "tmux ls -F '#{session_name} #{session_created} "
+            "#{?session_attached,attached,detached}' 2>/dev/null"
+        )
     except subprocess.TimeoutExpired:
         return None
     sessions = []

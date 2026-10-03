@@ -1,0 +1,18 @@
+[project]
+name = "macmini-dashboard"
+version = "0.1.0"
+description = "macmini arr-dashboard: Flask + vanilla-JS home-server landing page"
+requires-python = ">=3.11"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+# deploy/*.py is untouched ops tooling (install + rehearsal scripts), so it is
+# excluded from lint/format. Provisional decision for tracker open-question #1.
+exclude = ["deploy"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
