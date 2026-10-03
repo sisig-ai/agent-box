@@ -114,7 +114,14 @@ def ensure_session(sid, cols=80, rows=24):
                     or "tmux new-session failed"
                 ).strip()
                 return "error", err[-500:]
-            time.sleep(0.6)  # let the login shell paint its first frame
+            # Wait for the login shell to paint its first frame. Polling the pane
+            # is faster than a fixed sleep and avoids a blank first frame.
+            deadline = time.monotonic() + 1.0
+            while time.monotonic() < deadline:
+                snap = capture_pane(sid)
+                if snap.get("alive") and (snap.get("text") or "").strip():
+                    break
+                time.sleep(0.05)
     except subprocess.TimeoutExpired:
         return "error", "shell command timed out"
     return "ok", {"id": sid, "session": sess, "cols": cols, "rows": rows, "cwd": "~"}
