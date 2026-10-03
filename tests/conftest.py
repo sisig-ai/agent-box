@@ -35,6 +35,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setattr(fs_paths, "FS_HOME", home)
     monkeypatch.setattr(fs_module, "FS_HOME", home)
     monkeypatch.setattr(telemetry_store, "_TELE_LAST_WRITE", {"t": 0.0})
+    monkeypatch.setattr(telemetry_store, "_LATEST_STATS_CACHE", {"sig": None, "snapshot": None})
     return SimpleNamespace(data=data, home=home, tmp=tmp_path)
 
 

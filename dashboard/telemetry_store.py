@@ -15,6 +15,12 @@ from . import config, db
 # Per-process throttle so a burst of samples can't hammer the shared database.
 _TELE_LAST_WRITE = {"t": 0.0}
 
+# Parsed latest-stats.json, keyed on the file's (mtime_ns, size) signature. A
+# plain dict is enough under gunicorn --threads 8: the worst case is one
+# redundant parse. The signature is only stored after a successful parse, so an
+# unreadable file is retried on the next request.
+_LATEST_STATS_CACHE = {"sig": None, "snapshot": None}
+
 
 def record_telemetry_snapshot(cpu_util, temp_c, mem, cpu_w, gpu_w, total_w):
     """Append one per-second row to the telemetry ring buffer (shared sqlite).
@@ -57,17 +63,31 @@ def read_latest_stats():
 
     Returns ``(snapshot, None)`` when fresh, or ``(None, reason)`` where reason
     is ``"reconnecting"`` (stale timestamp) or ``"starting"`` (unreadable/invalid)
-    so the API layer can render the exact 503 payload.
+    so the API layer can render the exact 503 payload. The parse is cached on the
+    file's ``(mtime_ns, size)`` signature and reused until the collector rewrites it.
     """
+    path = config.DATA_DIR / "latest-stats.json"
     try:
-        snapshot = json.loads((config.DATA_DIR / "latest-stats.json").read_text())
-        age = time.time() - datetime.fromisoformat(snapshot["t"]).timestamp()
-        snapshot["stale"] = age > 5
-        if snapshot["stale"]:
-            return None, "reconnecting"
-        return snapshot, None
-    except (OSError, ValueError, KeyError):
+        st = path.stat()
+    except OSError:
         return None, "starting"
+    sig = (st.st_mtime_ns, st.st_size)
+    if sig != _LATEST_STATS_CACHE["sig"]:
+        try:
+            _LATEST_STATS_CACHE["snapshot"] = json.loads(path.read_text())
+        except (OSError, ValueError):
+            _LATEST_STATS_CACHE["sig"] = None
+            _LATEST_STATS_CACHE["snapshot"] = None
+            return None, "starting"
+        _LATEST_STATS_CACHE["sig"] = sig
+    snapshot = _LATEST_STATS_CACHE["snapshot"]
+    try:
+        age = time.time() - datetime.fromisoformat(snapshot["t"]).timestamp()
+    except (KeyError, TypeError, ValueError):
+        return None, "starting"
+    if age > 5:
+        return None, "reconnecting"
+    return {**snapshot, "stale": False}, None
 
 
 def history_series(seconds):

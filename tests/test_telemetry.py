@@ -1,8 +1,11 @@
 """Telemetry store + /api/stats: ring buffer, throttle, retention, dense history."""
 
+import json
+import os
 import time
+from types import SimpleNamespace
 
-from dashboard import config
+from dashboard import config, telemetry_store
 from dashboard.db import connect
 from dashboard.telemetry_store import history_series, record_telemetry_snapshot
 
@@ -112,6 +115,34 @@ def test_stats_stale_is_503_reconnecting(client, stats_writer):
     r = client.get("/api/stats")
     assert r.status_code == 503
     assert r.get_json() == {"error": "Telemetry sampler is reconnecting", "stale": True}
+
+
+def test_stats_parse_is_cached_between_requests(client, stats_writer, monkeypatch):
+    stats_writer(age_seconds=0.0, cpu={"util_percent": 1.0})
+    calls = []
+    real_loads = telemetry_store.json.loads
+
+    def counting_loads(text):
+        calls.append(text)
+        return real_loads(text)
+
+    monkeypatch.setattr(telemetry_store, "json", SimpleNamespace(loads=counting_loads))
+    first = client.get("/api/stats")
+    second = client.get("/api/stats")
+    assert first.status_code == 200 and second.status_code == 200
+    assert first.get_json() == second.get_json()
+    assert len(calls) == 1
+
+
+def test_stats_cache_invalidated_on_rewrite(client, stats_writer, env):
+    snapshot = stats_writer(age_seconds=0.0, cpu={"util_percent": 1.0})
+    assert client.get("/api/stats").get_json()["cpu"] == {"util_percent": 1.0}
+    path = env.data / "latest-stats.json"
+    snapshot["cpu"] = {"util_percent": 2.0}
+    path.write_text(json.dumps(snapshot))
+    st = path.stat()
+    os.utime(path, ns=(st.st_mtime_ns + 1_000_000, st.st_mtime_ns + 1_000_000))
+    assert client.get("/api/stats").get_json()["cpu"] == {"util_percent": 2.0}
 
 
 def test_stats_history_seconds_clamp(client):
