@@ -10,9 +10,9 @@ check items off, log commits and decisions at the bottom, and keep the status bl
 | Field | Value |
 |---|---|
 | Phase | In progress |
-| Current milestone | M5 complete — M6 not started |
-| Last updated | 2026-10-03 (M5: `verify.py` retired; 174-test hermetic pytest suite over every llm.txt route + tmux/metrics/ws units; `make sloc` strict by default; `make check` green twice) |
-| Blocking on | — (M5 code gate met; manual browser smoke of all four tabs remains for the human, and the shell LaunchDaemon still needs `sudo launchctl kickstart -k system/dev.macmini.dashboard.shell` after M3) |
+| Current milestone | M6 complete — M7 not started |
+| Last updated | 2026-10-03 (M6: stats/history caches, fs/list 2,000-entry cap + `truncated`, static cache headers, impossible-week 400 fix; benches in the M6 section; 184 tests; `make check` green twice) |
+| Blocking on | — (M6 code gate met; manual browser smoke of all four tabs remains for the human, and the shell LaunchDaemon still needs `sudo launchctl kickstart -k system/dev.macmini.dashboard.shell` after M3) |
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked/issue
 
@@ -92,12 +92,31 @@ Manual browser smoke checklist — for the human, not performed by the agent
 - [x] **Gate:** `make check` green twice back to back (174 tests); every llm.txt route has ≥1 test; all files ≤300 SLOC
 
 ### M6 — Performance pass
-- [ ] `/api/stats`: parsed-JSON cache keyed on `(mtime, size)` — measure before/after
-- [ ] `/api/stats/history`: 1s TTL cache keyed by `seconds` + compact JSON — measure payload
-- [ ] `/api/fs/list`: entry cap (2,000) + `truncated` flag
-- [ ] Static: `immutable` for fonts/vendor, `no-cache` for `index.html`/`config.json`; optional gzip
-- [ ] Frontend regression check: 1s poll gating, change-gated writes, idle pause, `?freezebg=1` probe
-- [ ] **Gate:** before/after numbers recorded for stats latency, history size, echo round-trip, idle tab CPU; no regressions
+- [x] `/api/stats`: parsed-JSON cache keyed on `(mtime_ns, size)` — parse only when the collector rewrites the file
+- [x] `/api/stats/history`: cached payload keyed on `(seconds, current second, max ts, row count)` + compact JSON verified
+- [x] `/api/fs/list`: entry cap (2,000) + additive `truncated` flag; `total` = entries returned
+- [x] Static: `immutable` for fonts/vendor, `no-cache` for `index.html`/`config.json`; gzip dropped (no new deps)
+- [x] Frontend regression check: no `static/` diff in M6, so the 1s poll, change-gated writes, idle pause, and `?freezebg=1` probe cannot regress; ws echo path untouched
+- [x] Impossible well-formed week date (`2026-02-30`) rejected with the existing 400 instead of a 500
+- [x] **Gate:** before/after tables recorded (baseline on the `def3c5f` worktree, same seed + scratch gunicorn `127.0.0.1:5599`); `make check` green twice; every file ≤300 SLOC
+
+M6 bench (`tools/bench_m6.py run`, 200 requests, 5 warmups, one scratch server per arm; seed =
+3900 telemetry rows + 466-byte `latest-stats.json` + a 5000-entry directory):
+
+| endpoint | arm | p50 ms | p95 ms | response bytes |
+|---|---|---|---|---|
+| `/api/stats` | before | 0.47 | 0.61 | 445 |
+| `/api/stats` | after | 0.46 | 0.58 | 445 |
+| `/api/stats/history?seconds=3600` | before | 6.65 | 8.76 | 115,273 |
+| `/api/stats/history?seconds=3600` | after | 2.23 | 2.54 | 115,203 |
+| `/api/fs/list` (5000 entries) | before | 125.50 | 131.44 | 1,374,266 |
+| `/api/fs/list` (5000 entries) | after | 123.09 | 129.70 | 550,082 |
+
+`/api/stats` p50 is flat: at a 466-byte file the parse is far below the HTTP noise floor, so the
+cache's win is the eliminated file read + parse per request, not latency (pinned by the
+`test_stats_parse_is_cached_between_requests` count). History p50 drops ~3×; fs/list payload drops
+2.5× while latency stays flat (the scan/stat of all 5000 entries dominates, and the sort-then-slice
+order is required to keep the listing deterministic).
 
 ### M7 — Closeout: git-commit ready
 - [ ] README rewritten (layout, make targets, services note)
@@ -124,9 +143,10 @@ Manual browser smoke checklist — for the human, not performed by the agent
 | 6 | `shell_common.py` | `sh -c` string interpolation for subprocesses (safe today via regex, fragile pattern) | fixed in M3 (`41df4f7`): moved to `dashboard/shell/tmux.py`, all calls are direct argv lists (no shell); `capture_pane` = two explicit calls (capture-pane liveness gate + display-message), `paste_text` = load-buffer/paste-buffer/delete-buffer |
 | 7 | `shell_common.ensure_session` | Fixed `time.sleep(0.6)` blocks a worker thread | fixed in M2 (`7b641e0`): bounded capture-retry (~1s max, returns as soon as the pane paints) |
 | 8 | `verify.py` | Tests by monkeypatching module globals (`app.DATA_DIR`, `app.FS_HOME`) | fixed in M1 (`26e51cd`): env set before import; `verify.py` retired in M5 — assertions migrated to `tests/`, `verify.py` deleted |
-| 9 | `app.py` `/api/stats` | Re-reads + re-parses `latest-stats.json` on every request | M6 |
-| 10 | `app.py` `/api/fs/list` | Unbounded directory listing → potentially huge JSON | M6 |
+| 9 | `app.py` `/api/stats` | Re-reads + re-parses `latest-stats.json` on every request | fixed in M6 (`5c3c213`): parsed dict cached on `(mtime_ns, size)` |
+| 10 | `app.py` `/api/fs/list` | Unbounded directory listing → potentially huge JSON | fixed in M6 (`6451348`): 2,000-entry cap + `truncated` flag |
 | 11 | repo | No git repo, no `.gitignore`, no lint/format config, `__pycache__` present | M0 / M1 |
+| 12 | `dates.week_start_for` | Well-formed but impossible date (`2026-02-30`) raised `ValueError` → HTTP 500 on `/api/schedule` | fixed in M6 (`f1f378a`): `date.fromisoformat` guard → `None` → existing 400 |
 
 ---
 
@@ -326,6 +346,25 @@ Manual browser smoke checklist — for the human, not performed by the agent
   `test`. `make check` includes tests/, so all test files are inside the 300-SLOC gate (largest
   is `tests/test_fs_api.py` at 296).
 
+- **2026-10-03 (M6)** — Perf pass + the folded-in impossible-date fix. `/api/stats` caches the parsed
+  snapshot on `(mtime_ns, size)`; `/api/stats/history` caches the built payload on `(seconds, current
+  second, max ts, row count)` — the current second is in the key (a deviation from the plan's wording)
+  because the payload's `start` shifts every second, and the version probe makes a new row invalidate
+  at once. `/api/fs/list` sorts first, slices to 2,000, and adds `truncated`; `total` still means
+  entries returned. Static headers: immutable for fonts/vendor, `no-cache` for `/`, `/index.html`,
+  `/config.json`. `week_start_for` now returns `None` for a well-formed but impossible date, so
+  `/api/schedule` answers 400 instead of 500. No frontend/ws/shell diff.
+- **2026-10-03 (M6)** — Bench (`tools/bench_m6.py`, tracked): baseline captured on a `def3c5f`
+  worktree with a scratch gunicorn on `127.0.0.1:5599`, same seed for both arms. History p50
+  6.65 → 2.23 ms; fs/list payload 1,374,266 → 550,082 bytes (latency flat — the scan of all entries
+  dominates and the deterministic sort-then-slice order is required); `/api/stats` flat at a 466-byte
+  file because the parse is below the HTTP noise floor (the cache removes the read + parse per
+  request). Tables in the M6 section. `make check` green twice (184 tests); all files ≤300 SLOC.
+- **2026-10-03 (M6)** — Module-level caches (`_LATEST_STATS_CACHE`, `_HISTORY_CACHE`) are plain dicts
+  (worst case under `--threads 8` is one redundant parse) and are reset per test in `conftest.py`
+  alongside `_TELE_LAST_WRITE` for order independence. The bench seed writes a 466-byte snapshot so
+  the measurement matches the collector's real output.
+
 ## Commit log
 
 _(one entry per commit: `sha  milestone  message`)_
@@ -349,6 +388,12 @@ _(one entry per commit: `sha  milestone  message`)_
 - `76a65f00943be75acac5827cb7d7b7c889557427`  **M5**  `test: add pytest suite covering notes, schedule, telemetry, fs, shell, and metrics`
 - `9809837583edc056af9ebf0ba9ecfd1eb2ad3aa3`  **M5**  `test: add ws session dispatch tests`
 - `7272fadea556edc1812ff5218ae09123ccb2b595`  **M5**  `chore: retire verify.py and make sloc strict by default`
+- `f1f378a3f1a43ac47c525873d581ec28508ef0a2`  **M6**  `fix: reject impossible week dates instead of erroring`
+- `5c3c21331d8dd207d094339c3312bd39264c2163`  **M6**  `perf: cache parsed telemetry snapshots`
+- `2523ce1f752b3c1676afb408860f68001aa91325`  **M6**  `perf: cache telemetry history responses`
+- `645134848cc95e454a1d0c2c4c0071fbcd2cfdb0`  **M6**  `perf: cap directory listings`
+- `cb782ee1377a536373a52b32d9766a306c7a69fe`  **M6**  `perf: add static cache-control headers`
+- `ad6c9da7c1b19dd3f9f7a8cb57963012a5d8d943`  **M6**  `chore: seed a representative stats snapshot in the m6 bench`
 
 ## Open questions
 
