@@ -29,6 +29,8 @@ Power, 1s tick with 1h graphs). Hash routes: `#/brief`, `#/` (Stack, default),
 
 Stored in SQLite at /Users/kixpanganiban/quick-arr-stack/arr-dashboard/data/briefs.db (host mount — survives container rebuilds).
 
+Markdown previews (Daily Brief and weekly schedule) render through a sanitizer: script/style/iframe/object/embed/link/meta/base/form elements, `on*=` handlers, and `javascript:`/`data:`/`vbscript:` URLs are stripped before insert; the stored markdown is unchanged.
+
 | Method | Path | Behavior |
 |--------|------|----------|
 | GET    | /api/brief?date=YYYY-MM-DD | Fetch a day's entry. Returns {"date", "content"} — content is "" when no entry exists yet. |
@@ -53,6 +55,8 @@ Read today's entry:
 
     curl http://macmini:5555/api/brief
 
+The weekly schedule (`GET|PUT|POST|DELETE /api/schedule`, `GET /api/schedule/list`) uses the same `YYYY-MM-DD` week form; `week` coerces to that week's Monday, and a well-formed but impossible date such as `2026-02-30` returns 400 rather than 500.
+
 ### Native macOS telemetry
 
 `GET /api/stats` returns live CPU utilization, average CPU-die temperature,
@@ -71,7 +75,7 @@ shell, it runs as the dashboard user.
 
 | Method | Path | Behavior |
 |--------|------|----------|
-| GET    | /api/fs/list?path=… | Folder listing. Returns `{path, name, parent, home, places, entries, total}`; each entry: `{name, path, type (dir/file/link/other), is_dir, is_link, size, mtime, mode, hidden, readable, writable}`. 404/400/403 on missing/not-a-dir/denied. |
+| GET    | /api/fs/list?path=… | Folder listing. Returns `{path, name, parent, home, places, entries, total, truncated}`; `entries` is capped at 2,000 and `truncated` is true when the folder held more, so `total` counts the entries returned. Each entry: `{name, path, type (dir/file/link/other), is_dir, is_link, size, mtime, mode, hidden, readable, writable}`. 404/400/403 on missing/not-a-dir/denied. |
 | GET    | /api/fs/stat?path=… | One entry plus `mime`, `owner`, `group`, `uid`, `gid`, `link_target`, and ISO times (`mtime_iso`, `ctime_iso`, `btime_iso` on macOS). |
 | GET    | /api/fs/download?path=… | Stream one file as an attachment (range-capable). 400 for directories. |
 | POST   | /api/fs/upload | Multipart form: `path` (target folder), one or more `file`, optional `overwrite=1`. 409 when a name exists and overwrite is off. |
