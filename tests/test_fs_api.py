@@ -23,6 +23,7 @@ def test_list_default_home_folders_first(client, home):
     assert body["home"] == str(home)
     assert [e["name"] for e in body["entries"]] == ["sub", "note.txt"]
     assert body["total"] == 2
+    assert body["truncated"] is False
 
 
 def test_list_missing_is_404(client):

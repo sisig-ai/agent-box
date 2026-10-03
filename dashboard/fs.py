@@ -22,6 +22,10 @@ try:
 except ImportError:  # non-POSIX — owner/group names simply stay blank
     _pwd = _grp = None
 
+# Bound one directory listing so /Volumes or a node_modules dir can't return a
+# huge JSON blob; entries beyond the cap are dropped and the flag is set.
+FS_LIST_MAX = 2000
+
 
 def list_directory(path_raw):
     """Directory contents (defaults to ~)."""
@@ -42,6 +46,9 @@ def list_directory(path_raw):
     # Folders first, then case-insensitive by name. Hidden entries are returned
     # tagged so the UI can toggle them without re-fetching.
     entries.sort(key=lambda e: (not e["is_dir"], e["name"].lower()))
+    truncated = len(entries) > FS_LIST_MAX
+    if truncated:
+        entries = entries[:FS_LIST_MAX]
     parent = None if p.parent == p else str(p.parent)
     return jsonify(
         {
@@ -52,6 +59,7 @@ def list_directory(path_raw):
             "places": fs_places(),
             "entries": entries,
             "total": len(entries),
+            "truncated": truncated,
         }
     )
 
