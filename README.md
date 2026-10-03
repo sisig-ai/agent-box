@@ -1,59 +1,108 @@
 # Macmini dashboard
 
-Native macOS copy of the Komurin dashboard. Served at http://macmini:5555,
-with the live terminal WebSocket on tailnet port 5556. The stack contains the
-Coins.ph agent on port 7777. Brief, Schedule, search, terminal, a filesystem
-explorer, graphs, and power alert interactions are retained with a blue/violet
-theme.
+Native macOS copy of the Komurin dashboard for the macmini host. The web UI
+serves at http://macmini:5555 and the live terminal WebSocket on tailnet port
+5556. The page is a service grid plus a Daily Brief markdown canvas, with a host
+filesystem browser and an interactive shell. It also links three sibling
+services: Coins.ph Agent (:7777), Hermes Agent (:9119), and Opencode (:4096).
 
 Location: /Users/kixpanganiban/quick-arr-stack/arr-dashboard
-Python environment: .venv (Python 3.11)
-System packages: Homebrew macmon 0.8.2 and tmux 3.7c.
-Python package versions: requirements.lock.txt.
+Python: 3.11 in `.venv`. System packages: Homebrew macmon and tmux.
 
-macos_metrics.py maps macOS host CPU/memory counters and native macmon sensor
-readings to the original API. System power uses Apple's SMC system-power sensor.
-Its estimate covers the device and is not a wall-plug measurement. Component
-power values remain null when IOReport counters are unavailable. The Mac alert
-threshold is 80 W; the bar spans 100 W, and the expanded graph scales dynamically.
-Telemetry is recorded once per second even with no browser open. History retains
-3900 seconds. Stale samples return HTTP 503 rather than appearing live.
+## Layout
 
-The 29 daily briefs and 5 schedules were copied using SQLite's consistent backup
-API. Linux telemetry was excluded from the copy.
-The dashboard has its own data/briefs.db and does not edit the Coins.ph ledgers.
+- `app.py` — gunicorn entry point (`app = create_app()`).
+- `shell_ws.py` — WebSocket gateway launcher (:5556).
+- `telemetry_collector.py` — telemetry sampler launcher (one sample per second).
+- `dashboard/` — application package: `config`, `db`, `dates`,
+  `notes` + `notes_api`, `telemetry_store` + `telemetry_api`, `macos_metrics`,
+  `fs_paths` + `fs` + `fs_api`, `shell/` (tmux backend + HTTP API), `ws/`
+  (frames, handshake, session, server), and `collector`.
+- `static/` — the UI: `index.html`, `css/`, no-build ES modules under `js/`,
+  vendored `vendor/marked.min.js`, and fonts.
+- `tests/` — pytest suite (hermetic; tmux and the collector are mocked).
+- `deploy/` — LaunchDaemon plists, `install-services.sh`, rehearsal tooling,
+  and the legacy `source-linux/` recipe.
 
-The shell uses local tmux and zsh under kixpanganiban, beginning in that user's
-home. Both HTTP session operations and the live WebSocket transport are retained.
-HTTP and WebSocket listeners bind the Mac's tailnet address 100.64.149.91.
+The three root entry points stay at the repository root so the installed
+LaunchDaemons keep working without a reinstall.
 
-The Files tab (`#/files`) is an SFTP-style browser over the host filesystem,
-opening at `~` and backed by `/api/fs/*` in app.py. It lists, navigates, and
-inspects entries, and supports new folder/file, upload, download, rename, and
-delete. Paths are normalised in Python (no shell interpolation) and destructive
-deletes refuse `~`, `/`, and their ancestors. Like the shell, it runs as the
-dashboard user, so it can reach the whole filesystem.
+## Development
 
-Native boot service definitions are prepared in deploy/:
-- dev.macmini.dashboard.web
-- dev.macmini.dashboard.shell
-- dev.macmini.dashboard.telemetry
+Run the full gate (ruff lint + format check + pytest + strict SLOC):
+
+    make check
+
+Other targets:
+
+    make test    # pytest only
+    make lint    # ruff check
+    make format  # ruff format (writes)
+    make run     # gunicorn on 0.0.0.0:5555, the same bind the web service uses
+
+`make run` binds port 5555, which the installed web service already owns. To run
+a scratch copy, bind another port instead:
+
+    .venv/bin/gunicorn --workers 1 --threads 8 --bind 127.0.0.1:5599 app:app
+
+## Configuration
+
+Paths and limits are environment-overridable; the defaults match the installed
+service.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `DASH_DATA_DIR` | `data/` | Runtime state directory |
+| `DASH_DB_PATH` | `<data>/briefs.db` | SQLite database path |
+| `DASH_FS_HOME` | `$HOME` | Root for the Files browser and shell |
+| `DASH_MAX_UPLOAD_MB` | `1024` | Upload body cap; larger requests get a 413 JSON error |
+
+## Data
+
+The dashboard keeps its own SQLite database at `data/briefs.db`, in WAL mode. It
+holds the Daily Brief notes, the weekly schedules, and telemetry. It never edits
+the Coins.ph ledgers. `data/` is git-ignored and survives updates.
+
+`macos_metrics` maps macOS host CPU/memory counters and native macmon sensor
+readings to the API. System power is Apple's SMC estimate for the device, not a
+wall-plug measurement; component values stay null when IOReport counters are
+unavailable. The Mac alert threshold is 80 W. Telemetry is recorded once per
+second with no browser open, history retains 3900 seconds, and stale samples
+return HTTP 503 rather than appearing live.
+
+## Services
+
+Native boot services are defined in `deploy/`:
+
+- `dev.macmini.dashboard.web` — `gunicorn app:app` on the tailnet address :5555
+- `dev.macmini.dashboard.shell` — `python shell_ws.py` on :5556
+- `dev.macmini.dashboard.telemetry` — `python telemetry_collector.py`
 
 Install the validated services with:
-sudo /bin/bash /Users/kixpanganiban/quick-arr-stack/arr-dashboard/deploy/install-services.sh
+
+    sudo /bin/bash /Users/kixpanganiban/quick-arr-stack/arr-dashboard/deploy/install-services.sh
 
 The installer stops only known temporary dashboard processes as their user,
 checks both ports, and installs root-owned LaunchDaemons which run as
 kixpanganiban. RunAtLoad and KeepAlive start them at boot and restart on exit.
 Logs are in /Users/kixpanganiban/Library/Logs/macmini-dashboard/.
 
+Code updates need no reinstall. Restart a service to pick up new code:
+
+    sudo launchctl kickstart -k system/dev.macmini.dashboard.web
+    sudo launchctl kickstart -k system/dev.macmini.dashboard.shell
+    sudo launchctl kickstart -k system/dev.macmini.dashboard.telemetry
+
 Inspect:
-launchctl print system/dev.macmini.dashboard.web
-launchctl print system/dev.macmini.dashboard.shell
-launchctl print system/dev.macmini.dashboard.telemetry
 
-Run the full local gate (lint + format + tests + SLOC):
-make check
+    launchctl print system/dev.macmini.dashboard.web
 
-The original container recipe is retained as Dockerfile.linux-source for
-reference. Deployment on this Mac uses the native services above.
+## API
+
+`static/llm.txt` is the HTTP/WebSocket contract. The web app has no
+authentication and binds the tailnet address only.
+
+## Legacy
+
+`Dockerfile.linux-source` is the original Linux container recipe, kept as an
+unmaintained reference. Deployment on this Mac uses the native services above.
