@@ -1,6 +1,6 @@
 # Refactor Plan: macmini arr-dashboard
 
-Status: plan approved — execution not started. Track progress in `REFACTOR_TRACKER.md`.
+Status: **complete** (M0–M7 landed 2026-10-03). Track progress in `REFACTOR_TRACKER.md`.
 
 Decisions locked in (2026-10-03):
 - Frontend decomposition: **no-build ES modules** (no bundler, no npm, stays offline-friendly)

@@ -9,10 +9,10 @@ check items off, log commits and decisions at the bottom, and keep the status bl
 
 | Field | Value |
 |---|---|
-| Phase | In progress |
-| Current milestone | M6 complete — M7 not started |
-| Last updated | 2026-10-03 (M6: stats/history caches, fs/list 2,000-entry cap + `truncated`, static cache headers, impossible-week 400 fix; benches in the M6 section; 184 tests; `make check` green twice) |
-| Blocking on | — (M6 code gate met; manual browser smoke of all four tabs remains for the human, and the shell LaunchDaemon still needs `sudo launchctl kickstart -k system/dev.macmini.dashboard.shell` after M3) |
+| Phase | Complete |
+| Current milestone | M7 complete — refactor closed (M0–M7) |
+| Last updated | 2026-10-03 (M7: README rewritten, llm.txt synced, Dockerfile COPY corrected, caches purged, fresh-clone smoke green from `7d04ed4`; 184 tests; `make check` green) |
+| Blocking on | — (closeout done; human ops only: `sudo launchctl kickstart -k system/dev.macmini.dashboard.web` + `…shell` to load the M6/M3 code, plus the manual browser smoke) |
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked/issue
 
@@ -28,7 +28,8 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked/issue
 - [x] **Gate:** `git status` clean at baseline, `data/` + `.venv/` untracked/ignored, `verify.py` passes
 
 Manual browser smoke checklist — for the human, not performed by the agent
-(baseline reference for M4 "UI smoke identical to M0"):
+(baseline reference for M4 "UI smoke identical to M0"; the automated M4/M7 headless-Chrome and
+fresh-clone smokes cover the automated portion):
 - [ ] Four tabs (`Brief`, `Stack`, `Files`, `Shell`) switch via the header nav
 - [ ] Graphs render and update on the 1s telemetry poll
 - [ ] Alerts show/clear correctly
@@ -119,15 +120,24 @@ cache's win is the eliminated file read + parse per request, not latency (pinned
 order is required to keep the listing deterministic).
 
 ### M7 — Closeout: git-commit ready
-- [ ] README rewritten (layout, make targets, services note)
-- [ ] `static/llm.txt` consistency pass (`truncated` field, sanitizer note)
-- [ ] `Dockerfile.linux-source` decision — it is stale/reference: it still `COPY app.py .` /
-      `COPY shell_common.py .` and predates the `dashboard/` package (would not build now). Either
-      delete it or update it to copy the package; left untouched in M3.
-- [ ] `__pycache__` purged; `git status --ignored` dry-run audit
-- [ ] Full `make check`; fresh-clone smoke (venv → `make check` → `make run`)
-- [ ] Optional annotated tag
-- [ ] **Gate:** fresh clone works from README alone; `git status` clean; every file ≤ 300 SLOC
+- [x] README rewritten for the modular layout: intro + ports, layout map (root entry points,
+      `dashboard/`, `static/`, `tests/`, `deploy/`), `make check`/`run`/`test`/`lint`/`format`,
+      env vars (`DASH_DATA_DIR`, `DASH_DB_PATH`, `DASH_FS_HOME`, `DASH_MAX_UPLOAD_MB`), services
+      section (install + kickstart + inspect + logs), `data/` + SQLite note, legacy label on the
+      Dockerfile (`8aa69a8`)
+- [x] `static/llm.txt` consistency pass: `/api/fs/list` `truncated` + `total` semantics, sanitizer
+      note, schedule 400-on-impossible-week line (`72b87a3`)
+- [x] `Dockerfile.linux-source` decision — **kept + minimally corrected**: COPY lines now match the
+      package layout (`app.py`, `dashboard/`, `shell_ws.py`, `telemetry_collector.py`, `static/`);
+      README labels it an unmaintained linux-era reference (`7d04ed4`)
+- [x] `__pycache__`/`.pytest_cache`/`.ruff_cache` purged; `git status --ignored` audit clean
+      (only `.venv/` + `data/` ignored; nothing untracked)
+- [x] Full `make check` (184 tests) + fresh-clone smoke: fresh python3.11 venv, requirements
+      install, `make check` green, scratch gunicorn on `127.0.0.1:5599` served `/`,
+      `/config.json`, `/api/brief/list`, `/api/fs/list`, `/static/js/main.js` (all 200),
+      impossible-week date → 400
+- [x] Annotated tag — **none created** (optional item; Kix did not request one)
+- [x] **Gate:** fresh clone works from README alone; `git status` clean; every file ≤ 300 SLOC
 
 ---
 
@@ -230,6 +240,21 @@ order is required to keep the listing deterministic).
   scratch server all 200 `font/woff2`. DOM completeness: **88/88** `id="..."` and **120/120**
   `class="..."` tokens from pre-M4 still present in markup+JS. Lazy behaviour confirmed: the
   shell/files modules are absent from the network log until their tab is first opened.
+
+- **2026-10-03** — **M7 done (closeout, 3 commits).** README rewritten for the modular tree
+  (`8aa69a8`); `static/llm.txt` synced with shipped behavior — `/api/fs/list` `truncated` + `total`
+  semantics, markdown-preview sanitizer note, impossible-week 400 line (`72b87a3`);
+  `Dockerfile.linux-source` COPY lines corrected to the package layout (`7d04ed4`). Housekeeping:
+  `__pycache__`/`.pytest_cache`/`.ruff_cache` purged repo-wide and `git status --ignored` is clean
+  (only `.venv/` + `data/`). **Fresh-clone smoke green from `7d04ed4`:** temp clone → python3.11
+  venv → `pip install -r requirements.txt -r requirements-dev.txt` → `make check` (184 passed, SLOC
+  green) → `make test`/`lint`/`format` (43 files unchanged, 0 diff) → scratch `gunicorn` on
+  `127.0.0.1:5599` with throwaway `DASH_DATA_DIR`/`DASH_DB_PATH`/`DASH_FS_HOME` served `/`,
+  `/config.json`, `/api/brief/list`, `/api/fs/list`, `/static/js/main.js` (all 200) and
+  `week=2026-02-30` → 400; the scratch process was stopped and port 5599 is free. `make run` was
+  **not** run verbatim — it binds `:5555`, which the live web service owns; the README scratch-bind
+  command was run instead. No git tag (not requested). Human ops remaining: manual browser smoke and
+  `sudo launchctl kickstart -k system/dev.macmini.dashboard.{web,shell}` to load the M6/M3 code.
 
 ## Decision log
 
@@ -364,6 +389,13 @@ order is required to keep the listing deterministic).
   (worst case under `--threads 8` is one redundant parse) and are reset per test in `conftest.py`
   alongside `_TELE_LAST_WRITE` for order independence. The bench seed writes a 466-byte snapshot so
   the measurement matches the collector's real output.
+- **2026-10-03 (M7)** — `Dockerfile.linux-source` kept and minimally corrected rather than deleted:
+  the historical Linux container recipe stays as a reference, but its COPY lines now match the
+  package layout (`app.py`, `dashboard/`, `shell_ws.py`, `telemetry_collector.py`, `static/`), so it
+  no longer describes a tree that does not exist. README labels it unmaintained. Resolves the
+  M3/M5 open question.
+- **2026-10-03 (M7)** — No git tag: the optional annotated tag was not requested by Kix; the
+  milestone commits are the record.
 
 ## Commit log
 
@@ -394,14 +426,17 @@ _(one entry per commit: `sha  milestone  message`)_
 - `645134848cc95e454a1d0c2c4c0071fbcd2cfdb0`  **M6**  `perf: cap directory listings`
 - `cb782ee1377a536373a52b32d9766a306c7a69fe`  **M6**  `perf: add static cache-control headers`
 - `ad6c9da7c1b19dd3f9f7a8cb57963012a5d8d943`  **M6**  `chore: seed a representative stats snapshot in the m6 bench`
+- `8aa69a89d27140371271130f457d1dabd70f709c`  **M7**  `docs: rewrite readme for the modular layout`
+- `72b87a32a44e2fc76e9c8fc71a6784bf0bac101e`  **M7**  `docs: sync api doc with shipped behavior`
+- `7d04ed42f2211db7c29d8d9563f2239bc7b9bace`  **M7**  `chore: align dockerfile.linux-source copy lines with the package layout`
 
 ## Open questions
 
 - [x] **Decided (provisional, 2026-10-03, M1):** `deploy/*.py` (`prepare.py`, `stop-rehearsal.py`)
       stays untouched ops tooling and is excluded from ruff via `[tool.ruff] exclude = ["deploy"]`.
       Not deleted — left here as a record; revisit only if M7 housekeeping reopens it.
-- [ ] Tag name preference at M7 closeout, if any?
-- [ ] **`Dockerfile.linux-source` is stale (noted M3):** it copies the pre-refactor root layout
-      (`COPY app.py .`, `COPY shell_common.py .`) and the `dashboard/` package didn't exist then,
-      so it no longer builds as-is. It is explicitly legacy/reference and was left untouched in
-      M3; decide in M7 whether to delete it or update it to copy the package tree.
+- [x] **Decided (2026-10-03, M7):** no tag created — the optional annotated tag was not requested
+      by Kix; the milestone commits are the record.
+- [x] **Decided (2026-10-03, M7):** `Dockerfile.linux-source` kept and minimally corrected — its
+      COPY lines now match the package layout. It stays as an unmaintained Linux-era reference;
+      deployment uses the native LaunchDaemons.
