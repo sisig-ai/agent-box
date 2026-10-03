@@ -52,8 +52,8 @@ launchctl print system/dev.macmini.dashboard.web
 launchctl print system/dev.macmini.dashboard.shell
 launchctl print system/dev.macmini.dashboard.telemetry
 
-Run API checks without touching copied notes:
-.venv/bin/python verify.py
+Run the full local gate (lint + format + tests + SLOC):
+make check
 
 The original container recipe is retained as Dockerfile.linux-source for
 reference. Deployment on this Mac uses the native services above.

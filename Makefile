@@ -1,17 +1,15 @@
 # macmini arr-dashboard developer tasks.
 #
-# SLOC gate: no tracked source file may exceed $(SLOC_LIMIT) lines. Until M2/M4
-# decompose app.py and static/index.html the gate runs NON-STRICT by default —
-# `make sloc` prints every over-budget file and still exits 0. `make sloc
-# STRICT=1` exits non-zero on any violation. After M2/M4 lands, flip the
-# default to strict (make check will then fail on an over-budget file).
+# SLOC gate: no tracked source file may exceed $(SLOC_LIMIT) lines. Strict by
+# default now that the M2/M4 decomposition landed — `make check` fails on any
+# over-budget file. `make sloc SLOC_STRICT=0` lists violations and still exits 0.
 
 PYTHON     ?= .venv/bin/python
 RUFF       ?= .venv/bin/ruff
 PYTEST     ?= .venv/bin/pytest
 GUNICORN   ?= .venv/bin/gunicorn
 SLOC_LIMIT ?= 300
-STRICT     ?=
+SLOC_STRICT ?= 1
 
 .PHONY: check lint format test run verify sloc
 
@@ -35,8 +33,8 @@ test:
 run:
 	$(GUNICORN) --workers 1 --threads 8 --bind 0.0.0.0:5555 app:app
 
-verify:
-	$(PYTHON) verify.py
+# Kept as an alias for old muscle memory; the load-bearing gate is `make check`.
+verify: test
 
 sloc:
 	@limit=$(SLOC_LIMIT); over=0; \
@@ -49,10 +47,10 @@ sloc:
 		fi; \
 	done; \
 	if [ "$$over" -eq 1 ]; then \
-		if [ -n "$(STRICT)" ]; then \
-			echo "sloc: FAIL — files over $$limit lines (STRICT=1)"; exit 1; \
+		if [ "$(SLOC_STRICT)" != "0" ]; then \
+			echo "sloc: FAIL — files over $$limit lines (SLOC_STRICT=0 to warn only)"; exit 1; \
 		else \
-			echo "sloc: over-budget files listed above (non-strict; strict by default after M2/M4)"; \
+			echo "sloc: over-budget files listed above (SLOC_STRICT=0)"; \
 		fi; \
 	else \
 		echo "sloc: all tracked source files <= $$limit lines"; \
