@@ -20,7 +20,7 @@ Power, 1s tick with 1h graphs). Hash routes: `#/brief`, `#/` (Stack, default),
 
 - **Brief** — Daily Brief markdown canvas (one entry per day, autosaved) + weekly schedule side panel.
 - **Stack** — service grid with the `/`-focused filter scanner.
-- **Files** — host filesystem browser rooted at `~`: browse folders, create files/folders, upload/download, rename, delete, and click any entry for full details.
+- **Files** — host filesystem browser rooted at `~`: browse folders, create files/folders, upload/download, rename, delete, click any entry for full details, and open any text file in an inline editor (syntax highlighting, save in place, download).
 - **Shell** — interactive host tty rooted in `~` (see Web shell below).
 
 ## API
@@ -77,7 +77,9 @@ shell, it runs as the dashboard user.
 |--------|------|----------|
 | GET    | /api/fs/list?path=… | Folder listing. Returns `{path, name, parent, home, places, entries, total, truncated}`; `entries` is capped at 2,000 and `truncated` is true when the folder held more, so `total` counts the entries returned. Each entry: `{name, path, type (dir/file/link/other), is_dir, is_link, size, mtime, mode, hidden, readable, writable}`. 404/400/403 on missing/not-a-dir/denied. |
 | GET    | /api/fs/stat?path=… | One entry plus `mime`, `owner`, `group`, `uid`, `gid`, `link_target`, and ISO times (`mtime_iso`, `ctime_iso`, `btime_iso` on macOS). |
+| GET    | /api/fs/read?path=… | Read one UTF-8 text file for the inline editor. Returns `{path, name, text, size, mtime}`. 404 missing; 400 directory or not a regular file; 403 denied; 413 over 2 MB; 415 binary (NUL byte or non-UTF-8). |
 | GET    | /api/fs/download?path=… | Stream one file as an attachment (range-capable). 400 for directories. |
+| PUT    | /api/fs/write | JSON `{path, content}` — overwrite one existing text file, in place, UTF-8, permissions kept. 404 missing; 400 directory/not-regular/missing content; 403 not writable. |
 | POST   | /api/fs/upload | Multipart form: `path` (target folder), one or more `file`, optional `overwrite=1`. 409 when a name exists and overwrite is off. |
 | POST   | /api/fs/mkdir | JSON `{path}` or `{parent, name}` — create one folder. |
 | POST   | /api/fs/touch | JSON `{path}` or `{parent, name}` — create one empty file. |

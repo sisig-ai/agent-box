@@ -18,6 +18,7 @@
   <link rel="stylesheet" href="/static/css/schedule.css">
   <link rel="stylesheet" href="/static/css/shell.css">
   <link rel="stylesheet" href="/static/css/files.css">
+  <link rel="stylesheet" href="/static/css/editor.css">
   <link rel="stylesheet" href="/static/css/modal.css">
 </head>
 <body data-view="stack">
@@ -225,6 +226,19 @@
       <nav class="files-breadcrumb" id="files-breadcrumb" aria-label="Current folder"></nav>
 
       <div class="files-body">
+        <div class="files-editor" id="files-editor" hidden>
+          <div class="files-editor-head">
+            <span class="files-editor-name" id="files-editor-name"></span>
+            <span class="files-editor-dirty" id="files-editor-dirty" hidden>unsaved</span>
+            <div class="files-editor-actions">
+              <button class="brief-btn" id="files-editor-save" title="Save (Cmd/Ctrl+S)">Save</button>
+              <button class="brief-btn" id="files-editor-download" title="Download current content">Download</button>
+              <button class="brief-btn" id="files-editor-close" title="Close (Esc)">Close</button>
+            </div>
+          </div>
+          <div class="files-editor-host" id="files-editor-host"></div>
+          <div class="files-editor-status" id="files-editor-status"></div>
+        </div>
         <div class="files-list-wrap" id="files-list-wrap">
           <table class="files-table">
             <thead>

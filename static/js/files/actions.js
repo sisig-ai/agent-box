@@ -3,6 +3,7 @@ import { $ } from '../dom.js';
 import { state, refs, render, renderBreadcrumb, renderPlaces, clearSelection, setStatus } from './render.js';
 import { api, xhrUpload } from './api.js';
 import { openModal } from '../modal.js';
+import { openEditor, closeEditor, editorIsOpen } from './editor.js';
 
 /* ----- Data access ----- */
 async function load(path) {
@@ -33,13 +34,39 @@ async function load(path) {
   }
 }
 
-export function cd(path) {
+export async function cd(path) {
+  if (!(await closeEditor())) return;
   clearSelection();
   load(path);
 }
 
 export function goUp() {
   if (state.parentPath) cd(state.parentPath);
+}
+
+export async function openEntry(e) {
+  if (!e || e.is_dir) { if (e) cd(e.path); return; }
+  setStatus('opening ' + e.name + '…');
+  let res;
+  try {
+    res = await fetch('/api/fs/read?path=' + encodeURIComponent(e.path));
+  } catch (err) {
+    setStatus('network error', true);
+    return;
+  }
+  if (res.status === 413 || res.status === 415) {
+    const d = await res.json().catch(() => ({}));
+    setStatus((d.error || 'not editable') + ' — downloading ' + e.name);
+    download(e);
+    return;
+  }
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    setStatus(d.error || ('could not open file (' + res.status + ')'), true);
+    return;
+  }
+  const d = await res.json();
+  if (await openEditor(d.path, d.name, d.text)) setStatus('editing ' + d.name);
 }
 
 export function download(e) {
@@ -126,7 +153,7 @@ async function uploadQueue(list) {
 function wire() {
   $('files-up').addEventListener('click', goUp);
   $('files-home').addEventListener('click', () => { if (state.home) cd(state.home); });
-  $('files-refresh').addEventListener('click', () => { if (state.cwd) load(state.cwd); });
+  $('files-refresh').addEventListener('click', async () => { if (state.cwd && await closeEditor()) load(state.cwd); });
   $('files-hidden').addEventListener('click', (e) => {
     state.showHidden = !state.showHidden;
     e.currentTarget.classList.toggle('toggled', state.showHidden);
@@ -159,13 +186,14 @@ function wire() {
   });
 
   document.addEventListener('keydown', (e) => {
-    if (document.body.dataset.view !== 'files' || !modalOpen()) return;
+    if (document.body.dataset.view !== 'files' || modalOpen()) return;
+    if (editorIsOpen()) return;
     const tag = document.activeElement && document.activeElement.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA') return;
     if (e.key === 'Backspace') { e.preventDefault(); goUp(); }
     else if (e.key === 'Enter' && state.selected) {
       e.preventDefault();
-      if (state.selected.is_dir) cd(state.selected.path); else download(state.selected);
+      if (state.selected.is_dir) cd(state.selected.path); else openEntry(state.selected);
     } else if (e.key === 'Delete' && state.selected) { e.preventDefault(); deleteEntry(state.selected); }
     else if (e.key.toLowerCase() === 'r' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); load(state.cwd); }
   });

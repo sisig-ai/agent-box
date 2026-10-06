@@ -1,6 +1,6 @@
 // Files explorer: shared DOM refs + state, table/breadcrumb/places/info render.
 import { $, esc } from '../dom.js';
-import { cd, download, renameEntry, deleteEntry } from './actions.js';
+import { cd, download, openEntry, renameEntry, deleteEntry } from './actions.js';
 
 export const refs = {
   tbody: $('files-tbody'), listWrap: $('files-list-wrap'),
@@ -156,13 +156,14 @@ export function render() {
     if (e.is_dir) {
       actions.appendChild(actionBtn('▸', 'Open folder', (ev) => { ev.stopPropagation(); cd(e.path); }));
     } else {
+      actions.appendChild(actionBtn('⤢', 'Open in editor', (ev) => { ev.stopPropagation(); openEntry(e); }));
       actions.appendChild(actionBtn('⬇', 'Download', (ev) => { ev.stopPropagation(); download(e); }));
     }
     actions.appendChild(actionBtn('✎', 'Rename', (ev) => { ev.stopPropagation(); renameEntry(e); }));
     actions.appendChild(actionBtn('✕', 'Delete', (ev) => { ev.stopPropagation(); deleteEntry(e); }, true));
 
     tr.addEventListener('click', () => selectEntry(e));
-    tr.addEventListener('dblclick', () => { if (e.is_dir) cd(e.path); else download(e); });
+    tr.addEventListener('dblclick', () => { if (e.is_dir) cd(e.path); else openEntry(e); });
     frag.appendChild(tr);
   }
   refs.tbody.appendChild(frag);

@@ -19,7 +19,7 @@ Python: 3.11 in `.venv`. System packages: Homebrew macmon and tmux.
   `fs_paths` + `fs` + `fs_api`, `shell/` (tmux backend + HTTP API), `ws/`
   (frames, handshake, session, server), and `collector`.
 - `static/` — the UI: `index.html`, `css/`, no-build ES modules under `js/`,
-  vendored `vendor/marked.min.js`, and fonts.
+  vendored `vendor/marked.min.js` and `vendor/codemirror/`, and fonts.
 - `tests/` — pytest suite (hermetic; tmux and the collector are mocked).
 - `deploy/` — LaunchDaemon plists, `install-services.sh`, rehearsal tooling,
   and the legacy `source-linux/` recipe.

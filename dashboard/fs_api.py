@@ -2,7 +2,7 @@
 
 from flask import Blueprint, request
 
-from . import fs
+from . import fs, fs_text
 
 bp = Blueprint("fs", __name__)
 
@@ -23,6 +23,18 @@ def fs_stat():
 def fs_download():
     """GET /api/fs/download?path=… — stream one file as an attachment."""
     return fs.download_file(request.args.get("path"))
+
+
+@bp.get("/api/fs/read")
+def fs_read():
+    """GET /api/fs/read?path=… — one UTF-8 text file for the inline editor."""
+    return fs_text.read_text_file(request.args.get("path"))
+
+
+@bp.put("/api/fs/write")
+def fs_write():
+    """PUT /api/fs/write — JSON {path, content}: overwrite one text file."""
+    return fs_text.write_text_file(request.get_json(silent=True) or {})
 
 
 @bp.post("/api/fs/upload")

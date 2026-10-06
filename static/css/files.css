@@ -124,7 +124,7 @@
 .files-table th.col-size, .files-table td.files-size { width: 88px; }
 .files-table th.col-date, .files-table td.files-date { width: 168px; }
 .files-table th.col-mode, .files-table td.files-mode { width: 104px; }
-.files-table th.col-actions, .files-table td.files-actions-cell { width: 96px; }
+.files-table th.col-actions, .files-table td.files-actions-cell { width: 128px; }
 
 .files-row { cursor: pointer; }
 .files-row:hover { background: rgba(114,167,255,0.07); }
