@@ -19,36 +19,10 @@ import subprocess
 import time
 from pathlib import Path
 
+from dashboard.shell.keys import resolve_key
+
 SHELL_HOME = str(Path.home())
 SHELL_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
-
-# Key names accepted by the shell key endpoint/message, mapped to tmux args.
-SHELL_KEYS = {
-    "Enter": "Enter",
-    "Backspace": "BSpace",
-    "Tab": "Tab",
-    "Escape": "Escape",
-    "Up": "Up",
-    "Down": "Down",
-    "Left": "Left",
-    "Right": "Right",
-    "Home": "Home",
-    "End": "End",
-    "PageUp": "PageUp",
-    "PageDown": "PageDown",
-    "Delete": "DC",
-    "Insert": "IC",
-    "C-c": "C-c",
-    "C-d": "C-d",
-    "C-l": "C-l",
-    "C-u": "C-u",
-    "C-k": "C-k",
-    "C-a": "C-a",
-    "C-e": "C-e",
-    "C-r": "C-r",
-    "C-w": "C-w",
-    "C-z": "C-z",
-}
 
 INPUT_MAX = 4096  # max chars per input message (stdin-piped, no quoting)
 
@@ -226,7 +200,7 @@ def paste_text(sid, text):
 
 def send_key(sid, key):
     """Send one allowlisted special key. Same status shape as paste_text."""
-    arg = SHELL_KEYS.get(key or "")
+    arg = resolve_key(key)
     if arg is None:
         return "bad", "unknown shell id or key"
     try:

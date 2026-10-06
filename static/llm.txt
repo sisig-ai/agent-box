@@ -98,7 +98,7 @@ tmux session on the host, started with cwd `~` (`/Users/kixpanganiban`). The HTT
 | POST | /api/shell/new | Create (or attach to) a session. JSON `{"id"?, "cols"?, "rows"?}` → `{"id", "session", "cols", "rows", "cwd": "~"}`. Omit `id` for a server-generated one. |
 | GET  | /api/shell/pane?id=… | Snapshot: `{"alive", "text" (ANSI, visible pane), "cursor_x", "cursor_y", "cols", "rows", "cmd"}`. 404 when the session is gone. |
 | POST | /api/shell/input | Type literal text. JSON `{"id", "text"}` (max 4096 chars, stdin-piped — no shell quoting). |
-| POST | /api/shell/key | One special key. JSON `{"id", "key"}` where key ∈ Enter, Backspace, Tab, Escape, Up/Down/Left/Right, Home, End, PageUp, PageDown, Delete, Insert, C-c, C-d, C-l, C-u, C-k, C-a, C-e, C-r, C-w, C-z. |
+| POST | /api/shell/key | One special key. JSON `{"id", "key"}` where key is a named key (Enter, Backspace, Tab, Escape, Up/Down/Left/Right, Home, End, PageUp, PageDown, Delete, Insert) optionally prefixed with `C-`/`M-`/`S-` (e.g. `C-c`, `M-Left`, `C-M-x`, `S-Tab`), or one printable character. |
 | POST | /api/shell/resize | JSON `{"id", "cols", "rows"}` (clamped 20–300 × 5–100). |
 | POST | /api/shell/kill | Destroy the session. JSON `{"id"}`. |
 | GET  | /api/shell/list | Dashboard-owned host sessions (`dash-*`). |

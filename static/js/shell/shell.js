@@ -139,20 +139,67 @@ export function initShell() { if (ensureImpl) ensureImpl(); }
     Delete: 'Delete', Insert: 'Insert',
   };
 
+  /* ---------- on-screen keys: sticky modifiers + arrows ---------- */
+  // Tap a modifier to arm it; the next key or typed character composes with
+  // it, then the modifier clears.
+  const MOD_ORDER = ['C', 'M', 'S'];
+  const armed = new Set();
+  const keyBar = $('term-keys');
+  const modBtns = keyBar ? [...keyBar.querySelectorAll('.key-btn.mod')] : [];
+  // US layout: the glyph a Shift-modified printable key produces.
+  const SHIFT_CHARS = {
+    '1': '!', '2': '@', '3': '#', '4': '$', '5': '%', '6': '^', '7': '&',
+    '8': '*', '9': '(', '0': ')', '-': '_', '=': '+', '[': '{', ']': '}',
+    '\\': '|', ';': ':', "'": '"', ',': '<', '.': '>', '/': '?', '`': '~',
+  };
+
+  function syncMods() {
+    for (const b of modBtns) {
+      const on = armed.has(b.dataset.mod);
+      b.classList.toggle('armed', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+  }
+  function clearMods() { armed.clear(); syncMods(); }
+
+  // Emit a named key or combo ("Tab", "C-c"), folding in the armed modifiers in
+  // canonical order, then clear them.
+  function emitKey(name) {
+    const parts = name.split('-');
+    const base = parts.pop();
+    const mods = new Set(parts);
+    for (const m of armed) mods.add(m);
+    clearMods();
+    sendKey(MOD_ORDER.filter(m => mods.has(m)).map(m => m + '-').join('') + base);
+  }
+
+  // Printable character: Shift folds into the glyph; Ctrl/Alt stay as prefixes
+  // ("C-c", "M-f"). No modifier armed -> plain typed input.
+  function emitChar(ch) {
+    if (!armed.size) { typeText(ch); return; }
+    let base = ch;
+    if (armed.has('S') && ch.length === 1)
+      base = /[a-z]/.test(ch) ? ch.toUpperCase() : (SHIFT_CHARS[ch] || ch);
+    const spec = MOD_ORDER.filter(m => m !== 'S' && armed.has(m)).map(m => m + '-').join('') + base;
+    clearMods();
+    if (spec === base) typeText(base);
+    else sendKey(spec);
+  }
+
   term.addEventListener('keydown', (e) => {
     if (document.body.dataset.view !== 'shell') return;
     const mod = e.ctrlKey || e.metaKey;
-    if (mod && e.key.toLowerCase() === 'c') { e.preventDefault(); sendKey('C-c'); return; }
-    if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); sendKey('C-d'); return; }
-    if (mod && e.key.toLowerCase() === 'l') { e.preventDefault(); sendKey('C-l'); return; }
-    if (mod && e.key.toLowerCase() === 'u') { e.preventDefault(); sendKey('C-u'); return; }
-    if (mod && e.key.toLowerCase() === 'k') { e.preventDefault(); sendKey('C-k'); return; }
-    if (mod && e.key.toLowerCase() === 'a') { e.preventDefault(); sendKey('C-a'); return; }
-    if (mod && e.key.toLowerCase() === 'e') { e.preventDefault(); sendKey('C-e'); return; }
-    if (mod && e.key.toLowerCase() === 'r') { e.preventDefault(); sendKey('C-r'); return; }
+    if (mod && e.key.toLowerCase() === 'c') { e.preventDefault(); emitKey('C-c'); return; }
+    if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); emitKey('C-d'); return; }
+    if (mod && e.key.toLowerCase() === 'l') { e.preventDefault(); emitKey('C-l'); return; }
+    if (mod && e.key.toLowerCase() === 'u') { e.preventDefault(); emitKey('C-u'); return; }
+    if (mod && e.key.toLowerCase() === 'k') { e.preventDefault(); emitKey('C-k'); return; }
+    if (mod && e.key.toLowerCase() === 'a') { e.preventDefault(); emitKey('C-a'); return; }
+    if (mod && e.key.toLowerCase() === 'e') { e.preventDefault(); emitKey('C-e'); return; }
+    if (mod && e.key.toLowerCase() === 'r') { e.preventDefault(); emitKey('C-r'); return; }
     if (mod) return; // let browser handle the rest
-    if (KEYMAP[e.key]) { e.preventDefault(); sendKey(KEYMAP[e.key]); return; }
-    if (e.key.length === 1) { e.preventDefault(); typeText(e.key); return; }
+    if (KEYMAP[e.key]) { e.preventDefault(); emitKey(KEYMAP[e.key]); return; }
+    if (e.key.length === 1) { e.preventDefault(); emitChar(e.key); return; }
   });
 
   // Mobile / IME fallback: hidden input captures what keydown misses.
@@ -162,7 +209,11 @@ export function initShell() { if (ensureImpl) ensureImpl(); }
   term.style.position = 'relative';
   term.appendChild(ime);
   ime.addEventListener('input', () => {
-    if (ime.value) { typeText(ime.value); ime.value = ''; }
+    if (!ime.value) return;
+    const v = ime.value;
+    ime.value = '';
+    if (armed.size) { for (const ch of v) emitChar(ch); }
+    else typeText(v);
   });
   term.addEventListener('click', () => {
     term.focus({ preventScroll: true });
@@ -198,6 +249,23 @@ export function initShell() { if (ensureImpl) ensureImpl(); }
     wSend({ t: 'new' }); // server kills + recreates (keeps pty size)
     term.focus();
   });
+
+  if (keyBar) {
+    keyBar.addEventListener('mousedown', (e) => e.preventDefault()); // keep terminal focus
+    keyBar.addEventListener('click', (e) => {
+      const btn = e.target.closest('.key-btn');
+      if (!btn) return;
+      e.stopPropagation();
+      if (btn.dataset.mod) {
+        const m = btn.dataset.mod;
+        armed.has(m) ? armed.delete(m) : armed.add(m);
+        syncMods();
+      } else if (btn.dataset.key) {
+        emitKey(btn.dataset.key);
+      }
+    });
+  }
+  syncMods();
 
   ensureImpl = ensure;
 })();

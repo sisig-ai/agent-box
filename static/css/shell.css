@@ -160,3 +160,38 @@ body[data-view="shell"] .term-screen .t-cursor {
   gap: 1rem;
   flex-wrap: wrap;
 }
+
+.term-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.15rem 1.15rem 0.5rem;
+}
+
+.key-btn {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  line-height: 1;
+  min-width: 2.1rem;
+  padding: 0.4rem 0.6rem;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.key-btn:hover { color: var(--text); border-color: rgba(114, 167, 255, 0.5); }
+.key-btn:active { transform: translateY(1px); }
+
+.key-btn.armed {
+  color: var(--text);
+  background: rgba(114, 167, 255, 0.18);
+  border-color: rgba(114, 167, 255, 0.6);
+  box-shadow: 0 0 12px -4px rgba(114, 167, 255, 0.7);
+}
+
+@media (pointer: coarse) {
+  .key-btn { padding: 0.55rem 0.75rem; }
+}
