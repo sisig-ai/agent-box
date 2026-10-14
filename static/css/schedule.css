@@ -194,83 +194,49 @@
   background: rgba(114,167,255,0.12);
 }
 
-/* ================= Calendar grid (appended) ================= */
+/* ================= Calendar agenda (appended) ================= */
 
 .schedule-calendar {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
 }
 
-.cal-dow {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 1px;
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-}
-
-.cal-dow-cell {
-  text-align: center;
-  padding: 0.15rem 0;
-}
-
-.cal-days {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 1px;
-  background: var(--border);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.cal-day {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  min-height: 120px;
-  padding: 0.35rem 0.4rem 0.5rem;
-  background: rgba(5, 8, 20, 0.55);
-}
-
-.cal-day.cal-weekend {
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.cal-num {
-  font-family: var(--mono);
-  font-size: 0.68rem;
-  color: var(--muted);
-  letter-spacing: 0.04em;
-}
-
-.cal-day.cal-today {
-  outline: 1px solid rgba(114, 167, 255, 0.55);
-  outline-offset: -1px;
-  box-shadow: inset 0 0 14px -4px rgba(114, 167, 255, 0.5);
-}
-
-.cal-day.cal-today .cal-num {
-  color: var(--blue);
-}
-
-.cal-events {
+.cal-row {
   display: flex;
   flex-direction: column;
   gap: 0.22rem;
+  padding: 0.5rem 0 0.5rem 0.6rem;
+  border-left: 2px solid transparent;
+}
+
+.cal-row + .cal-row {
+  border-top: 1px solid var(--border);
+}
+
+.cal-rowhead {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.cal-row.cal-today {
+  border-left-color: var(--blue);
+}
+
+.cal-row.cal-today .cal-rowhead {
+  color: var(--blue);
 }
 
 .cal-event {
-  font-size: 0.68rem;
-  line-height: 1.35;
+  font-size: 0.72rem;
+  line-height: 1.4;
   color: var(--text);
   overflow-wrap: anywhere;
 }
 
-.cal-event.cal-event-done {
+.cal-event.done {
   color: var(--muted);
   text-decoration: line-through;
 }
@@ -283,10 +249,4 @@
   margin-top: 1rem;
   padding-top: 0.75rem;
   border-top: 1px dashed var(--border);
-}
-
-@media (max-width: 900px) {
-  .cal-dow { font-size: 0.56rem; }
-  .cal-day { min-height: 92px; }
-  .cal-event { font-size: 0.62rem; }
 }

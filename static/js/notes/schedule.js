@@ -164,53 +164,37 @@ import { renderMarkdown } from './markdown.js';
     preview.textContent = '';
 
     if (parsed.mapped.some(Boolean)) {
-      const wrap = document.createElement('div');
-      wrap.className = 'schedule-calendar';
+      const list = document.createElement('div');
+      list.className = 'schedule-calendar';
 
-      const dow = document.createElement('div');
-      dow.className = 'cal-dow';
-      for (const name of ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']) {
-        const cell = document.createElement('div');
-        cell.className = 'cal-dow-cell';
-        cell.textContent = name;
-        dow.appendChild(cell);
-      }
-      wrap.appendChild(dow);
-
-      const days = document.createElement('div');
-      days.className = 'cal-days';
       for (let i = 0; i < 7; i++) {
-        const day = document.createElement('div');
-        day.className = 'cal-day';
-        if (i >= 5) day.classList.add('cal-weekend');
-        if (i === todayOff) day.classList.add('cal-today');
+        const row = document.createElement('div');
+        row.className = 'cal-row';
+        if (i === todayOff) row.classList.add('cal-today');
 
-        const num = document.createElement('div');
-        num.className = 'cal-num';
-        num.textContent = String(new Date(Date.UTC(wy, wm - 1, wd + i)).getUTCDate());
-        day.appendChild(num);
+        const head = document.createElement('div');
+        head.className = 'cal-rowhead';
+        head.textContent = new Date(wy, wm - 1, wd + i)
+          .toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+        row.appendChild(head);
 
-        const events = document.createElement('div');
-        events.className = 'cal-events';
-        const list = parsed.cells[i];
-        if (!list.length) {
+        const dayItems = parsed.cells[i];
+        if (!dayItems.length) {
           const none = document.createElement('div');
           none.className = 'cal-event cal-event-empty';
           none.textContent = '—';
-          events.appendChild(none);
+          row.appendChild(none);
         } else {
-          for (const item of list) {
-            const row = document.createElement('div');
-            row.className = item.done ? 'cal-event cal-event-done' : 'cal-event';
-            row.textContent = item.text;
-            events.appendChild(row);
+          for (const item of dayItems) {
+            const ev = document.createElement('div');
+            ev.className = item.done ? 'cal-event done' : 'cal-event';
+            ev.textContent = item.text;
+            row.appendChild(ev);
           }
         }
-        day.appendChild(events);
-        days.appendChild(day);
+        list.appendChild(row);
       }
-      wrap.appendChild(days);
-      preview.appendChild(wrap);
+      preview.appendChild(list);
     }
 
     if (parsed.extra) {
