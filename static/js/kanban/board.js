@@ -1,8 +1,8 @@
 // Kanban tab: lanes as columns, cards with inline edit, HTML5 drag and drop,
 // and a 3s poll (only while the tab is visible and nobody is mid-edit/drag) so
 // changes agents make through /api/kanban show up on their own.
-import { api } from './api.js?v=kanban1';
-import { inlineEdit, armDelete } from './edit.js?v=kanban1';
+import { api } from './api.js?v=kanban2';
+import { inlineEdit, armDelete } from './edit.js?v=kanban2';
 
 const POLL_MS = 3000;
 const $ = (id) => document.getElementById(id);
@@ -43,7 +43,9 @@ function render() {
   const { lanes, cards } = state.data;
   const board = $('kanban-board');
   board.replaceChildren(...lanes.map((lane) => renderLane(lane, cards.filter((c) => c.lane_id === lane.id))));
-  $('kanban-count').textContent = `${cards.length} card${cards.length === 1 ? '' : 's'} · ${lanes.length} lanes`;
+  const archived = lanes.reduce((n, l) => n + (l.archived_count || 0), 0);
+  $('kanban-count').textContent = `${cards.length} card${cards.length === 1 ? '' : 's'} · ${lanes.length} lanes`
+    + (archived ? ` · ${archived} archived` : '');
   if (!lanes.length) board.append(el('div', 'kb-empty', 'No lanes yet — add one with + Lane.'));
 }
 
@@ -59,7 +61,9 @@ function renderLane(lane, cards) {
   del.disabled = cards.length > 0;
   del.title = cards.length ? 'Move or delete this lane’s cards first' : 'Delete empty lane';
   armDelete(del, () => mutate(() => api.deleteLane(lane.id)));
-  head.append(name, el('span', 'kb-count', String(cards.length)), del);
+  head.append(name, el('span', 'kb-count', String(cards.length)));
+  if (lane.name.toLowerCase() === 'done') head.append(renderArchiveDone(cards.length));
+  head.append(del);
 
   const list = el('div', 'kb-cards');
   list.dataset.laneId = lane.id;
@@ -68,6 +72,18 @@ function renderLane(lane, cards) {
 
   col.append(head, list, renderAdd(lane));
   return col;
+}
+
+// "Archive Done": archives every card in the Done lane server-side (two-click confirm).
+function renderArchiveDone(count) {
+  const btn = el('button', 'kb-archive-btn', 'Archive Done');
+  btn.disabled = count === 0;
+  btn.title = count ? `Archive all ${count} card(s) in Done (click twice)` : 'Done is empty';
+  armDelete(btn, () => mutate(async () => {
+    const r = await api.archiveDone();
+    setStatus(`archived ${r.archived} card${r.archived === 1 ? '' : 's'}`);
+  }), `archive ${count}?`);
+  return btn;
 }
 
 function renderCard(card) {

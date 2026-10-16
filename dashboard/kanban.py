@@ -49,10 +49,12 @@ def init_schema(conn):
             lane_id    INTEGER NOT NULL REFERENCES kanban_lane(id),
             position   INTEGER NOT NULL,
             created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
+            updated_at TEXT NOT NULL,
+            archived_at TEXT
         )
         """
     )
+    migrate(conn)
     conn.execute("CREATE INDEX IF NOT EXISTS kanban_card_lane ON kanban_card (lane_id, position)")
     if not existed:
         stamp = now_iso()
@@ -62,18 +64,29 @@ def init_schema(conn):
         )
 
 
+def migrate(conn):
+    """Additive, idempotent migrations for databases created by older versions."""
+    columns = {r["name"] for r in conn.execute("PRAGMA table_info(kanban_card)").fetchall()}
+    if "archived_at" not in columns:
+        conn.execute("ALTER TABLE kanban_card ADD COLUMN archived_at TEXT")
+
+
 # ---------------- reads ----------------
 
 CARD_SQL = (
     "SELECT c.id, c.title, c.owner, l.name AS status, c.lane_id, c.position,"
-    " c.created_at, c.updated_at FROM kanban_card c JOIN kanban_lane l ON l.id = c.lane_id"
+    " c.created_at, c.updated_at, c.archived_at"
+    " FROM kanban_card c JOIN kanban_lane l ON l.id = c.lane_id"
 )
 
 
 def lanes(conn):
     rows = conn.execute(
         "SELECT l.id, l.name, l.position, l.created_at, l.updated_at,"
-        " (SELECT COUNT(*) FROM kanban_card c WHERE c.lane_id = l.id) AS card_count"
+        " (SELECT COUNT(*) FROM kanban_card c WHERE c.lane_id = l.id"
+        "  AND c.archived_at IS NULL) AS card_count,"
+        " (SELECT COUNT(*) FROM kanban_card c WHERE c.lane_id = l.id"
+        "  AND c.archived_at IS NOT NULL) AS archived_count"
         " FROM kanban_lane l ORDER BY l.position, l.id"
     ).fetchall()
     return [dict(r) for r in rows]
@@ -103,8 +116,13 @@ def require_lane(conn, ref, label="status"):
     return lane
 
 
-def cards(conn, lane_id=None, owner=None):
+def cards(conn, lane_id=None, owner=None, archived="exclude"):
+    """Cards in board order. ``archived``: "exclude" (default), "include", or "only"."""
     sql, args, where = CARD_SQL, [], []
+    if archived == "exclude":
+        where.append("c.archived_at IS NULL")
+    elif archived == "only":
+        where.append("c.archived_at IS NOT NULL")
     if lane_id is not None:
         where.append("c.lane_id = ?")
         args.append(lane_id)
@@ -115,7 +133,10 @@ def cards(conn, lane_id=None, owner=None):
         args.append(owner)
     if where:
         sql += " WHERE " + " AND ".join(where)
-    sql += " ORDER BY l.position, l.id, c.position, c.id"
+    if archived == "only":
+        sql += " ORDER BY c.archived_at DESC, c.id DESC"
+    else:
+        sql += " ORDER BY c.archived_at IS NOT NULL, l.position, l.id, c.position, c.id"
     return [dict(r) for r in conn.execute(sql, args).fetchall()]
 
 
@@ -126,18 +147,21 @@ def card(conn, card_id):
     return dict(row)
 
 
-def board(status=None, owner=None):
+def board(status=None, owner=None, archived="exclude"):
     conn = db.get_db()
     lane_id = require_lane(conn, status)["id"] if status is not None else None
-    return {"lanes": lanes(conn), "cards": cards(conn, lane_id, owner)}
+    return {"lanes": lanes(conn), "cards": cards(conn, lane_id, owner, archived)}
 
 
 # ---------------- ordering helpers ----------------
 
 
 def _lane_card_ids(conn, lane_id, exclude=None):
+    """Visible (non-archived) card ids of a lane, in order."""
     rows = conn.execute(
-        "SELECT id FROM kanban_card WHERE lane_id = ? ORDER BY position, id", (lane_id,)
+        "SELECT id FROM kanban_card WHERE lane_id = ? AND archived_at IS NULL"
+        " ORDER BY position, id",
+        (lane_id,),
     ).fetchall()
     return [r["id"] for r in rows if r["id"] != exclude]
 
@@ -182,25 +206,55 @@ def create_card(title, owner=None, status=None, position=None):
 
 
 def update_card(card_id, changes):
-    """Apply any of title / owner / status / position. Returns the updated card."""
+    """Apply any of title / owner / status / position / archived. Returns the card.
+
+    Archiving takes the card out of its lane's ordering (the visible cards are
+    renumbered); unarchiving puts it back at ``position`` or the bottom.
+    """
     with _WRITE_LOCK, db.get_db() as conn:
         current = card(conn, card_id)
+        old_lane = current["lane_id"]
+        was = current["archived_at"] is not None
+        will = changes.get("archived", was)
         fields = {k: changes[k] for k in ("title", "owner") if k in changes}
-        if "status" in changes or "position" in changes:
-            target = current["lane_id"]
-            if "status" in changes:
-                target = require_lane(conn, changes["status"])["id"]
+        target = require_lane(conn, changes["status"])["id"] if "status" in changes else old_lane
+        if will:
+            if not was:
+                fields["archived_at"] = now_iso()
+                _write_order(conn, old_lane, _lane_card_ids(conn, old_lane, exclude=card_id))
+            if target != old_lane:
+                fields["lane_id"] = target
+        elif was or "status" in changes or "position" in changes:
+            if was:
+                fields["archived_at"] = None
             position = changes.get("position")
-            if position is None and target == current["lane_id"]:
+            if position is None and target == old_lane and not was:
                 position = current["position"]
             ids = _place(_lane_card_ids(conn, target, exclude=card_id), card_id, position)
             _write_order(conn, target, ids)
-            if target != current["lane_id"]:
-                _write_order(conn, current["lane_id"], _lane_card_ids(conn, current["lane_id"]))
+            if target != old_lane and not was:
+                _write_order(conn, old_lane, _lane_card_ids(conn, old_lane))
         fields["updated_at"] = now_iso()
         sets = ", ".join(f"{k} = ?" for k in fields)
         conn.execute(f"UPDATE kanban_card SET {sets} WHERE id = ?", (*fields.values(), card_id))
         return card(conn, card_id)
+
+
+def archive_lane(lane_name="Done"):
+    """Archive every visible card in the lane named ``lane_name`` (case-insensitive)."""
+    with _WRITE_LOCK, db.get_db() as conn:
+        row = conn.execute(
+            "SELECT * FROM kanban_lane WHERE name = ? COLLATE NOCASE", (lane_name,)
+        ).fetchone()
+        if row is None:
+            raise KanbanError(f"no lane named {lane_name!r}", 404)
+        ids = _lane_card_ids(conn, row["id"])
+        stamp = now_iso()
+        conn.executemany(
+            "UPDATE kanban_card SET archived_at = ?, updated_at = ? WHERE id = ?",
+            [(stamp, stamp, cid) for cid in ids],
+        )
+        return {"archived": len(ids), "ids": ids, "lane": row["name"], "archived_at": stamp}
 
 
 def delete_card(card_id):
@@ -209,85 +263,3 @@ def delete_card(card_id):
         conn.execute("DELETE FROM kanban_card WHERE id = ?", (card_id,))
         _write_order(conn, current["lane_id"], _lane_card_ids(conn, current["lane_id"]))
         return current
-
-
-# ---------------- lane writes ----------------
-
-
-def _lane_out(conn, lane_id):
-    return next(lane for lane in lanes(conn) if lane["id"] == lane_id)
-
-
-def _reorder_lanes(conn, lane_id, position):
-    rows = conn.execute("SELECT id FROM kanban_lane ORDER BY position, id").fetchall()
-    ids = _place([r["id"] for r in rows if r["id"] != lane_id], lane_id, position)
-    conn.executemany(
-        "UPDATE kanban_lane SET position = ? WHERE id = ?", [(i, lid) for i, lid in enumerate(ids)]
-    )
-
-
-def _check_name_free(conn, name, lane_id=None):
-    clash = find_lane(conn, name)
-    if clash and clash["id"] != lane_id:
-        raise KanbanError(f"a lane named {clash['name']!r} already exists", 409)
-
-
-def create_lane(name, position=None):
-    with _WRITE_LOCK, db.get_db() as conn:
-        _check_name_free(conn, name)
-        stamp = now_iso()
-        cur = conn.execute(
-            "INSERT INTO kanban_lane (name, position, created_at, updated_at) VALUES (?, ?, ?, ?)",
-            (name, 1 << 30, stamp, stamp),
-        )
-        _reorder_lanes(conn, cur.lastrowid, position)
-        return _lane_out(conn, cur.lastrowid)
-
-
-def update_lane(ref, name=None, position=None):
-    with _WRITE_LOCK, db.get_db() as conn:
-        lane = find_lane(conn, ref)
-        if lane is None:
-            raise KanbanError("lane not found", 404)
-        if name is not None:
-            _check_name_free(conn, name, lane["id"])
-            conn.execute("UPDATE kanban_lane SET name = ? WHERE id = ?", (name, lane["id"]))
-        if position is not None:
-            _reorder_lanes(conn, lane["id"], position)
-        conn.execute("UPDATE kanban_lane SET updated_at = ? WHERE id = ?", (now_iso(), lane["id"]))
-        return _lane_out(conn, lane["id"])
-
-
-def delete_lane(ref, force=False, target=None):
-    """Delete a lane. Cards block it unless ``force`` (cards deleted) or ``target`` (moved)."""
-    with _WRITE_LOCK, db.get_db() as conn:
-        lane = find_lane(conn, ref)
-        if lane is None:
-            raise KanbanError("lane not found", 404)
-        ids = _lane_card_ids(conn, lane["id"])
-        moved_to = None
-        if ids and target is not None:
-            dest = require_lane(conn, target, label="target lane")
-            if dest["id"] == lane["id"]:
-                raise KanbanError("target lane must differ from the lane being deleted", 400)
-            _write_order(conn, dest["id"], _lane_card_ids(conn, dest["id"]) + ids)
-            moved_to = dest["name"]
-        elif ids and force:
-            conn.execute("DELETE FROM kanban_card WHERE lane_id = ?", (lane["id"],))
-        elif ids:
-            raise KanbanError(
-                f"lane {lane['name']!r} has {len(ids)} card(s); pass ?target=<lane> to move"
-                " them or ?force=1 to delete them",
-                409,
-            )
-        conn.execute("DELETE FROM kanban_lane WHERE id = ?", (lane["id"],))
-        _reorder_lanes_compact(conn)
-        return {"deleted": lane["name"], "id": lane["id"], "cards": len(ids), "moved_to": moved_to}
-
-
-def _reorder_lanes_compact(conn):
-    rows = conn.execute("SELECT id FROM kanban_lane ORDER BY position, id").fetchall()
-    conn.executemany(
-        "UPDATE kanban_lane SET position = ? WHERE id = ?",
-        [(i, r["id"]) for i, r in enumerate(rows)],
-    )

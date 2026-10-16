@@ -66,8 +66,16 @@ start: Backlog, To Do, In Progress, Done. Lanes are data: add, rename, reorder,
 or delete them through the API.
 
 Card: `{"id", "title", "owner" (string or null), "status" (lane name), "lane_id",
-"position" (0-based within the lane, 0 = top), "created_at", "updated_at"}`.
-Lane: `{"id", "name", "position", "card_count", "created_at", "updated_at"}`.
+"position" (0-based within the lane, 0 = top), "created_at", "updated_at",
+"archived_at" (null, or when it was archived)}`.
+Lane: `{"id", "name", "position", "card_count" (visible cards), "archived_count",
+"created_at", "updated_at"}`.
+
+Archiving: archived cards are hidden from the board and from every card listing
+by default, but they are kept (not deleted) and stay readable by id. Positions
+stay contiguous among the visible cards of each lane; an archived card's
+`position` is just where it sat when archived. The board's **Archive Done**
+button (Done column header, two-click confirm) calls `POST /api/kanban/archive-done`.
 
 Wherever a lane is referenced (`status` in a card body, `?status=`, the `:lane`
 path segment, `?target=`) you can pass the lane name, **case-insensitive**
@@ -78,16 +86,18 @@ deleting a non-empty lane).
 
 | Method | Path | Behavior |
 |--------|------|----------|
-| GET    | /api/kanban?status=&owner= | `{"lanes": [...], "cards": [...]}`. All lanes always; cards ordered by lane then position, optionally filtered by `status` (lane) and/or `owner` (case-insensitive exact; `owner=` empty = unowned). |
-| GET    | /api/kanban/cards?status=&owner= | Just the cards array (same filters). |
+| GET    | /api/kanban?status=&owner=&include_archived= | `{"lanes": [...], "cards": [...]}`. All lanes always; non-archived cards ordered by lane then position, optionally filtered by `status` (lane) and/or `owner` (case-insensitive exact; `owner=` empty = unowned). `include_archived=1` also returns archived cards (after the visible ones, `archived_at` set). |
+| GET    | /api/kanban/cards?status=&owner=&include_archived= | Just the cards array (same filters). |
+| GET    | /api/kanban/archived?status=&owner= | Archived cards only, most recently archived first. |
+| POST   | /api/kanban/archive-done | Archive every non-archived card in the lane named "Done" (case-insensitive) → `{"archived": N, "ids": [...], "lane", "archived_at"}`. No body needed. 404 if there is no Done lane. |
 | POST   | /api/kanban/cards | JSON `{"title", "owner"?, "status"?, "position"?}` → 201 + card. `status` defaults to the first lane; `position` defaults to the bottom. Title max 500 chars, owner max 100. |
 | GET    | /api/kanban/cards/:id | One card. |
-| PATCH  | /api/kanban/cards/:id | Any of `{"title", "owner", "status", "position"}`. Changing `status` without `position` appends to the bottom of the new lane; `position` alone reorders within the lane. `"owner": null` (or "") clears it. |
+| PATCH  | /api/kanban/cards/:id | Any of `{"title", "owner", "status", "position", "archived"}`. Changing `status` without `position` appends to the bottom of the new lane; `position` alone reorders within the lane. `"owner": null` (or "") clears it. `"archived": true` archives one card; `"archived": false` restores it to the bottom of its lane (or to `status` / `position` if given). `archived` must be a JSON boolean. |
 | DELETE | /api/kanban/cards/:id | Delete → `{"deleted": id, "card": {...}}`. |
 | GET    | /api/kanban/lanes | Lanes in board order, with `card_count`. |
 | POST   | /api/kanban/lanes | JSON `{"name", "position"?}` → 201 + lane. Names are unique (case-insensitive), max 60 chars, not all digits. |
 | PATCH  | /api/kanban/lanes/:lane | `{"name"?, "position"?}` — rename and/or move the column. Cards follow a rename automatically. |
-| DELETE | /api/kanban/lanes/:lane | Refused with 409 if the lane has cards, unless `?target=<lane>` (cards move to the bottom of that lane) or `?force=1` (cards are deleted too). |
+| DELETE | /api/kanban/lanes/:lane | Refused with 409 if the lane has cards (visible or archived), unless `?target=<lane>` (cards move to that lane; visible ones go to the bottom) or `?force=1` (cards are deleted too). |
 
 Examples:
 
@@ -119,6 +129,19 @@ Examples:
 
     # delete a card
     curl -X DELETE http://macmini:5555/api/kanban/cards/7
+
+    # archive one card / restore it
+    curl -X PATCH http://macmini:5555/api/kanban/cards/7 \
+      -H 'Content-Type: application/json' -d '{"archived":true}'
+    curl -X PATCH http://macmini:5555/api/kanban/cards/7 \
+      -H 'Content-Type: application/json' -d '{"archived":false}'
+
+    # archive everything in Done (same as the board's Archive Done button)
+    curl -X POST http://macmini:5555/api/kanban/archive-done
+
+    # see archived cards
+    curl http://macmini:5555/api/kanban/archived
+    curl 'http://macmini:5555/api/kanban?include_archived=1'
 
     # lanes: add "Review" as the 4th column, rename it, delete it (moving cards to Done)
     curl -X POST http://macmini:5555/api/kanban/lanes \
@@ -208,5 +231,5 @@ Server → client:
 - Daily Brief content is markdown. Preserve existing structure when appending — don't rewrite an entry unless the user asks.
 - The Daily Brief is meant for Kix: one markdown entry per calendar day. If asked to "post the daily brief," write today's entry in Manila time.
 - The UI at / is read-only from an agent's perspective; do all writes through the API.
-- Kanban: use your agent name as `owner` so cards are attributable; move cards rather than deleting them when work finishes (Done is a lane). Don't delete or rename lanes unless asked.
+- Kanban: use your agent name as `owner` so cards are attributable; move cards rather than deleting them when work finishes (Done is a lane). Don't delete or rename lanes unless asked, and only call archive-done when asked (it sweeps everyone's Done cards); archive a single card with PATCH instead.
 - No auth headers needed. Keep requests on the LAN/tailnet.

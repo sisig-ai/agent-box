@@ -6,7 +6,7 @@ Errors are JSON ``{"error": "..."}`` with a 400 / 404 / 409 status.
 
 from flask import Blueprint, jsonify, request
 
-from . import kanban
+from . import kanban, kanban_lanes
 from .kanban import KanbanError
 
 bp = Blueprint("kanban", __name__)
@@ -86,15 +86,27 @@ def parse_card_id(raw):
         raise KanbanError("card not found", 404) from None
 
 
+def flag(name):
+    raw = request.args.get(name)
+    return raw is not None and raw.strip().lower() in TRUTHY
+
+
+def filtered_board(archived=None):
+    """kanban.board() with the shared ?status= / ?owner= / ?include_archived= filters."""
+    status = request.args.get("status")
+    owner = request.args.get("owner")
+    if archived is None:
+        archived = "include" if flag("include_archived") else "exclude"
+    return kanban.board(status or None, owner.strip() if owner is not None else None, archived)
+
+
 # ---------------- board ----------------
 
 
 @bp.get("/api/kanban")
 def board_get():
-    """GET /api/kanban?status=&owner= — all lanes plus (filtered) cards."""
-    status = request.args.get("status")
-    owner = request.args.get("owner")
-    return jsonify(kanban.board(status or None, owner.strip() if owner is not None else None))
+    """GET /api/kanban?status=&owner=&include_archived= — all lanes plus (filtered) cards."""
+    return jsonify(filtered_board())
 
 
 # ---------------- cards ----------------
@@ -103,11 +115,19 @@ def board_get():
 @bp.get("/api/kanban/cards")
 def cards_list():
     """GET /api/kanban/cards — the cards array alone (same filters)."""
-    status = request.args.get("status")
-    owner = request.args.get("owner")
-    return jsonify(
-        kanban.board(status or None, owner.strip() if owner is not None else None)["cards"]
-    )
+    return jsonify(filtered_board()["cards"])
+
+
+@bp.get("/api/kanban/archived")
+def archived_list():
+    """GET /api/kanban/archived?status=&owner= — archived cards, newest first."""
+    return jsonify(filtered_board("only")["cards"])
+
+
+@bp.post("/api/kanban/archive-done")
+def archive_done():
+    """POST /api/kanban/archive-done — archive every visible card in the Done lane."""
+    return jsonify(kanban.archive_lane("Done"))
 
 
 @bp.post("/api/kanban/cards")
@@ -133,9 +153,9 @@ def card_get(card_id):
 @bp.patch("/api/kanban/cards/<card_id>")
 def card_patch(card_id):
     card_id = parse_card_id(card_id)
-    body = json_body(("title", "owner", "status", "position"))
+    body = json_body(("title", "owner", "status", "position", "archived"))
     if not body:
-        raise KanbanError("nothing to update; send any of title, owner, status, position")
+        raise KanbanError("nothing to update; send any of title, owner, status, position, archived")
     changes = {}
     if "title" in body:
         changes["title"] = clean_title(body["title"])
@@ -145,6 +165,10 @@ def card_patch(card_id):
         changes["status"] = clean_status(body["status"])
     if "position" in body:
         changes["position"] = clean_position(body["position"])
+    if "archived" in body:
+        if not isinstance(body["archived"], bool):
+            raise KanbanError("archived must be true or false")
+        changes["archived"] = body["archived"]
     return jsonify(kanban.update_card(card_id, changes))
 
 
@@ -167,7 +191,7 @@ def lanes_list():
 @bp.post("/api/kanban/lanes")
 def lane_create():
     body = json_body(("name", "position"))
-    lane = kanban.create_lane(
+    lane = kanban_lanes.create_lane(
         clean_lane_name(body.get("name")), clean_position(body.get("position"))
     )
     return jsonify(lane), 201
@@ -179,7 +203,7 @@ def lane_patch(lane_ref):
     if not body:
         raise KanbanError("nothing to update; send name and/or position")
     name = clean_lane_name(body["name"]) if "name" in body else None
-    return jsonify(kanban.update_lane(lane_ref, name, clean_position(body.get("position"))))
+    return jsonify(kanban_lanes.update_lane(lane_ref, name, clean_position(body.get("position"))))
 
 
 @bp.delete("/api/kanban/lanes/<lane_ref>")
@@ -187,7 +211,7 @@ def lane_delete(lane_ref):
     force = request.args.get("force")
     target = request.args.get("target") or request.args.get("move_to")
     return jsonify(
-        kanban.delete_lane(
+        kanban_lanes.delete_lane(
             lane_ref,
             force=force is not None and force.lower() in TRUTHY,
             target=target or None,

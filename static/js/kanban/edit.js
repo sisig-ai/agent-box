@@ -35,8 +35,8 @@ export function inlineEdit(node, value, state, commit) {
   input.addEventListener('blur', () => finish(true));
 }
 
-// Two-step delete: first click arms the button for 3s, second click fires.
-export function armDelete(btn, action) {
+// Two-step confirm: first click arms the button for 3s, second click fires.
+export function armDelete(btn, action, armedLabel = 'delete?') {
   let timer = null;
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -49,7 +49,7 @@ export function armDelete(btn, action) {
     }
     btn.classList.add('armed');
     btn.dataset.label = btn.textContent;
-    btn.textContent = 'delete?';
+    btn.textContent = typeof armedLabel === 'function' ? armedLabel() : armedLabel;
     timer = setTimeout(() => {
       btn.classList.remove('armed');
       btn.textContent = btn.dataset.label;

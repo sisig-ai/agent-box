@@ -78,6 +78,32 @@
 }
 
 .kb-lane-head .kb-lane-del { margin-left: auto; }
+.kb-lane-head .kb-archive-btn { margin-left: auto; }
+.kb-lane-head .kb-archive-btn + .kb-lane-del { margin-left: 0; }
+
+.kb-archive-btn {
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--muted);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.12rem 0.45rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.18s ease;
+}
+
+.kb-archive-btn:hover:not(:disabled) {
+  color: var(--text);
+  border-color: rgba(114,167,255,0.55);
+  background: rgba(114,167,255,0.12);
+}
+
+.kb-archive-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.kb-archive-btn.armed { color: #ffd38a; border-color: rgba(255,211,138,0.55); background: rgba(255,211,138,0.1); }
 
 .kb-cards {
   display: flex;

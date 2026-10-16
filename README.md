@@ -15,7 +15,8 @@ Python: 3.11 in `.venv`. System packages: Homebrew macmon and tmux.
 - `shell_ws.py` — WebSocket gateway launcher (:5556).
 - `telemetry_collector.py` — telemetry sampler launcher (one sample per second).
 - `dashboard/` — application package: `config`, `db`, `dates`,
-  `notes` + `notes_api`, `kanban` + `kanban_api`, `telemetry_store` + `telemetry_api`, `macos_metrics`,
+  `notes` + `notes_api`, `kanban` + `kanban_lanes` + `kanban_api`,
+  `telemetry_store` + `telemetry_api`, `macos_metrics`,
   `fs_paths` + `fs` + `fs_api`, `shell/` (tmux backend + HTTP API), `ws/`
   (frames, handshake, session, server), and `collector`.
 - `static/` — the UI: `index.html`, `css/`, no-build ES modules under `js/`,
@@ -62,6 +63,16 @@ service.
 The dashboard keeps its own SQLite database at `data/briefs.db`, in WAL mode. It
 holds the Daily Brief notes, the weekly schedules, the Kanban board, and telemetry. It never edits
 the Coins.ph ledgers. `data/` is git-ignored and survives updates.
+
+The Kanban board lives in the same database (`kanban_lane`, `kanban_card`).
+Schema changes are additive and run on startup (`dashboard/kanban.py`
+`migrate()`): for example the nullable `kanban_card.archived_at` column is added
+with `ALTER TABLE` when missing, so existing cards are kept. Archived cards are
+hidden from `/api/kanban` unless `?include_archived=1`, are listed at
+`/api/kanban/archived`, and are produced by the Done column's **Archive Done**
+button (`POST /api/kanban/archive-done`) or `PATCH /api/kanban/cards/:id
+{"archived": true}`. Code: `kanban` (schema, reads, card writes, archiving),
+`kanban_lanes` (lane writes), `kanban_api` (HTTP).
 
 `macos_metrics` maps macOS host CPU/memory counters and native macmon sensor
 readings to the API. System power is Apple's SMC estimate for the device, not a

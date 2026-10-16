@@ -4,7 +4,7 @@
 import './warpfield.js';
 import './stack.js';
 import './telemetry/poll.js';
-import './router.js?v=kanban1';
+import './router.js?v=kanban2';
 import './notes/brief.js';
 import './notes/schedule.js';
 import './gmgn.js?v=gmgn8';

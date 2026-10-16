@@ -18,6 +18,7 @@ export const api = {
   addCard: (card) => call('POST', '/api/kanban/cards', card),
   patchCard: (id, changes) => call('PATCH', `/api/kanban/cards/${id}`, changes),
   deleteCard: (id) => call('DELETE', `/api/kanban/cards/${id}`),
+  archiveDone: () => call('POST', '/api/kanban/archive-done'),
   addLane: (name) => call('POST', '/api/kanban/lanes', { name }),
   patchLane: (id, changes) => call('PATCH', `/api/kanban/lanes/${id}`, changes),
   deleteLane: (id) => call('DELETE', `/api/kanban/lanes/${id}`),
