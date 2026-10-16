@@ -123,7 +123,3 @@
 .tele-alerts-clear:hover { color: var(--text); border-color: rgba(114,167,255,0.5); }
 
 #tele-card-pwr.expanded .tele-graph { max-height: 230px; }
-
-@media (max-width: 760px) {
-  .telemetry { grid-template-columns: 1fr; }
-}

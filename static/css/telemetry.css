@@ -1,21 +1,28 @@
-/* ---------- Telemetry (live CPU / MEM / PWR) ---------- */
+/* ---------- Telemetry (live CPU / MEM / PWR) ----------
+   Compact pills that sit in the header row beside the title. The 1h
+   graph opens as a floating panel under its pill so the header row
+   never grows. */
 .telemetry {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.95rem;
-  margin-bottom: 1.75rem;
+  grid-template-columns: 1.25fr 1.2fr 1fr;
+  gap: 0.5rem;
+  flex: 1 1 460px;
+  max-width: 600px;
+  min-width: 0;
+  align-self: center;
   align-items: start; /* expanded cards must not stretch their siblings */
 }
 
 .tele-card {
   --accent: var(--blue);
   position: relative;
-  padding: 0.9rem 1.1rem 1rem;
-  border-radius: 16px;
+  min-width: 0;
+  padding: 0.5rem 0.6rem 0.55rem;
+  border-radius: 12px;
   background: linear-gradient(160deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02)),
               linear-gradient(rgba(12,18,37,0.78), rgba(8,12,27,0.72));
   border: 1px solid var(--border);
-  overflow: hidden;
+  overflow: visible; /* the graph panel floats below the pill */
   font-family: var(--mono);
   cursor: pointer;
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
@@ -43,49 +50,56 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 0.68rem;
-  letter-spacing: 0.2em;
+  gap: 0.35rem;
+  font-size: 0.56rem;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--muted);
+  white-space: nowrap;
 }
 
 .tele-live {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  font-size: 0.62rem;
-  letter-spacing: 0.12em;
+  gap: 0.25rem;
+  font-size: 0.5rem;
+  letter-spacing: 0.1em;
   color: #3ddc97;
 }
 
+/* Pill mode: the green dot alone says "live"; the word only returns
+   when the pills get their own row. */
+.tele-live { font-size: 0; }
+
 .tele-live i {
-  width: 6px; height: 6px;
+  width: 5px; height: 5px;
   border-radius: 50%;
   background: #3ddc97;
-  box-shadow: 0 0 8px #3ddc97;
+  box-shadow: 0 0 6px #3ddc97;
 }
 
 .tele-main {
-  font-size: 1.9rem;
+  font-size: 1.1rem;
   font-weight: 500;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
-  margin-top: 0.35rem;
+  margin-top: 0.2rem;
   line-height: 1.1;
+  white-space: nowrap;
   text-shadow: 0 0 22px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 .tele-unit {
-  font-size: 0.95rem;
+  font-size: 0.66rem;
   color: var(--muted);
-  margin-left: 0.25rem;
+  margin-left: 0.15rem;
 }
 
 .tele-sub {
-  font-size: 0.72rem;
+  font-size: 0.54rem;
   color: var(--muted);
-  letter-spacing: 0.04em;
-  margin-top: 0.3rem;
+  letter-spacing: 0;
+  margin-top: 0.15rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   overflow: hidden;
@@ -93,10 +107,10 @@
 }
 
 .tele-bar {
-  height: 4px;
+  height: 3px;
   border-radius: 2px;
   background: rgba(255, 255, 255, 0.08);
-  margin-top: 0.6rem;
+  margin-top: 0.35rem;
   overflow: hidden;
 }
 
@@ -108,22 +122,24 @@
 .tele-duo {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.9rem;
-  margin-top: 0.35rem;
+  gap: 0.5rem;
+  margin-top: 0.2rem;
 }
 
+.tele-half { min-width: 0; }
+
 .tele-half .tele-main {
-  font-size: 1.5rem;
+  font-size: 1.1rem;
   margin-top: 0;
   white-space: nowrap;
 }
 
 .tele-half .tele-main .tele-unit {
-  font-size: 0.8rem;
+  font-size: 0.66rem;
 }
 
 .tele-half .tele-bar {
-  margin-top: 0.5rem;
+  margin-top: 0.35rem;
 }
 
 .tele-half.is-temp .tele-main {
@@ -150,24 +166,38 @@
   transform-origin: left center;
 }
 
-/* expandable 1h graph */
+/* expandable 1h graph: floating panel under the pill */
 .tele-graph {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  z-index: 20;
+  width: min(360px, calc(100vw - 2.5rem));
   max-height: 0;
   opacity: 0;
   overflow: hidden;
+  pointer-events: none;
+  padding: 0 0.7rem;
+  border-radius: 12px;
+  background: rgba(8,12,27, 0.94);
+  border: 1px solid transparent;
   transition: max-height 0.4s cubic-bezier(0.2, 0.9, 0.25, 1),
-              opacity 0.3s ease, margin-top 0.4s ease;
+              opacity 0.3s ease, padding 0.4s ease;
 }
+
+.tele-card.expanded { z-index: 20; }
 
 .tele-card.expanded .tele-graph {
   max-height: 150px;
   opacity: 1;
-  margin-top: 0.7rem;
+  pointer-events: auto;
+  padding: 0.6rem 0.7rem;
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  box-shadow: 0 18px 40px -18px rgba(0,0,0, 0.8);
 }
 
-.tele-graph {
-  position: relative;
-}
+#tele-card-mem .tele-graph { left: 50%; transform: translateX(-50%); }
+#tele-card-pwr .tele-graph { left: auto; right: 0; }
 
 .tele-graph canvas {
   display: block;
@@ -197,3 +227,17 @@
 }
 
 .graph-tip.show { display: block; }
+
+/* Not enough room beside the title: pills drop to their own row
+   (still compact), with the clock staying next to the title. */
+@media (max-width: 1100px) {
+  .telemetry { order: 3; flex-basis: 100%; max-width: none; }
+  .tele-live { font-size: 0.5rem; }
+}
+
+/* Phones: CPU pill spans the row, memory + power share the next. */
+@media (max-width: 560px) {
+  .telemetry { grid-template-columns: 1fr 1fr; }
+  #tele-card-cpu { grid-column: 1 / -1; }
+  #tele-card-mem .tele-graph { left: 0; transform: none; }
+}

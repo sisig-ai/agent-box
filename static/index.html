@@ -27,9 +27,9 @@
   <link rel="preload" href="/static/fonts/FiraCodeNerdFontMono-Regular.woff2?v=nf3.4.0" as="font" type="font/woff2" crossorigin>
   <title>Macmini</title>
   <link rel="stylesheet" href="/static/css/base.css">
-  <link rel="stylesheet" href="/static/css/header.css">
-  <link rel="stylesheet" href="/static/css/telemetry.css">
-  <link rel="stylesheet" href="/static/css/power-alerts.css">
+  <link rel="stylesheet" href="/static/css/header.css?v=compact1">
+  <link rel="stylesheet" href="/static/css/telemetry.css?v=compact1">
+  <link rel="stylesheet" href="/static/css/power-alerts.css?v=compact1">
   <link rel="stylesheet" href="/static/css/scanner.css">
   <link rel="stylesheet" href="/static/css/fleet.css">
   <link rel="stylesheet" href="/static/css/brief.css">
@@ -53,6 +53,45 @@
         <h1 id="title">Macmini</h1>
         <p class="subtitle" id="greeting">All systems standing by.</p>
       </div>
+      <!-- ---------- Live telemetry: compact pills inline with the title (1s tick, every tab) ---------- -->
+      <section class="telemetry" id="telemetry" aria-label="Live host telemetry">
+        <div class="tele-card" id="tele-card-cpu" style="--accent:#72a7ff;--accent2:#b99aff" role="button" tabindex="0" aria-expanded="false" aria-label="CPU — activate to expand 1 hour graph">
+          <div class="tele-label"><span>CPU</span><span class="tele-live"><i></i>live</span></div>
+          <div class="tele-duo">
+            <div class="tele-half">
+              <div class="tele-main"><span id="tele-cpu-util">—</span><span class="tele-unit">%</span></div>
+              <div class="tele-sub">util · 0–100%</div>
+              <div class="tele-bar" title="Utilization (0–100%)"><i id="tele-cpu-bar"></i></div>
+            </div>
+            <div class="tele-half is-temp">
+              <div class="tele-main"><span id="tele-cpu-temp">—</span><span class="tele-unit">°C</span></div>
+              <div class="tele-sub" id="tele-cpu-temp-src">pkg · 30–100 °C</div>
+              <div class="tele-bar" title="Package temp (30–100 °C)"><i id="tele-cpu-temp-bar"></i></div>
+            </div>
+          </div>
+          <div class="tele-graph"><canvas id="tele-cpu-graph"></canvas></div>
+        </div>
+        <div class="tele-card" id="tele-card-mem" style="--accent:#aa87ff" role="button" tabindex="0" aria-expanded="false" aria-label="Memory — activate to expand 1 hour graph">
+          <div class="tele-label"><span>Memory</span><span class="tele-live"><i></i>live</span></div>
+          <div class="tele-main"><span id="tele-mem-used">—</span><span class="tele-unit" id="tele-mem-total">/ — GB</span></div>
+          <div class="tele-sub" id="tele-mem-free">free —</div>
+          <div class="tele-bar"><i id="tele-mem-bar"></i></div>
+          <div class="tele-graph"><canvas id="tele-mem-graph"></canvas></div>
+        </div>
+        <div class="tele-card" id="tele-card-pwr" style="--accent:#83aaff" role="button" tabindex="0" aria-expanded="false" aria-label="Power — activate to expand 1 hour graph">
+          <div class="tele-label"><span>System Power</span><span class="tele-right"><span class="tele-live"><i></i>live</span><button class="pwr-badge" id="tele-pwr-badge" title="Dismiss power alert" aria-label="Dismiss power alert">⚠<span id="tele-pwr-badge-text"></span><span class="pwr-x" aria-hidden="true">×</span></button></span></div>
+          <div class="tele-main"><span id="tele-pwr-total">—</span><span class="tele-unit">W</span></div>
+          <div class="tele-sub" id="tele-pwr-split">cpu — · gpu —</div>
+          <div class="tele-bar"><i id="tele-pwr-bar"></i></div>
+          <div class="tele-graph" data-ptab="graph"><canvas id="tele-pwr-graph"></canvas>
+            <div class="tele-tabs" role="tablist" aria-label="Power views">
+              <button class="tele-tab active" data-ptab="graph" role="tab" aria-selected="true">Graph</button>
+              <button class="tele-tab" data-ptab="alerts" role="tab" aria-selected="false">Alerts<span id="tele-pwr-alert-count"></span></button>
+            </div>
+            <div class="tele-alerts" id="tele-pwr-alerts" aria-live="polite"></div>
+          </div>
+        </div>
+      </section>
       <div class="readout">
         <div class="readout-time" id="readout-time">--:--</div>
         <div class="readout-date" id="readout-date"></div>
@@ -67,46 +106,6 @@
       <a class="view-btn" id="view-btn-kanban" href="#/kanban">▤ Kanban</a>
       <a class="view-btn" id="view-btn-gmgn" href="#/gmgn">GMGN</a>
     </nav>
-
-    <!-- ---------- Live telemetry (1s tick, visible on every tab) ---------- -->
-    <section class="telemetry" id="telemetry" aria-label="Live host telemetry">
-      <div class="tele-card" id="tele-card-cpu" style="--accent:#72a7ff;--accent2:#b99aff" role="button" tabindex="0" aria-expanded="false" aria-label="CPU — activate to expand 1 hour graph">
-        <div class="tele-label"><span>CPU</span><span class="tele-live"><i></i>live</span></div>
-        <div class="tele-duo">
-          <div class="tele-half">
-            <div class="tele-main"><span id="tele-cpu-util">—</span><span class="tele-unit">%</span></div>
-            <div class="tele-sub">util · 0–100%</div>
-            <div class="tele-bar" title="Utilization (0–100%)"><i id="tele-cpu-bar"></i></div>
-          </div>
-          <div class="tele-half is-temp">
-            <div class="tele-main"><span id="tele-cpu-temp">—</span><span class="tele-unit">°C</span></div>
-            <div class="tele-sub" id="tele-cpu-temp-src">pkg · 30–100 °C</div>
-            <div class="tele-bar" title="Package temp (30–100 °C)"><i id="tele-cpu-temp-bar"></i></div>
-          </div>
-        </div>
-        <div class="tele-graph"><canvas id="tele-cpu-graph"></canvas></div>
-      </div>
-      <div class="tele-card" id="tele-card-mem" style="--accent:#aa87ff" role="button" tabindex="0" aria-expanded="false" aria-label="Memory — activate to expand 1 hour graph">
-        <div class="tele-label"><span>Memory</span><span class="tele-live"><i></i>live</span></div>
-        <div class="tele-main"><span id="tele-mem-used">—</span><span class="tele-unit" id="tele-mem-total">/ — GB</span></div>
-        <div class="tele-sub" id="tele-mem-free">free —</div>
-        <div class="tele-bar"><i id="tele-mem-bar"></i></div>
-        <div class="tele-graph"><canvas id="tele-mem-graph"></canvas></div>
-      </div>
-      <div class="tele-card" id="tele-card-pwr" style="--accent:#83aaff" role="button" tabindex="0" aria-expanded="false" aria-label="Power — activate to expand 1 hour graph">
-        <div class="tele-label"><span>System Power</span><span class="tele-right"><span class="tele-live"><i></i>live</span><button class="pwr-badge" id="tele-pwr-badge" title="Dismiss power alert" aria-label="Dismiss power alert">⚠<span id="tele-pwr-badge-text"></span><span class="pwr-x" aria-hidden="true">×</span></button></span></div>
-        <div class="tele-main"><span id="tele-pwr-total">—</span><span class="tele-unit">W</span></div>
-        <div class="tele-sub" id="tele-pwr-split">cpu — · gpu —</div>
-        <div class="tele-bar"><i id="tele-pwr-bar"></i></div>
-        <div class="tele-graph" data-ptab="graph"><canvas id="tele-pwr-graph"></canvas>
-          <div class="tele-tabs" role="tablist" aria-label="Power views">
-            <button class="tele-tab active" data-ptab="graph" role="tab" aria-selected="true">Graph</button>
-            <button class="tele-tab" data-ptab="alerts" role="tab" aria-selected="false">Alerts<span id="tele-pwr-alert-count"></span></button>
-          </div>
-          <div class="tele-alerts" id="tele-pwr-alerts" aria-live="polite"></div>
-        </div>
-      </div>
-    </section>
 
     <!-- ---------- Daily Brief + Weekly Schedule ---------- -->
     <section class="brief" data-tabpanel="brief" id="brief" aria-label="Daily Brief and weekly schedule">
