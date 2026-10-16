@@ -14,14 +14,15 @@ No authentication. Exposed only over the LAN / tailnet — treat it as private.
 
 ## Views (tabs)
 
-The page has four tabs sharing one header + live sys-monitor cards (CPU / Memory /
+The page has tabs sharing one header + live sys-monitor cards (CPU / Memory /
 Power, 1s tick with 1h graphs). Hash routes: `#/brief`, `#/` (Stack, default),
-`#/files`, `#/shell`.
+`#/files`, `#/shell`, `#/kanban`.
 
 - **Brief** — Daily Brief markdown canvas (one entry per day, autosaved) + weekly schedule side panel.
 - **Stack** — service grid with the `/`-focused filter scanner.
 - **Files** — host filesystem browser rooted at `~`: browse folders, create files/folders, upload/download, rename, delete, click any entry for full details, and open any text file in an inline editor (syntax highlighting, save in place, download).
 - **Shell** — interactive host tty rooted in `~` (see Web shell below).
+- **Kanban** — a small Trello-style board: lanes as columns, cards with title + owner, drag and drop, inline edit. Polls every 3 s, so cards agents write through `/api/kanban` appear on their own (see Kanban board below).
 
 ## API
 
@@ -56,6 +57,75 @@ Read today's entry:
     curl http://macmini:5555/api/brief
 
 The weekly schedule (`GET|PUT|POST|DELETE /api/schedule`, `GET /api/schedule/list`) uses the same `YYYY-MM-DD` week form; `week` coerces to that week's Monday, and a well-formed but impossible date such as `2026-02-30` returns 400 rather than 500.
+
+### Kanban board — lanes + cards, agent-drivable
+
+Stored in the same SQLite database (tables `kanban_lane`, `kanban_card`), so cards
+survive restarts. No auth, same as everything else here. Default lanes on first
+start: Backlog, To Do, In Progress, Done. Lanes are data: add, rename, reorder,
+or delete them through the API.
+
+Card: `{"id", "title", "owner" (string or null), "status" (lane name), "lane_id",
+"position" (0-based within the lane, 0 = top), "created_at", "updated_at"}`.
+Lane: `{"id", "name", "position", "card_count", "created_at", "updated_at"}`.
+
+Wherever a lane is referenced (`status` in a card body, `?status=`, the `:lane`
+path segment, `?target=`) you can pass the lane name, **case-insensitive**
+("in progress" = "In Progress"), or its numeric id. Errors are JSON
+`{"error": "..."}`: 400 bad input (unknown lane, empty title, unknown field,
+bad position), 404 missing card/lane, 409 conflict (duplicate lane name,
+deleting a non-empty lane).
+
+| Method | Path | Behavior |
+|--------|------|----------|
+| GET    | /api/kanban?status=&owner= | `{"lanes": [...], "cards": [...]}`. All lanes always; cards ordered by lane then position, optionally filtered by `status` (lane) and/or `owner` (case-insensitive exact; `owner=` empty = unowned). |
+| GET    | /api/kanban/cards?status=&owner= | Just the cards array (same filters). |
+| POST   | /api/kanban/cards | JSON `{"title", "owner"?, "status"?, "position"?}` → 201 + card. `status` defaults to the first lane; `position` defaults to the bottom. Title max 500 chars, owner max 100. |
+| GET    | /api/kanban/cards/:id | One card. |
+| PATCH  | /api/kanban/cards/:id | Any of `{"title", "owner", "status", "position"}`. Changing `status` without `position` appends to the bottom of the new lane; `position` alone reorders within the lane. `"owner": null` (or "") clears it. |
+| DELETE | /api/kanban/cards/:id | Delete → `{"deleted": id, "card": {...}}`. |
+| GET    | /api/kanban/lanes | Lanes in board order, with `card_count`. |
+| POST   | /api/kanban/lanes | JSON `{"name", "position"?}` → 201 + lane. Names are unique (case-insensitive), max 60 chars, not all digits. |
+| PATCH  | /api/kanban/lanes/:lane | `{"name"?, "position"?}` — rename and/or move the column. Cards follow a rename automatically. |
+| DELETE | /api/kanban/lanes/:lane | Refused with 409 if the lane has cards, unless `?target=<lane>` (cards move to the bottom of that lane) or `?force=1` (cards are deleted too). |
+
+Examples:
+
+    # whole board
+    curl http://macmini:5555/api/kanban
+
+    # add a card (lands in Backlog)
+    curl -X POST http://macmini:5555/api/kanban/cards \
+      -H 'Content-Type: application/json' \
+      -d '{"title":"Renew the domain","owner":"hermes"}'
+
+    # add straight into a lane
+    curl -X POST http://macmini:5555/api/kanban/cards \
+      -H 'Content-Type: application/json' \
+      -d '{"title":"Fix backup cron","status":"to do"}'
+
+    # move card 7 to In Progress, at the top
+    curl -X PATCH http://macmini:5555/api/kanban/cards/7 \
+      -H 'Content-Type: application/json' \
+      -d '{"status":"in progress","position":0}'
+
+    # edit title / owner
+    curl -X PATCH http://macmini:5555/api/kanban/cards/7 \
+      -H 'Content-Type: application/json' \
+      -d '{"title":"Fix the backup cron job","owner":"kix"}'
+
+    # my cards still in flight
+    curl 'http://macmini:5555/api/kanban?owner=hermes&status=in%20progress'
+
+    # delete a card
+    curl -X DELETE http://macmini:5555/api/kanban/cards/7
+
+    # lanes: add "Review" as the 4th column, rename it, delete it (moving cards to Done)
+    curl -X POST http://macmini:5555/api/kanban/lanes \
+      -H 'Content-Type: application/json' -d '{"name":"Review","position":3}'
+    curl -X PATCH http://macmini:5555/api/kanban/lanes/review \
+      -H 'Content-Type: application/json' -d '{"name":"QA"}'
+    curl -X DELETE 'http://macmini:5555/api/kanban/lanes/qa?target=done'
 
 ### Native macOS telemetry
 
@@ -138,4 +208,5 @@ Server → client:
 - Daily Brief content is markdown. Preserve existing structure when appending — don't rewrite an entry unless the user asks.
 - The Daily Brief is meant for Kix: one markdown entry per calendar day. If asked to "post the daily brief," write today's entry in Manila time.
 - The UI at / is read-only from an agent's perspective; do all writes through the API.
+- Kanban: use your agent name as `owner` so cards are attributable; move cards rather than deleting them when work finishes (Done is a lane). Don't delete or rename lanes unless asked.
 - No auth headers needed. Keep requests on the LAN/tailnet.

@@ -15,7 +15,7 @@ Python: 3.11 in `.venv`. System packages: Homebrew macmon and tmux.
 - `shell_ws.py` — WebSocket gateway launcher (:5556).
 - `telemetry_collector.py` — telemetry sampler launcher (one sample per second).
 - `dashboard/` — application package: `config`, `db`, `dates`,
-  `notes` + `notes_api`, `telemetry_store` + `telemetry_api`, `macos_metrics`,
+  `notes` + `notes_api`, `kanban` + `kanban_api`, `telemetry_store` + `telemetry_api`, `macos_metrics`,
   `fs_paths` + `fs` + `fs_api`, `shell/` (tmux backend + HTTP API), `ws/`
   (frames, handshake, session, server), and `collector`.
 - `static/` — the UI: `index.html`, `css/`, no-build ES modules under `js/`,
@@ -60,7 +60,7 @@ service.
 ## Data
 
 The dashboard keeps its own SQLite database at `data/briefs.db`, in WAL mode. It
-holds the Daily Brief notes, the weekly schedules, and telemetry. It never edits
+holds the Daily Brief notes, the weekly schedules, the Kanban board, and telemetry. It never edits
 the Coins.ph ledgers. `data/` is git-ignored and survives updates.
 
 `macos_metrics` maps macOS host CPU/memory counters and native macmon sensor

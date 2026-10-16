@@ -33,7 +33,9 @@
 body[data-view="brief"] [data-tabpanel]:not([data-tabpanel="brief"]),
 body[data-view="stack"] [data-tabpanel]:not([data-tabpanel="stack"]),
 body[data-view="shell"] [data-tabpanel]:not([data-tabpanel="shell"]),
-body[data-view="files"] [data-tabpanel]:not([data-tabpanel="files"]) { display: none; }
+body[data-view="files"] [data-tabpanel]:not([data-tabpanel="files"]),
+body[data-view="kanban"] [data-tabpanel]:not([data-tabpanel="kanban"]),
+body[data-view="gmgn"] [data-tabpanel]:not([data-tabpanel="gmgn"]) { display: none; }
 
 /* ---------- Shell (host tty in ~) ---------- */
 .shell {

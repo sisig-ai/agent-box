@@ -38,3 +38,18 @@ def test_entry_points_are_no_cache(client):
 
 def test_unknown_api_is_404(client):
     assert client.get("/api/does-not-exist").status_code == 404
+
+
+def test_gmgn_pwa_entry(client):
+    page = client.get("/gmgn")
+    assert page.status_code == 200
+    assert b"apple-mobile-web-app-capable" in page.data
+    assert page.headers["Cache-Control"] == "no-cache"
+    manifest = client.get("/manifest.webmanifest")
+    assert manifest.status_code == 200
+    assert manifest.mimetype == "application/manifest+json"
+    body = json.loads(manifest.data)
+    assert body["display"] == "standalone"
+    assert "app=gmgn" in body["start_url"]
+    assert client.get("/sw.js").status_code == 200
+    assert client.get("/icons/apple-touch-icon.png").status_code == 200

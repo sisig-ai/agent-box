@@ -84,5 +84,8 @@ def init_db():
                 )
                 """
             )
+            from .kanban import init_schema as init_kanban_schema
+
+            init_kanban_schema(conn)
     finally:
         conn.close()

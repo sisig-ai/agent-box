@@ -2,9 +2,27 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="dark">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
+  <meta name="theme-color" content="#050814">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="GMGN">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <link rel="icon" href="/icons/icon-192.png">
+  <script>
+    (function () {
+      var app = new URLSearchParams(location.search).get('app') === 'gmgn' || location.pathname === '/gmgn';
+      var standalone = window.navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+      if (app || standalone) {
+        document.documentElement.classList.add('gmgn-app');
+        if (location.hash !== '#/gmgn') location.hash = '#/gmgn';
+      }
+    })();
+  </script>
   <script src="/static/vendor/marked.min.js"></script>
   <link rel="preload" href="/static/fonts/FiraCodeNerdFontMono-Regular.woff2?v=nf3.4.0" as="font" type="font/woff2" crossorigin>
   <title>Macmini</title>
@@ -19,6 +37,8 @@
   <link rel="stylesheet" href="/static/css/shell.css">
   <link rel="stylesheet" href="/static/css/files.css">
   <link rel="stylesheet" href="/static/css/editor.css">
+  <link rel="stylesheet" href="/static/css/gmgn.css?v=gmgn8">
+  <link rel="stylesheet" href="/static/css/kanban.css?v=kanban2">
   <link rel="stylesheet" href="/static/css/modal.css">
 </head>
 <body data-view="stack">
@@ -44,6 +64,8 @@
       <a class="view-btn active" id="view-btn-stack" href="#/">▦ Stack</a>
       <a class="view-btn" id="view-btn-files" href="#/files">🗀 Files <span style="opacity:0.6">~</span></a>
       <a class="view-btn" id="view-btn-shell" href="#/shell">❯ Shell <span style="opacity:0.6">~</span></a>
+      <a class="view-btn" id="view-btn-kanban" href="#/kanban">▤ Kanban</a>
+      <a class="view-btn" id="view-btn-gmgn" href="#/gmgn">GMGN</a>
     </nav>
 
     <!-- ---------- Live telemetry (1s tick, visible on every tab) ---------- -->
@@ -268,6 +290,50 @@
       </div>
     </section>
 
+    <!-- ---------- Kanban (lanes + cards, driven by /api/kanban) ---------- -->
+    <section class="kanban" data-tabpanel="kanban" id="kanban-view" aria-label="Kanban board">
+      <div class="kanban-head">
+        <div class="kanban-title">
+          <h2>Kanban</h2>
+          <span class="kanban-sub">drag cards between lanes · click text to edit · agents: /api/kanban</span>
+        </div>
+        <div class="kanban-actions">
+          <button class="brief-btn" id="kanban-add-lane" title="Add a lane">+ Lane</button>
+          <button class="brief-btn" id="kanban-refresh" title="Reload the board">⟳ Refresh</button>
+        </div>
+      </div>
+      <div class="kanban-board" id="kanban-board"></div>
+      <div class="kanban-status">
+        <span id="kanban-status">loading…</span>
+        <span id="kanban-count"></span>
+      </div>
+    </section>
+
+    <section class="gmgn" data-tabpanel="gmgn" id="gmgn" aria-label="GMGN loop">
+      <div class="gmgn-bar">
+        <div class="gmgn-brand"><i></i>gmgn</div>
+        <div class="gmgn-bar-side">
+          <span id="gmgn-updated">—</span>
+          <a class="gmgn-dash" href="#/">dashboard</a>
+        </div>
+      </div>
+      <div class="gmgn-cards">
+        <div class="gmgn-card" id="gmgn-h12"><div class="label">12h</div><div class="value">—</div><div class="meta"></div></div>
+        <div class="gmgn-card" id="gmgn-d1"><div class="label">1d</div><div class="value">—</div><div class="meta"></div></div>
+        <div class="gmgn-card" id="gmgn-d7"><div class="label">7d</div><div class="value">—</div><div class="meta"></div></div>
+      </div>
+      <p class="gmgn-install" id="gmgn-install">safari share, then add to home screen. it opens this tab full screen.</p>
+      <div class="gmgn-screen" id="gmgn-screen"></div>
+      <div class="gmgn-block" id="gmgn-open-block" hidden>
+        <div class="gmgn-section-label"><span>open</span></div>
+        <div class="gmgn-open" id="gmgn-open"></div>
+      </div>
+      <div class="gmgn-block">
+        <div class="gmgn-section-label"><span>trades</span><span id="gmgn-trade-count"></span></div>
+        <div class="gmgn-timeline" id="gmgn-timeline"></div>
+      </div>
+    </section>
+
     <footer>
       <span>// edit <code>config.json</code> to add systems</span>
       <span id="host"></span>
@@ -287,6 +353,6 @@
     </div>
   </div>
 
-  <script type="module" src="/static/js/main.js"></script>
+  <script type="module" src="/static/js/main.js?v=kanban1"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-// Hash routing for the four views (Brief / Stack / Files / Shell).
+// Hash routing for the views (Brief / Stack / Files / Shell / Kanban / GMGN).
 // Shell and Files are code-split via dynamic import(): their modules are
 // fetched on first tab activation and the import promise is cached, so a
 // second visit is a no-op. No window.* globals are involved.
@@ -7,12 +7,18 @@ const btns = {
   stack: document.getElementById('view-btn-stack'),
   files: document.getElementById('view-btn-files'),
   shell: document.getElementById('view-btn-shell'),
+  kanban: document.getElementById('view-btn-kanban'),
+  gmgn: document.getElementById('view-btn-gmgn'),
 };
 function current() {
+  const app = new URLSearchParams(location.search).get('app');
+  if (app === 'gmgn' || location.pathname === '/gmgn') return 'gmgn';
   const h = location.hash;
   if (h === '#/brief') return 'brief';
   if (h === '#/files') return 'files';
   if (h === '#/shell') return 'shell';
+  if (h === '#/kanban') return 'kanban';
+  if (h === '#/gmgn') return 'gmgn';
   return 'stack'; // default landing tab (also #/ and empty hash)
 }
 const lazy = {};
@@ -21,6 +27,8 @@ function ensure(v) {
     (lazy.shell ||= import('./shell/shell.js')).then(m => m.initShell());
   } else if (v === 'files') {
     (lazy.files ||= import('./files/actions.js')).then(m => m.initFiles());
+  } else if (v === 'kanban') {
+    (lazy.kanban ||= import('./kanban/board.js?v=kanban1')).then(m => m.initKanban());
   }
 }
 function apply() {
