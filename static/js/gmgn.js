@@ -1,4 +1,6 @@
-import { seconds, createDayPager } from './gmgn-days.js?v=gmgn9';
+import { createPnlGraphs } from './gmgn-graphs.js?v=gmgn10';
+import { installGmgnViewport } from './gmgn-viewport.js?v=gmgn10';
+import { seconds, createDayPager } from './gmgn-days.js?v=gmgn10';
 // GMGN tab. Polls /api/gmgn only while this view is open.
 const root = document.getElementById('gmgn-timeline');
 const openRoot = document.getElementById('gmgn-open');
@@ -206,11 +208,13 @@ function paintList(node, events) {
 }
 
 const paintTrades = createDayPager(root, paintList);
+const paintGraphs = createPnlGraphs(cards);
 
 function paint(body) {
   paintCard(cards.h12, body.pnl && body.pnl.h12);
   paintCard(cards.d1, body.pnl && body.pnl.d1);
   paintCard(cards.d7, body.pnl && body.pnl.d7);
+  paintGraphs(body);
   const updated = document.getElementById('gmgn-updated');
   if (updated) updated.textContent = manila(body.generated_at);
   let status = document.getElementById('gmgn-runner-status');
@@ -264,5 +268,6 @@ window.addEventListener('hashchange', poll);
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') poll();
 });
+installGmgnViewport();
 installHint();
 poll();

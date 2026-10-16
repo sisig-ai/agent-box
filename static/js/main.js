@@ -7,4 +7,4 @@ import './telemetry/poll.js';
 import './router.js?v=kanban2';
 import './notes/brief.js';
 import './notes/schedule.js';
-import './gmgn.js?v=gmgn9';
+import './gmgn.js?v=gmgn10';
