@@ -70,8 +70,6 @@ footer code {
 
 @media (max-width: 560px) {
   header { align-items: flex-start; }
-  .readout { text-align: left; }
-  .readout-time { font-size: 1.4rem; }
   .kbd { display: none; }
 }
 

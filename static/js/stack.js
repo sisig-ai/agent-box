@@ -53,6 +53,8 @@
         now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       document.getElementById('readout-date').textContent =
         now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+      const tz = now.toLocaleTimeString([], { timeZoneName: 'short' }).split(' ').pop();
+      document.getElementById('readout-tz').textContent = tz;
     }
 
     function greeting() {

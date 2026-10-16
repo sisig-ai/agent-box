@@ -27,8 +27,8 @@
   <link rel="preload" href="/static/fonts/FiraCodeNerdFontMono-Regular.woff2?v=nf3.4.0" as="font" type="font/woff2" crossorigin>
   <title>Macmini</title>
   <link rel="stylesheet" href="/static/css/base.css">
-  <link rel="stylesheet" href="/static/css/header.css?v=compact1">
-  <link rel="stylesheet" href="/static/css/telemetry.css?v=compact1">
+  <link rel="stylesheet" href="/static/css/header.css?v=clockpill1">
+  <link rel="stylesheet" href="/static/css/telemetry.css?v=clockpill1">
   <link rel="stylesheet" href="/static/css/power-alerts.css?v=compact1">
   <link rel="stylesheet" href="/static/css/scanner.css">
   <link rel="stylesheet" href="/static/css/fleet.css">
@@ -39,7 +39,7 @@
   <link rel="stylesheet" href="/static/css/editor.css">
   <link rel="stylesheet" href="/static/css/gmgn.css?v=gmgn8">
   <link rel="stylesheet" href="/static/css/kanban.css?v=kanban3">
-  <link rel="stylesheet" href="/static/css/modal.css">
+  <link rel="stylesheet" href="/static/css/modal.css?v=clockpill1">
 </head>
 <body data-view="stack">
   <canvas id="warpfield" aria-hidden="true"></canvas>
@@ -92,9 +92,10 @@
           </div>
         </div>
       </section>
-      <div class="readout">
-        <div class="readout-time" id="readout-time">--:--</div>
-        <div class="readout-date" id="readout-date"></div>
+      <div class="readout" style="--accent:#aa87ff" aria-label="Local time">
+        <div class="tele-label"><span>Local</span><span class="readout-tz" id="readout-tz"></span></div>
+        <div class="tele-main readout-time" id="readout-time">--:--</div>
+        <div class="tele-sub readout-date" id="readout-date"></div>
       </div>
     </header>
 
@@ -352,6 +353,6 @@
     </div>
   </div>
 
-  <script type="module" src="/static/js/main.js?v=kanban2"></script>
+  <script type="module" src="/static/js/main.js?v=clockpill1"></script>
 </body>
 </html>
