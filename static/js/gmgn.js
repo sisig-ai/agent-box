@@ -1,3 +1,4 @@
+import { seconds, createDayPager } from './gmgn-days.js?v=gmgn9';
 // GMGN tab. Polls /api/gmgn only while this view is open.
 const root = document.getElementById('gmgn-timeline');
 const openRoot = document.getElementById('gmgn-open');
@@ -9,20 +10,14 @@ const cards = {
 };
 let busy = false;
 
-function seconds(ts) {
-  const n = Number(ts);
-  if (!Number.isFinite(n) || n <= 0) return null;
-  return n > 1e12 ? n / 1000 : n;
-}
-
 function manilaParts(ts) {
   const when = seconds(ts);
   if (!when) return null;
   const date = new Date(when * 1000);
   const opts = { timeZone: 'Asia/Manila' };
-  const day = new Intl.DateTimeFormat('en-GB', { ...opts, day: '2-digit', month: 'short' }).format(date);
+  const day = new Intl.DateTimeFormat('en-GB', { ...opts, day: '2-digit', month: 'short', year: 'numeric' }).format(date);
   const clock = new Intl.DateTimeFormat('en-GB', { ...opts, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(date);
-  const today = new Intl.DateTimeFormat('en-GB', { ...opts, day: '2-digit', month: 'short' }).format(new Date());
+  const today = new Intl.DateTimeFormat('en-GB', { ...opts, day: '2-digit', month: 'short', year: 'numeric' }).format(new Date());
   return { day, clock, today: day === today };
 }
 
@@ -210,6 +205,8 @@ function paintList(node, events) {
   events.forEach((event) => node.append(row(event)));
 }
 
+const paintTrades = createDayPager(root, paintList);
+
 function paint(body) {
   paintCard(cards.h12, body.pnl && body.pnl.h12);
   paintCard(cards.d1, body.pnl && body.pnl.d1);
@@ -232,18 +229,7 @@ function paint(body) {
   const opens = (body.open || []).slice().sort((a, b) => (b.ts || 0) - (a.ts || 0));
   if (openBlock) openBlock.hidden = opens.length === 0;
   if (openRoot) paintList(openRoot, opens);
-  const events = (body.events || []).slice().sort((a, b) => (b.ts || 0) - (a.ts || 0));
-  const count = document.getElementById('gmgn-trade-count');
-  if (count) count.textContent = events.length ? String(events.length) : '';
-  if (!events.length) {
-    root.replaceChildren();
-    const empty = document.createElement('div');
-    empty.className = 'gmgn-empty';
-    empty.textContent = 'no runner closes yet';
-    root.append(empty);
-    return;
-  }
-  paintList(root, events);
+  paintTrades(body.events || []);
 }
 
 async function poll() {

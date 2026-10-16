@@ -1,11 +1,13 @@
-const CACHE = "gmgn-shell-6";
+const CACHE = "gmgn-shell-9";
 const SHELL = [
   "/?app=gmgn",
   "/gmgn",
   "/static/css/base.css",
-  "/static/css/gmgn.css?v=gmgn6",
-  "/static/js/main.js?v=gmgn6",
-  "/static/js/gmgn.js?v=gmgn6",
+  "/static/css/gmgn.css?v=gmgn9",
+  "/static/js/main.js?v=gmgn9",
+  "/static/js/gmgn.js?v=gmgn9",
+  "/static/js/gmgn-days.js?v=gmgn9",
+  "/static/css/gmgn-days.css?v=gmgn9",
   "/icons/icon-192.png",
   "/icons/apple-touch-icon.png",
 ];

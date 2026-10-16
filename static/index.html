@@ -37,7 +37,8 @@
   <link rel="stylesheet" href="/static/css/shell.css">
   <link rel="stylesheet" href="/static/css/files.css">
   <link rel="stylesheet" href="/static/css/editor.css">
-  <link rel="stylesheet" href="/static/css/gmgn.css?v=gmgn8">
+  <link rel="stylesheet" href="/static/css/gmgn.css?v=gmgn9">
+  <link rel="stylesheet" href="/static/css/gmgn-days.css?v=gmgn9">
   <link rel="stylesheet" href="/static/css/kanban.css?v=kanban3">
   <link rel="stylesheet" href="/static/css/modal.css?v=clockpill1">
 </head>
@@ -329,7 +330,12 @@
         <div class="gmgn-open" id="gmgn-open"></div>
       </div>
       <div class="gmgn-block">
-        <div class="gmgn-section-label"><span>trades</span><span id="gmgn-trade-count"></span></div>
+        <div class="gmgn-section-label"><span>trades</span><span id="gmgn-trade-count" aria-live="polite"></span></div>
+        <nav class="gmgn-day-pager" id="gmgn-day-pager" aria-label="trade days, manila time" hidden>
+          <button type="button" id="gmgn-newer" aria-controls="gmgn-timeline">newer</button>
+          <label for="gmgn-day">day <select id="gmgn-day" aria-controls="gmgn-timeline"></select></label>
+          <button type="button" id="gmgn-older" aria-controls="gmgn-timeline">older</button>
+        </nav>
         <div class="gmgn-timeline" id="gmgn-timeline"></div>
       </div>
     </section>
@@ -353,6 +359,6 @@
     </div>
   </div>
 
-  <script type="module" src="/static/js/main.js?v=clockpill1"></script>
+  <script type="module" src="/static/js/main.js?v=gmgn9"></script>
 </body>
 </html>

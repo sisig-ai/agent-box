@@ -18,6 +18,7 @@ check:
 	$(RUFF) check .
 	$(RUFF) format --check .
 	$(PYTEST)
+	node --test tests/*.test.mjs
 	$(MAKE) sloc
 
 lint:
@@ -28,6 +29,7 @@ format:
 
 test:
 	$(PYTEST)
+	node --test tests/*.test.mjs
 
 # Run the same way the LaunchDaemon does.
 run:
