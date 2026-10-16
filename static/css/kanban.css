@@ -224,3 +224,24 @@
 @media (max-width: 640px) {
   .kb-lane { flex: 0 0 82vw; max-width: none; }
 }
+
+/* Card body indicators (preview line + badges); the card itself opens the modal. */
+.kb-card { cursor: pointer; }
+.kb-card:focus-visible { outline: none; border-color: rgba(114,167,255,0.6); box-shadow: 0 0 0 2px rgba(114,167,255,0.18); }
+.kb-card-title { cursor: inherit; }
+
+.kb-card-preview {
+  margin-top: 0.25rem;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.kb-badge { color: rgba(144,152,184,0.75); white-space: nowrap; }
+.kb-badge-body { font-size: 0.8rem; line-height: 1; }
+.kb-badge-tasks.done { color: #7fe0a8; }

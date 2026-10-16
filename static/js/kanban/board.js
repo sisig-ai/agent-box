@@ -1,12 +1,14 @@
 // Kanban tab: lanes as columns, cards with inline edit, HTML5 drag and drop,
 // and a 3s poll (only while the tab is visible and nobody is mid-edit/drag) so
-// changes agents make through /api/kanban show up on their own.
-import { api } from './api.js?v=kanban2';
-import { inlineEdit, armDelete } from './edit.js?v=kanban2';
+// changes agents make through /api/kanban show up on their own. Clicking a
+// card opens the detail modal (detail.js); #/kanban/card-<id> deep-links it.
+import { api } from './api.js?v=kanban4';
+import { inlineEdit, armDelete } from './edit.js?v=kanban4';
+import { closeCard, openCard, openId, setupDetail, syncFromBoard } from './detail.js?v=kanban4';
 
 const POLL_MS = 3000;
 const $ = (id) => document.getElementById(id);
-const state = { data: null, sig: '', busy: 0, dragId: null, started: false };
+const state = { data: null, sig: '', busy: 0, dragId: null, dragEnd: 0, started: false };
 
 function el(tag, cls, text) {
   const n = document.createElement(tag);
@@ -28,6 +30,7 @@ export async function refresh(force) {
     const sig = JSON.stringify(data);
     state.data = data;
     if (sig !== state.sig || force) { state.sig = sig; render(); }
+    syncFromBoard(data.cards);
     setStatus(`synced ${new Date().toLocaleTimeString([], { hour12: false })}`);
   } catch (e) {
     setStatus(`sync failed: ${e.message}`, true);
@@ -90,21 +93,36 @@ function renderCard(card) {
   const n = el('div', 'kb-card');
   n.draggable = true;
   n.dataset.id = card.id;
+  n.tabIndex = 0;
+  n.title = 'Open card';
   const title = el('div', 'kb-card-title', card.title);
-  title.title = 'Click to edit';
-  title.addEventListener('click', () => inlineEdit(title, card.title, state, (v) =>
-    v && v !== card.title && mutate(() => api.patchCard(card.id, { title: v }))));
   const meta = el('div', 'kb-card-meta');
   const owner = el('span', card.owner ? 'kb-owner' : 'kb-owner none', card.owner ? `@${card.owner}` : '+ owner');
   owner.title = 'Click to set owner (blank clears)';
-  owner.addEventListener('click', () => inlineEdit(owner, card.owner || '', state, (v) =>
-    v !== (card.owner || '') && mutate(() => api.patchCard(card.id, { owner: v || null }))));
+  owner.addEventListener('click', (e) => {
+    e.stopPropagation();
+    inlineEdit(owner, card.owner || '', state, (v) =>
+      v !== (card.owner || '') && mutate(() => api.patchCard(card.id, { owner: v || null })));
+  });
+  meta.append(owner, ...bodyBadges(card));
   const id = el('span', 'kb-id', `#${card.id}`);
   const del = el('button', 'kb-icon kb-del', '×');
   del.title = 'Delete card (click twice)';
   armDelete(del, () => mutate(() => api.deleteCard(card.id)));
-  meta.append(owner, id, del);
-  n.append(title, meta);
+  meta.append(id, del);
+  n.append(title);
+  if (card.body_preview) n.append(el('div', 'kb-card-preview', card.body_preview));
+  n.append(meta);
+  const open = () => { location.hash = `#/kanban/card-${card.id}`; };
+  n.addEventListener('click', (e) => {
+    // A drag never opens the card (some browsers emit a click right after dragend).
+    if (state.dragId !== null || Date.now() - state.dragEnd < 350) return;
+    if (e.target.closest('input, button, a, .kb-owner')) return;
+    open();
+  });
+  n.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target === n) { e.preventDefault(); open(); }
+  });
   n.addEventListener('dragstart', (e) => {
     state.dragId = card.id;
     state.busy++;
@@ -117,8 +135,26 @@ function renderCard(card) {
     document.querySelectorAll('.kb-cards.over').forEach((l) => l.classList.remove('over'));
     document.querySelectorAll('.kb-drop-mark').forEach((m) => m.remove());
     if (state.dragId !== null) { state.dragId = null; state.busy = Math.max(0, state.busy - 1); }
+    state.dragEnd = Date.now();
   });
   return n;
+}
+
+// Small "has a description" / checklist badges for a card's meta row.
+function bodyBadges(card) {
+  const out = [];
+  if (card.has_body) {
+    const b = el('span', 'kb-badge kb-badge-body', '≡');
+    b.title = 'Has a description';
+    out.push(b);
+  }
+  const t = card.body_tasks;
+  if (t && t.total) {
+    const b = el('span', `kb-badge kb-badge-tasks${t.done === t.total ? ' done' : ''}`, `☑ ${t.done}/${t.total}`);
+    b.title = `${t.done} of ${t.total} checklist items done`;
+    out.push(b);
+  }
+  return out;
 }
 
 // Index among the lane's other cards where a drop at clientY would land.
@@ -219,12 +255,27 @@ function addLane() {
   input.addEventListener('blur', () => finish(true));
 }
 
+// #/kanban/card-<id>[/edit] (or the short #card-<id>) opens that card's modal.
+function syncHash() {
+  const m = location.hash.match(/^#(?:\/kanban\/)?card-(\d+)(\/edit)?$/);
+  if (m) openCard(Number(m[1]), { edit: !!m[2] });
+  else closeCard();
+}
+
 export function initKanban() {
-  if (state.started) { refresh(); return; }
+  if (state.started) { refresh(); syncHash(); return; }
   state.started = true;
+  setupDetail({
+    lanes: () => state.data?.lanes || [],
+    onChange: () => refresh(true),
+    onClose: () => {
+      if (openId() === null && /card-\d+/.test(location.hash)) history.replaceState(null, '', '#/kanban');
+    },
+  });
+  window.addEventListener('hashchange', syncHash);
   $('kanban-refresh').addEventListener('click', () => refresh(true));
   $('kanban-add-lane').addEventListener('click', addLane);
-  refresh(true);
+  refresh(true).then(syncHash);
   setInterval(() => {
     if (document.body.dataset.view === 'kanban' && !document.hidden) refresh();
   }, POLL_MS);

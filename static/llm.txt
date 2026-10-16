@@ -22,7 +22,7 @@ Power, 1s tick with 1h graphs). Hash routes: `#/brief`, `#/` (Stack, default),
 - **Stack** — service grid with the `/`-focused filter scanner.
 - **Files** — host filesystem browser rooted at `~`: browse folders, create files/folders, upload/download, rename, delete, click any entry for full details, and open any text file in an inline editor (syntax highlighting, save in place, download).
 - **Shell** — interactive host tty rooted in `~` (see Web shell below).
-- **Kanban** — a small Trello-style board: lanes as columns, cards with title + owner, drag and drop, inline edit. Polls every 3 s, so cards agents write through `/api/kanban` appear on their own (see Kanban board below).
+- **Kanban** — a small Trello-style board: lanes as columns, cards with title + owner + a markdown body, drag and drop, inline owner edit. Click a card to open its detail modal (edit title / owner / lane, rendered markdown body with a Write + live Preview editor, clickable checklists); `#/kanban/card-<id>` deep-links a card, `#/kanban/card-<id>/edit` opens it in the editor. Polls every 3 s, so cards agents write through `/api/kanban` appear on their own (see Kanban board below).
 
 ## API
 
@@ -67,7 +67,20 @@ or delete them through the API.
 
 Card: `{"id", "title", "owner" (string or null), "status" (lane name), "lane_id",
 "position" (0-based within the lane, 0 = top), "created_at", "updated_at",
-"archived_at" (null, or when it was archived)}`.
+"archived_at" (null, or when it was archived), "body" (markdown string, "" when
+empty), "has_body" (bool), "body_preview" (first prose line of the body, markers
+stripped, max 140 chars), "body_tasks" (`{"done", "total"}` checklist counts, or
+null)}`.
+
+Body: free-form **markdown** (GFM: headings, lists, `- [ ]` / `- [x]` task
+items, fenced code, links, tables), up to 200,000 characters. It is stored
+verbatim (CRLF normalised to LF); `null` or whitespace-only clears it to "".
+The board UI renders it sanitized (marked + DOMPurify), so HTML in a body is
+never executed. **Listings (`GET /api/kanban`, `/api/kanban/cards`,
+`/api/kanban/archived`) omit `body`** and return only the summary fields, to
+keep the 3 s poll light; pass `?include_body=1` for full bodies, or read one
+card with `GET /api/kanban/cards/:id` (always full). POST/PATCH responses return
+the full card, body included.
 Lane: `{"id", "name", "position", "card_count" (visible cards), "archived_count",
 "created_at", "updated_at"}`.
 
@@ -86,13 +99,13 @@ deleting a non-empty lane).
 
 | Method | Path | Behavior |
 |--------|------|----------|
-| GET    | /api/kanban?status=&owner=&include_archived= | `{"lanes": [...], "cards": [...]}`. All lanes always; non-archived cards ordered by lane then position, optionally filtered by `status` (lane) and/or `owner` (case-insensitive exact; `owner=` empty = unowned). `include_archived=1` also returns archived cards (after the visible ones, `archived_at` set). |
-| GET    | /api/kanban/cards?status=&owner=&include_archived= | Just the cards array (same filters). |
-| GET    | /api/kanban/archived?status=&owner= | Archived cards only, most recently archived first. |
+| GET    | /api/kanban?status=&owner=&include_archived=&include_body= | `{"lanes": [...], "cards": [...]}`. All lanes always; non-archived cards ordered by lane then position, optionally filtered by `status` (lane) and/or `owner` (case-insensitive exact; `owner=` empty = unowned). `include_archived=1` also returns archived cards (after the visible ones, `archived_at` set). Cards carry `has_body` / `body_preview` / `body_tasks` but no `body` unless `include_body=1`. |
+| GET    | /api/kanban/cards?status=&owner=&include_archived=&include_body= | Just the cards array (same filters). |
+| GET    | /api/kanban/archived?status=&owner=&include_body= | Archived cards only, most recently archived first. |
 | POST   | /api/kanban/archive-done | Archive every non-archived card in the lane named "Done" (case-insensitive) → `{"archived": N, "ids": [...], "lane", "archived_at"}`. No body needed. 404 if there is no Done lane. |
-| POST   | /api/kanban/cards | JSON `{"title", "owner"?, "status"?, "position"?}` → 201 + card. `status` defaults to the first lane; `position` defaults to the bottom. Title max 500 chars, owner max 100. |
-| GET    | /api/kanban/cards/:id | One card. |
-| PATCH  | /api/kanban/cards/:id | Any of `{"title", "owner", "status", "position", "archived"}`. Changing `status` without `position` appends to the bottom of the new lane; `position` alone reorders within the lane. `"owner": null` (or "") clears it. `"archived": true` archives one card; `"archived": false` restores it to the bottom of its lane (or to `status` / `position` if given). `archived` must be a JSON boolean. |
+| POST   | /api/kanban/cards | JSON `{"title", "owner"?, "status"?, "position"?, "body"?}` → 201 + card. `status` defaults to the first lane; `position` defaults to the bottom. Title max 500 chars, owner max 100, body (markdown) max 200,000. |
+| GET    | /api/kanban/cards/:id | One card, **with its full markdown `body`** (archived cards too). 404 if missing. |
+| PATCH  | /api/kanban/cards/:id | Any of `{"title", "owner", "body", "status", "position", "archived"}`. `body` replaces the whole markdown body (read it first to append; `null` clears). Changing `status` without `position` appends to the bottom of the new lane; `position` alone reorders within the lane. `"owner": null` (or "") clears it. `"archived": true` archives one card; `"archived": false` restores it to the bottom of its lane (or to `status` / `position` if given). `archived` must be a JSON boolean. |
 | DELETE | /api/kanban/cards/:id | Delete → `{"deleted": id, "card": {...}}`. |
 | GET    | /api/kanban/lanes | Lanes in board order, with `card_count`. |
 | POST   | /api/kanban/lanes | JSON `{"name", "position"?}` → 201 + lane. Names are unique (case-insensitive), max 60 chars, not all digits. |
@@ -130,6 +143,19 @@ Examples:
     # delete a card
     curl -X DELETE http://macmini:5555/api/kanban/cards/7
 
+    # card with a markdown body (use the handoff template below)
+    curl -X POST http://macmini:5555/api/kanban/cards \
+      -H 'Content-Type: application/json' \
+      -d '{"title":"Migrate backups to restic","owner":"hermes","status":"in progress","body":"## Goal\nMove nightly backups to restic.\n\n## Next steps\n- [ ] write the cron\n- [ ] test a restore"}'
+
+    # read one card with its full body; replace the body
+    curl http://macmini:5555/api/kanban/cards/7
+    curl -X PATCH http://macmini:5555/api/kanban/cards/7 \
+      -H 'Content-Type: application/json' -d '{"body":"## Goal\n..."}'
+
+    # whole board including every body
+    curl 'http://macmini:5555/api/kanban?include_body=1'
+
     # archive one card / restore it
     curl -X PATCH http://macmini:5555/api/kanban/cards/7 \
       -H 'Content-Type: application/json' -d '{"archived":true}'
@@ -149,6 +175,50 @@ Examples:
     curl -X PATCH http://macmini:5555/api/kanban/lanes/review \
       -H 'Content-Type: application/json' -d '{"name":"QA"}'
     curl -X DELETE 'http://macmini:5555/api/kanban/lanes/qa?target=done'
+
+#### Card body handoff template (agents: use this)
+
+When an agent picks up, works on, or hands off a card, keep the card's `body`
+in this shape so the next agent (or Kix) can resume without asking. Set
+`owner` to your agent name, move the card with `status`, and **append** to the
+progress log rather than rewriting history: `GET /api/kanban/cards/:id`, edit
+the markdown, then `PATCH {"body": ...}` with the whole new body. Timestamps
+are Asia/Manila (`date '+%Y-%m-%d %H:%M %z'`). Keep secrets out of the body.
+
+    ## Goal
+    One or two sentences: the outcome that means this card is done.
+
+    ## Context
+    Why this matters, constraints, related cards (#12), decisions already made.
+
+    ## Agent
+    - Host: macmini (or the machine the work runs on)
+    - Provider / model: <provider> / <model>
+    - Agent id: <agent or session id>
+    - Worktree: /path/to/worktree
+    - Branch: feature/xyz (commit abc1234, not pushed)
+
+    ## Status / progress log
+    - 2026-10-16 19:45 +0800: picked up; reading the existing code
+    - 2026-10-16 20:10 +0800: migration written, tests green
+    - 2026-10-16 20:30 +0800: **blocked**: needs Kix to approve the DNS change
+
+    ## Findings
+    - What you learned that is not obvious from the code (gotchas, numbers, error messages).
+
+    ## Next steps
+    - [x] done step
+    - [ ] the next concrete step, small enough to start immediately
+    - [ ] verification to run before moving to Done
+
+    ## Links
+    - PR / commit: https://…
+    - Logs, docs, dashboards: https://…
+
+Checklist items (`- [ ]` / `- [x]`) show as a `☑ done/total` badge on the
+board card and can be ticked in the card modal (which PATCHes the body). The
+board shows `body_preview`, the first prose line (headings skipped), so make
+the first line under `## Goal` a good one-line summary.
 
 ### Native macOS telemetry
 

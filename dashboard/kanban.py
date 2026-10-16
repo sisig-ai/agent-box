@@ -10,6 +10,7 @@ import threading
 
 from . import db
 from .dates import now_iso
+from .kanban_body import with_body_summary
 
 DEFAULT_LANES = ("Backlog", "To Do", "In Progress", "Done")
 _WRITE_LOCK = threading.Lock()
@@ -50,7 +51,8 @@ def init_schema(conn):
             position   INTEGER NOT NULL,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
-            archived_at TEXT
+            archived_at TEXT,
+            body       TEXT NOT NULL DEFAULT ''
         )
         """
     )
@@ -69,13 +71,15 @@ def migrate(conn):
     columns = {r["name"] for r in conn.execute("PRAGMA table_info(kanban_card)").fetchall()}
     if "archived_at" not in columns:
         conn.execute("ALTER TABLE kanban_card ADD COLUMN archived_at TEXT")
+    if "body" not in columns:
+        conn.execute("ALTER TABLE kanban_card ADD COLUMN body TEXT NOT NULL DEFAULT ''")
 
 
 # ---------------- reads ----------------
 
 CARD_SQL = (
     "SELECT c.id, c.title, c.owner, l.name AS status, c.lane_id, c.position,"
-    " c.created_at, c.updated_at, c.archived_at"
+    " c.created_at, c.updated_at, c.archived_at, c.body"
     " FROM kanban_card c JOIN kanban_lane l ON l.id = c.lane_id"
 )
 
@@ -116,8 +120,9 @@ def require_lane(conn, ref, label="status"):
     return lane
 
 
-def cards(conn, lane_id=None, owner=None, archived="exclude"):
-    """Cards in board order. ``archived``: "exclude" (default), "include", or "only"."""
+def cards(conn, lane_id=None, owner=None, archived="exclude", include_body=False):
+    """Cards in board order. ``archived``: "exclude" (default), "include", or "only".
+    Full ``body`` only with ``include_body``; the summary fields are always set."""
     sql, args, where = CARD_SQL, [], []
     if archived == "exclude":
         where.append("c.archived_at IS NULL")
@@ -137,20 +142,25 @@ def cards(conn, lane_id=None, owner=None, archived="exclude"):
         sql += " ORDER BY c.archived_at DESC, c.id DESC"
     else:
         sql += " ORDER BY c.archived_at IS NOT NULL, l.position, l.id, c.position, c.id"
-    return [dict(r) for r in conn.execute(sql, args).fetchall()]
+    rows = conn.execute(sql, args).fetchall()
+    return [with_body_summary(r, include_body) for r in rows]
 
 
 def card(conn, card_id):
+    """One card, always with its full ``body``."""
     row = conn.execute(CARD_SQL + " WHERE c.id = ?", (card_id,)).fetchone()
     if row is None:
         raise KanbanError("card not found", 404)
-    return dict(row)
+    return with_body_summary(row)
 
 
-def board(status=None, owner=None, archived="exclude"):
+def board(status=None, owner=None, archived="exclude", include_body=False):
     conn = db.get_db()
     lane_id = require_lane(conn, status)["id"] if status is not None else None
-    return {"lanes": lanes(conn), "cards": cards(conn, lane_id, owner, archived)}
+    return {
+        "lanes": lanes(conn),
+        "cards": cards(conn, lane_id, owner, archived, include_body),
+    }
 
 
 # ---------------- ordering helpers ----------------
@@ -182,7 +192,7 @@ def _place(ids, item, position):
 # ---------------- card writes ----------------
 
 
-def create_card(title, owner=None, status=None, position=None):
+def create_card(title, owner=None, status=None, position=None, body=""):
     with _WRITE_LOCK, db.get_db() as conn:
         if status is None:
             first = conn.execute(
@@ -195,9 +205,10 @@ def create_card(title, owner=None, status=None, position=None):
             lane = require_lane(conn, status)
         stamp = now_iso()
         cur = conn.execute(
-            "INSERT INTO kanban_card (title, owner, lane_id, position, created_at, updated_at)"
-            " VALUES (?, ?, ?, ?, ?, ?)",
-            (title, owner, lane["id"], 1 << 30, stamp, stamp),
+            "INSERT INTO kanban_card"
+            " (title, owner, lane_id, position, created_at, updated_at, body)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (title, owner, lane["id"], 1 << 30, stamp, stamp, body or ""),
         )
         new_id = cur.lastrowid
         ids = _place(_lane_card_ids(conn, lane["id"], exclude=new_id), new_id, position)
@@ -206,7 +217,7 @@ def create_card(title, owner=None, status=None, position=None):
 
 
 def update_card(card_id, changes):
-    """Apply any of title / owner / status / position / archived. Returns the card.
+    """Apply any of title / owner / body / status / position / archived. Returns the card.
 
     Archiving takes the card out of its lane's ordering (the visible cards are
     renumbered); unarchiving puts it back at ``position`` or the bottom.
@@ -216,7 +227,7 @@ def update_card(card_id, changes):
         old_lane = current["lane_id"]
         was = current["archived_at"] is not None
         will = changes.get("archived", was)
-        fields = {k: changes[k] for k in ("title", "owner") if k in changes}
+        fields = {k: changes[k] for k in ("title", "owner", "body") if k in changes}
         target = require_lane(conn, changes["status"])["id"] if "status" in changes else old_lane
         if will:
             if not was:

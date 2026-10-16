@@ -71,7 +71,14 @@ with `ALTER TABLE` when missing, so existing cards are kept. Archived cards are
 hidden from `/api/kanban` unless `?include_archived=1`, are listed at
 `/api/kanban/archived`, and are produced by the Done column's **Archive Done**
 button (`POST /api/kanban/archive-done`) or `PATCH /api/kanban/cards/:id
-{"archived": true}`. Code: `kanban` (schema, reads, card writes, archiving),
+{"archived": true}`. Cards also carry a markdown `body` (column
+`kanban_card.body TEXT NOT NULL DEFAULT ''`, added the same way): listings return
+only `has_body` / `body_preview` / `body_tasks` unless `?include_body=1`, while
+`GET /api/kanban/cards/:id` and POST/PATCH responses carry the full body. The UI
+opens a card in a Trello-style modal (`static/js/kanban/detail.js`; deep link
+`#/kanban/card-<id>`, editor `#/kanban/card-<id>/edit`) and renders bodies with
+vendored marked + DOMPurify (`static/vendor/dompurify/`). Code: `kanban`
+(schema, reads, card writes, archiving), `kanban_body` (body summary fields),
 `kanban_lanes` (lane writes), `kanban_api` (HTTP).
 
 `macos_metrics` maps macOS host CPU/memory counters and native macmon sensor

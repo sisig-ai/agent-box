@@ -15,6 +15,7 @@ async function call(method, path, body) {
 
 export const api = {
   board: () => call('GET', '/api/kanban'),
+  getCard: (id) => call('GET', `/api/kanban/cards/${id}`),
   addCard: (card) => call('POST', '/api/kanban/cards', card),
   patchCard: (id, changes) => call('PATCH', `/api/kanban/cards/${id}`, changes),
   deleteCard: (id) => call('DELETE', `/api/kanban/cards/${id}`),

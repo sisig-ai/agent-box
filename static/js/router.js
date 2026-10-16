@@ -1,4 +1,5 @@
 // Hash routing for the views (Brief / Stack / Files / Shell / Kanban / GMGN).
+// Kanban also owns #/kanban/card-<id>[/edit] and the short #card-<id> (card modal).
 // Shell and Files are code-split via dynamic import(): their modules are
 // fetched on first tab activation and the import promise is cached, so a
 // second visit is a no-op. No window.* globals are involved.
@@ -17,7 +18,7 @@ function current() {
   if (h === '#/brief') return 'brief';
   if (h === '#/files') return 'files';
   if (h === '#/shell') return 'shell';
-  if (h === '#/kanban') return 'kanban';
+  if (h === '#/kanban' || h.startsWith('#/kanban/') || /^#card-\d+/.test(h)) return 'kanban';
   if (h === '#/gmgn') return 'gmgn';
   return 'stack'; // default landing tab (also #/ and empty hash)
 }
@@ -28,7 +29,7 @@ function ensure(v) {
   } else if (v === 'files') {
     (lazy.files ||= import('./files/actions.js')).then(m => m.initFiles());
   } else if (v === 'kanban') {
-    (lazy.kanban ||= import('./kanban/board.js?v=kanban2')).then(m => m.initKanban());
+    (lazy.kanban ||= import('./kanban/board.js?v=kanban4')).then(m => m.initKanban());
   }
 }
 function apply() {

@@ -13,6 +13,7 @@ bp = Blueprint("kanban", __name__)
 
 TITLE_MAX = 500
 OWNER_MAX = 100
+BODY_MAX = 200_000
 LANE_NAME_MAX = 60
 TRUTHY = {"1", "true", "yes", "on", ""}
 
@@ -54,6 +55,18 @@ def clean_owner(raw):
     return owner or None
 
 
+def clean_body(raw):
+    """Markdown body; null clears it. Stored verbatim (only \r\n -> \n)."""
+    if raw is None:
+        return ""
+    if not isinstance(raw, str):
+        raise KanbanError("body must be a string (markdown) or null")
+    body = raw.replace("\r\n", "\n")
+    if len(body) > BODY_MAX:
+        raise KanbanError(f"body must be at most {BODY_MAX} characters")
+    return body if body.strip() else ""
+
+
 def clean_status(raw):
     if isinstance(raw, bool) or not isinstance(raw, (str, int)) or not str(raw).strip():
         raise KanbanError("status must be a lane name (or lane id)")
@@ -92,12 +105,14 @@ def flag(name):
 
 
 def filtered_board(archived=None):
-    """kanban.board() with the shared ?status= / ?owner= / ?include_archived= filters."""
+    """kanban.board() with the shared ?status= / ?owner= / ?include_archived= /
+    ?include_body= filters."""
     status = request.args.get("status")
     owner = request.args.get("owner")
     if archived is None:
         archived = "include" if flag("include_archived") else "exclude"
-    return kanban.board(status or None, owner.strip() if owner is not None else None, archived)
+    owner = owner.strip() if owner is not None else None
+    return kanban.board(status or None, owner, archived, flag("include_body"))
 
 
 # ---------------- board ----------------
@@ -105,7 +120,10 @@ def filtered_board(archived=None):
 
 @bp.get("/api/kanban")
 def board_get():
-    """GET /api/kanban?status=&owner=&include_archived= — all lanes plus (filtered) cards."""
+    """GET /api/kanban?status=&owner=&include_archived=&include_body= — lanes + cards.
+
+    Cards carry ``has_body`` / ``body_preview`` / ``body_tasks``; the full
+    markdown ``body`` only with ``?include_body=1`` (or GET /api/kanban/cards/:id)."""
     return jsonify(filtered_board())
 
 
@@ -132,13 +150,14 @@ def archive_done():
 
 @bp.post("/api/kanban/cards")
 def card_create():
-    body = json_body(("title", "owner", "status", "position"))
+    body = json_body(("title", "owner", "status", "position", "body"))
     status = clean_status(body["status"]) if body.get("status") not in (None, "") else None
     card = kanban.create_card(
         clean_title(body.get("title")),
         clean_owner(body.get("owner")),
         status,
         clean_position(body.get("position")),
+        clean_body(body.get("body")),
     )
     return jsonify(card), 201
 
@@ -153,14 +172,18 @@ def card_get(card_id):
 @bp.patch("/api/kanban/cards/<card_id>")
 def card_patch(card_id):
     card_id = parse_card_id(card_id)
-    body = json_body(("title", "owner", "status", "position", "archived"))
+    body = json_body(("title", "owner", "body", "status", "position", "archived"))
     if not body:
-        raise KanbanError("nothing to update; send any of title, owner, status, position, archived")
+        raise KanbanError(
+            "nothing to update; send any of title, owner, body, status, position, archived"
+        )
     changes = {}
     if "title" in body:
         changes["title"] = clean_title(body["title"])
     if "owner" in body:
         changes["owner"] = clean_owner(body["owner"])
+    if "body" in body:
+        changes["body"] = clean_body(body["body"])
     if "status" in body:
         changes["status"] = clean_status(body["status"])
     if "position" in body:
