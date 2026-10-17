@@ -4,15 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#050814">
+  <meta name="theme-color" content="#0b0e10">
   <meta name="format-detection" content="telephone=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="GMGN">
   <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
-  <link rel="icon" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=terran1">
+  <link rel="icon" href="/icons/icon-192.png?v=terran1">
   <script>
     (function () {
       var app = new URLSearchParams(location.search).get('app') === 'gmgn' || location.pathname === '/gmgn';
@@ -43,6 +43,13 @@
   <link rel="stylesheet" href="/static/css/kanban.css?v=kanban4">
   <link rel="stylesheet" href="/static/css/kanban-detail.css?v=kanban4">
   <link rel="stylesheet" href="/static/css/modal.css?v=clockpill1">
+  <link rel="preload" href="/static/fonts/VT323-Regular.woff2?v=terran1" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/css/terran/core.css?v=terran1">
+  <link rel="stylesheet" href="/static/css/terran/console.css?v=terran1">
+  <link rel="stylesheet" href="/static/css/terran/hud.css?v=terran1">
+  <link rel="stylesheet" href="/static/css/terran/panels.css?v=terran1">
+  <link rel="stylesheet" href="/static/css/terran/kanban.css?v=terran1">
+  <link rel="stylesheet" href="/static/css/terran/mobile.css?v=terran1">
 </head>
 <body data-view="stack">
   <canvas id="warpfield" aria-hidden="true"></canvas>
@@ -58,8 +65,8 @@
       </div>
       <!-- ---------- Live telemetry: compact pills inline with the title (1s tick, every tab) ---------- -->
       <section class="telemetry" id="telemetry" aria-label="Live host telemetry">
-        <div class="tele-card" id="tele-card-cpu" style="--accent:#72a7ff;--accent2:#b99aff" role="button" tabindex="0" aria-expanded="false" aria-label="CPU — activate to expand 1 hour graph">
-          <div class="tele-label"><span>CPU</span><span class="tele-live"><i></i>live</span></div>
+        <div class="tele-card" id="tele-card-cpu" style="--accent:#6fd3ff;--accent2:#ffb33d" role="button" tabindex="0" aria-expanded="false" aria-label="CPU — activate to expand 1 hour graph">
+          <i class="tr-res-ico tr-res-cpu" aria-hidden="true"></i><div class="tele-label"><span>CPU</span><span class="tele-live"><i></i>live</span></div>
           <div class="tele-duo">
             <div class="tele-half">
               <div class="tele-main"><span id="tele-cpu-util">—</span><span class="tele-unit">%</span></div>
@@ -74,15 +81,15 @@
           </div>
           <div class="tele-graph"><canvas id="tele-cpu-graph"></canvas></div>
         </div>
-        <div class="tele-card" id="tele-card-mem" style="--accent:#aa87ff" role="button" tabindex="0" aria-expanded="false" aria-label="Memory — activate to expand 1 hour graph">
-          <div class="tele-label"><span>Memory</span><span class="tele-live"><i></i>live</span></div>
+        <div class="tele-card" id="tele-card-mem" style="--accent:#3dff73" role="button" tabindex="0" aria-expanded="false" aria-label="Memory — activate to expand 1 hour graph">
+          <i class="tr-res-ico tr-res-mem" aria-hidden="true"></i><div class="tele-label"><span>Memory</span><span class="tele-live"><i></i>live</span></div>
           <div class="tele-main"><span id="tele-mem-used">—</span><span class="tele-unit" id="tele-mem-total">/ — GB</span></div>
           <div class="tele-sub" id="tele-mem-free">free —</div>
           <div class="tele-bar"><i id="tele-mem-bar"></i></div>
           <div class="tele-graph"><canvas id="tele-mem-graph"></canvas></div>
         </div>
-        <div class="tele-card" id="tele-card-pwr" style="--accent:#83aaff" role="button" tabindex="0" aria-expanded="false" aria-label="Power — activate to expand 1 hour graph">
-          <div class="tele-label"><span>System Power</span><span class="tele-right"><span class="tele-live"><i></i>live</span><button class="pwr-badge" id="tele-pwr-badge" title="Dismiss power alert" aria-label="Dismiss power alert">⚠<span id="tele-pwr-badge-text"></span><span class="pwr-x" aria-hidden="true">×</span></button></span></div>
+        <div class="tele-card" id="tele-card-pwr" style="--accent:#f5d547" role="button" tabindex="0" aria-expanded="false" aria-label="Power — activate to expand 1 hour graph">
+          <i class="tr-res-ico tr-res-pwr" aria-hidden="true"></i><div class="tele-label"><span>System Power</span><span class="tele-right"><span class="tele-live"><i></i>live</span><button class="pwr-badge" id="tele-pwr-badge" title="Dismiss power alert" aria-label="Dismiss power alert">⚠<span id="tele-pwr-badge-text"></span><span class="pwr-x" aria-hidden="true">×</span></button></span></div>
           <div class="tele-main"><span id="tele-pwr-total">—</span><span class="tele-unit">W</span></div>
           <div class="tele-sub" id="tele-pwr-split">cpu — · gpu —</div>
           <div class="tele-bar"><i id="tele-pwr-bar"></i></div>
@@ -95,21 +102,45 @@
           </div>
         </div>
       </section>
-      <div class="readout" style="--accent:#aa87ff" aria-label="Local time">
+      <div class="readout" style="--accent:#4fe3c1" aria-label="Local time">
         <div class="tele-label"><span>Local</span><span class="readout-tz" id="readout-tz"></span></div>
         <div class="tele-main readout-time" id="readout-time">--:--</div>
         <div class="tele-sub readout-date" id="readout-date"></div>
       </div>
     </header>
 
-    <nav class="view-tabs" aria-label="Views">
-      <a class="view-btn" id="view-btn-brief" href="#/brief">✎ Brief</a>
-      <a class="view-btn active" id="view-btn-stack" href="#/">▦ Stack</a>
-      <a class="view-btn" id="view-btn-files" href="#/files">🗀 Files <span style="opacity:0.6">~</span></a>
-      <a class="view-btn" id="view-btn-shell" href="#/shell">❯ Shell <span style="opacity:0.6">~</span></a>
-      <a class="view-btn" id="view-btn-kanban" href="#/kanban">▤ Kanban</a>
-      <a class="view-btn" id="view-btn-gmgn" href="#/gmgn">GMGN</a>
-    </nav>
+    <!-- ---------- Terran console: minimap · selection · portrait · command card ---------- -->
+    <div class="tr-console" id="tr-console">
+      <div class="tr-minimap" id="tr-minimap" title="Minimap: tap or drag to scroll the view">
+        <canvas id="tr-minimap-canvas" aria-hidden="true"></canvas>
+        <span class="tr-mm-label" id="tr-mm-label">sector</span>
+      </div>
+      <div class="tr-select" aria-live="polite">
+        <div class="tr-wire"><img id="tr-wire-img" src="/static/img/terran/wire-command.webp?v=terran1" alt="" decoding="async"></div>
+        <div class="tr-sel-text">
+          <div class="tr-sel-name" id="tr-sel-name">Command Center</div>
+          <div class="tr-sel-rank" id="tr-sel-rank">Stack</div>
+          <div class="tr-sel-stats" id="tr-sel-stats"></div>
+        </div>
+      </div>
+      <div class="tr-portrait" id="tr-portrait" aria-hidden="true">
+        <img src="/static/img/terran/portrait.webp?v=terran1" alt="" decoding="async">
+        <span class="tr-portrait-tag">adjutant</span>
+      </div>
+      <nav class="view-tabs tr-cmd" aria-label="Views">
+        <a class="view-btn tr-cmd-btn" id="view-btn-brief" href="#/brief" data-hotkey="b" title="Brief (B)" aria-keyshortcuts="B"><img src="/static/img/terran/ico-brief.webp?v=terran1" alt="" width="64" height="64" decoding="async"><span class="tr-cmd-lbl"><u>B</u>rief</span><kbd>B</kbd></a>
+        <a class="view-btn tr-cmd-btn" id="view-btn-stack" href="#/" data-hotkey="s" title="Stack (S)" aria-keyshortcuts="S"><img src="/static/img/terran/ico-stack.webp?v=terran1" alt="" width="64" height="64" decoding="async"><span class="tr-cmd-lbl"><u>S</u>tack</span><kbd>S</kbd></a>
+        <a class="view-btn tr-cmd-btn" id="view-btn-files" href="#/files" data-hotkey="f" title="Files (F)" aria-keyshortcuts="F"><img src="/static/img/terran/ico-files.webp?v=terran1" alt="" width="64" height="64" decoding="async"><span class="tr-cmd-lbl"><u>F</u>iles</span><kbd>F</kbd></a>
+        <a class="view-btn tr-cmd-btn" id="view-btn-shell" href="#/shell" data-hotkey="t" title="Shell (T)" aria-keyshortcuts="T"><img src="/static/img/terran/ico-shell.webp?v=terran1" alt="" width="64" height="64" decoding="async"><span class="tr-cmd-lbl">Shell<span class="tr-long"> [<u>T</u>]</span></span><kbd>T</kbd></a>
+        <a class="view-btn tr-cmd-btn" id="view-btn-kanban" href="#/kanban" data-hotkey="k" title="Kanban (K)" aria-keyshortcuts="K"><img src="/static/img/terran/ico-kanban.webp?v=terran1" alt="" width="64" height="64" decoding="async"><span class="tr-cmd-lbl"><u>K</u>anban</span><kbd>K</kbd></a>
+        <a class="view-btn tr-cmd-btn" id="view-btn-gmgn" href="#/gmgn" data-hotkey="g" title="GMGN (G)" aria-keyshortcuts="G"><img src="/static/img/terran/ico-gmgn.webp?v=terran1" alt="" width="64" height="64" decoding="async"><span class="tr-cmd-lbl"><u>G</u>MGN</span><kbd>G</kbd></a>
+        <button type="button" class="tr-cmd-btn tr-cmd-util" id="tr-sound" data-hotkey="m" title="Sound effects (M)" aria-pressed="false"><span class="tr-glyph" aria-hidden="true">♪</span><span class="tr-cmd-lbl">Muted</span><kbd>M</kbd></button>
+        <button type="button" class="tr-cmd-btn tr-cmd-util" id="tr-crt" data-hotkey="c" title="CRT scanlines (C)" aria-pressed="true"><span class="tr-glyph" aria-hidden="true">▤</span><span class="tr-cmd-lbl">CRT on</span><kbd>C</kbd></button>
+        <button type="button" class="tr-cmd-btn tr-cmd-util" id="tr-help" data-hotkey="?" title="Hotkeys (?)"><span class="tr-glyph" aria-hidden="true">?</span><span class="tr-cmd-lbl">Hotkeys</span><kbd>?</kbd></button>
+      </nav>
+    </div>
+    <div class="tr-msgs" id="tr-msgs" role="log" aria-live="polite" aria-label="Advisor messages"></div>
+
 
     <!-- ---------- Daily Brief + Weekly Schedule ---------- -->
     <section class="brief" data-tabpanel="brief" id="brief" aria-label="Daily Brief and weekly schedule">
@@ -362,6 +393,26 @@
     </div>
   </div>
 
-  <script type="module" src="/static/js/main.js?v=kanban4"></script>
+  <div class="tr-boot" id="tr-boot" aria-hidden="true">
+    <div class="tr-boot-screen">
+      <div class="tr-boot-art"></div>
+      <div class="tr-boot-text">
+        <div class="tr-boot-title">MACMINI // SECTOR COMMAND</div>
+        <pre class="tr-boot-log" id="tr-boot-log"></pre>
+        <div class="tr-boot-hint">tap or press any key to take command</div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      // Briefing splash: once per browser session, never in the GMGN PWA,
+      // and instant when reduced motion is preferred. Runs before modules.
+      var d = document.documentElement, seen = false;
+      try { seen = sessionStorage.getItem('tr-booted') === '1'; } catch (e) {}
+      try { if (localStorage.getItem('tr-crt') === '0') d.classList.add('tr-no-crt'); } catch (e) {}
+      if (seen || d.classList.contains('gmgn-app') || location.hash.indexOf('#/kanban/card-') === 0) d.classList.add('tr-booted');
+    })();
+  </script>
+  <script type="module" src="/static/js/main.js?v=terran1"></script>
 </body>
 </html>

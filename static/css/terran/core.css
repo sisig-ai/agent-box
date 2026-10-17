@@ -1,0 +1,205 @@
+/* ==========================================================================
+   Terran console theme: core palette, bitmap fonts, CRT layers, metal kit.
+   Loaded after every legacy stylesheet so it re-skins them in place; no
+   DOM ids/classes the JS relies on are renamed. Original art, "inspired by"
+   the 1998 Terran HUD: gunmetal bezels, green phosphor, square buttons.
+   ========================================================================== */
+@font-face {
+  font-family: "VT323";
+  src: url("/static/fonts/VT323-Regular.woff2?v=terran1") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Silkscreen";
+  src: url("/static/fonts/Silkscreen-Regular.woff2?v=terran1") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Silkscreen";
+  src: url("/static/fonts/Silkscreen-Bold.woff2?v=terran1") format("woff2");
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+
+:root {
+  --tr-green: #3dff73;
+  --tr-green-2: #22c55e;
+  --tr-green-dim: #148a3a;
+  --tr-teal: #4fe3c1;
+  --tr-cyan: #6fd3ff;
+  --tr-yellow: #f5d547;
+  --tr-amber: #ffb33d;
+  --tr-red: #ff4b3e;
+  --tr-ink: #020604;
+  --tr-crt: rgba(1, 10, 4, 0.9);
+  --tr-metal: #3b424a;
+  --tr-metal-hi: #8f99a3;
+  --tr-metal-mid: #59626b;
+  --tr-metal-lo: #16191d;
+  --tr-px: "VT323", "FiraCode Nerd Font Mono", ui-monospace, monospace;
+  --tr-hd: "Silkscreen", "VT323", ui-monospace, monospace;
+  --tr-console-h: 196px;
+  --tr-top-h: 64px;
+  --tr-glow: 0 0 6px rgba(61, 255, 115, 0.55);
+  --tr-bevel: inset 1px 1px 0 rgba(255,255,255,0.22), inset -1px -1px 0 rgba(0,0,0,0.65);
+  --tr-sunken: inset 1px 1px 0 rgba(0,0,0,0.7), inset -1px -1px 0 rgba(255,255,255,0.12);
+  --tr-plate: url("/static/img/terran/metal.webp?v=terran1");
+  /* legacy tokens re-pointed at the phosphor palette */
+  --void: #020403;
+  --blue: var(--tr-green);
+  --violet: var(--tr-teal);
+  --text: #c9ffd6;
+  --muted: #6fb084;
+  --surface: rgba(16, 40, 22, 0.35);
+  --border: rgba(61, 255, 115, 0.2);
+}
+
+html { scrollbar-color: var(--tr-green-dim) #050a06; }
+body {
+  font-family: var(--tr-px);
+  font-size: 18px;
+  background: #010302;
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+}
+::selection { background: rgba(61,255,115,0.35); color: #eaffef; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #030805; }
+::-webkit-scrollbar-thumb { background: linear-gradient(90deg, #2c3238, #4a535c, #2c3238); border: 1px solid #0b0d0f; }
+
+/* ---------- Battlefield backdrop: space-platform starfield + terrain ---------- */
+.nebula { display: none; }
+#warpfield { opacity: 0.55; }
+.vignette {
+  background:
+    radial-gradient(ellipse 120% 90% at 50% 45%, transparent 40%, rgba(0,0,0,0.85) 100%),
+    linear-gradient(rgba(1,4,2,0.55), rgba(1,4,2,0.55)),
+    url("/static/img/terran/map.webp?v=terran1") center / cover no-repeat;
+  mix-blend-mode: normal;
+  opacity: 0.9;
+}
+
+/* CRT: static scanlines + faint phosphor bloom, never animated (the page
+   already avoids infinite animations for GPU reasons). */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(to bottom, rgba(0,0,0,0.16) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at 50% 50%, rgba(61,255,115,0.035), transparent 70%);
+}
+html.tr-no-crt body::after { display: none; }
+
+/* ---------- Layout frame: top resource bar + map viewport + console ---------- */
+.container {
+  max-width: 1280px;
+  padding: calc(var(--tr-top-h) + 14px + env(safe-area-inset-top)) clamp(0.75rem, 2.4vw, 1.5rem)
+           calc(var(--tr-console-h) + 18px + env(safe-area-inset-bottom));
+  padding-left: max(clamp(0.75rem, 2.4vw, 1.5rem), env(safe-area-inset-left));
+  padding-right: max(clamp(0.75rem, 2.4vw, 1.5rem), env(safe-area-inset-right));
+}
+footer { display: none; }
+
+/* ---------- Metal kit ---------- */
+.tr-metal {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.08), rgba(0,0,0,0.25)),
+    var(--tr-plate) center / 420px auto repeat,
+    var(--tr-metal);
+  box-shadow: var(--tr-bevel), 0 0 0 1px #07090a;
+}
+
+/* Every legacy panel becomes a CRT screen sunk into a riveted bezel. */
+.brief-main, .brief-schedule, .shell, .files, .kanban, .tr-screen {
+  position: relative;
+  border-radius: 0 !important;
+  border: 2px solid #0a0d0f !important;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(61,255,115,0.06), transparent 60%),
+    var(--tr-crt) !important;
+  box-shadow:
+    0 0 0 3px var(--tr-metal-mid),
+    0 0 0 4px #0b0e10,
+    0 0 0 7px var(--tr-metal),
+    0 0 0 8px #07090a,
+    inset 0 0 40px rgba(0,0,0,0.75),
+    inset 0 0 0 1px rgba(61,255,115,0.12),
+    0 18px 40px -10px rgba(0,0,0,0.9) !important;
+  margin: 8px;
+}
+/* corner rivets on the bezel */
+.brief-main::before, .brief-schedule::before, .shell::before, .files::before, .kanban::before, .tr-screen::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  pointer-events: none;
+  z-index: 3;
+  background:
+    radial-gradient(circle at 5px 5px, #c3ccd4 0 1.2px, #4d555d 1.8px 2.6px, transparent 3px) 0 0 / 100% 100% no-repeat,
+    radial-gradient(circle at calc(100% - 5px) 5px, #c3ccd4 0 1.2px, #4d555d 1.8px 2.6px, transparent 3px) 0 0 / 100% 100% no-repeat,
+    radial-gradient(circle at 5px calc(100% - 5px), #c3ccd4 0 1.2px, #4d555d 1.8px 2.6px, transparent 3px) 0 0 / 100% 100% no-repeat,
+    radial-gradient(circle at calc(100% - 5px) calc(100% - 5px), #c3ccd4 0 1.2px, #4d555d 1.8px 2.6px, transparent 3px) 0 0 / 100% 100% no-repeat;
+}
+
+h2, h3, .kanban-title h2, .files-title h2, .brief-title h2, .schedule-title h2 {
+  font-family: var(--tr-hd) !important;
+  font-weight: 700 !important;
+  font-size: 0.9rem !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase;
+  color: var(--tr-yellow) !important;
+  text-shadow: 0 0 8px rgba(245,213,71,0.35);
+}
+
+/* ---------- Buttons: beveled steel with phosphor labels ---------- */
+.brief-btn, .tool-btn, .tab-btn, .key-btn, .kb-add-open, .kb-archive-btn, .files-act, .tele-tab,
+.tele-alerts-clear, .fs-modal-actions .brief-btn {
+  font-family: var(--tr-px) !important;
+  font-size: 1.05rem !important;
+  letter-spacing: 0.04em;
+  color: #a8ffbf !important;
+  border-radius: 0 !important;
+  border: 1px solid #06080a !important;
+  background: linear-gradient(180deg, #4a525a 0%, #30363c 48%, #23282d 100%) !important;
+  box-shadow: var(--tr-bevel) !important;
+  text-shadow: var(--tr-glow);
+  transition: filter 0.12s ease, transform 0.06s ease;
+}
+.brief-btn:hover, .tool-btn:hover, .tab-btn:hover, .key-btn:hover, .kb-add-open:hover, .files-act:hover, .tele-tab:hover {
+  filter: brightness(1.25);
+  color: #eaffef !important;
+}
+.brief-btn:active, .tool-btn:active, .tab-btn:active, .key-btn:active, .files-act:active {
+  box-shadow: var(--tr-sunken) !important;
+  transform: translateY(1px);
+}
+.tab-btn.active, .brief-btn.toggled, .key-btn.armed, .tele-tab.active, .kb-archive-btn.armed {
+  background: linear-gradient(180deg, #1d4d2b, #10301a) !important;
+  color: var(--tr-green) !important;
+  box-shadow: var(--tr-sunken), 0 0 0 1px rgba(61,255,115,0.45) !important;
+}
+.fs-modal-ok.danger, .kb-archive-btn.armed { color: #ffb0a8 !important; }
+
+input, textarea, select {
+  border-radius: 0 !important;
+}
+input[type="text"]:not(.gmgn *), input[type="date"], input:not([type]):not(.gmgn *), select:not(.gmgn *), textarea {
+  font-family: var(--tr-px);
+  background: #010803 !important;
+  color: var(--tr-green) !important;
+  border: 1px solid #0a0d0f !important;
+  box-shadow: var(--tr-sunken), inset 0 0 12px rgba(61,255,115,0.06) !important;
+  caret-color: var(--tr-green);
+}
+input:focus, textarea:focus, select:focus {
+  outline: 1px solid var(--tr-green) !important;
+  outline-offset: 0;
+}
+:focus-visible { outline: 1px dashed var(--tr-yellow); outline-offset: 2px; }
+a { color: var(--tr-teal); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
