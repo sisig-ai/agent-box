@@ -51,6 +51,26 @@ function move(entry, exit) {
   return sign + pct + '%';
 }
 
+function paintBalance(row) {
+  const node = document.getElementById('gmgn-balance');
+  if (!node) return;
+  const value = node.querySelector('.value');
+  const meta = node.querySelector('.meta');
+  const usd = row && Number(row.usd);
+  if (!row || !Number.isFinite(usd)) {
+    value.textContent = '—';
+    meta.textContent = '';
+    return;
+  }
+  value.textContent = '$' + usd.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  const sol = Number(row.sol);
+  const amount = Number.isFinite(sol) ? sol.toFixed(4) + ' SOL' : '';
+  meta.textContent = amount + (row.as_of ? ' · ' + manila(row.as_of) : '');
+}
+
 function paintCard(node, row) {
   if (!node || !row) return;
   const value = node.querySelector('.value');
@@ -167,7 +187,7 @@ function paintScreen(body) {
   if (!rows.length) {
     const empty = document.createElement('div');
     empty.className = 'gmgn-empty';
-    empty.textContent = 'scan saw no completed token under 3m';
+    empty.textContent = 'scan saw no completed token under 5m';
     box.append(empty);
     return;
   }
@@ -211,6 +231,7 @@ const paintTrades = createDayPager(root, paintList);
 const paintGraphs = createPnlGraphs(cards);
 
 function paint(body) {
+  paintBalance(body.balance);
   paintCard(cards.h12, body.pnl && body.pnl.h12);
   paintCard(cards.d1, body.pnl && body.pnl.d1);
   paintCard(cards.d7, body.pnl && body.pnl.d7);

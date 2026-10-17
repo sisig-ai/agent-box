@@ -112,6 +112,10 @@ html.gmgn-app .gmgn-dash { display: none; }
   .gmgn-dash { display: none; }
 }
 
+.gmgn-balance {
+  margin-bottom: 0.5rem;
+}
+
 .gmgn-cards {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

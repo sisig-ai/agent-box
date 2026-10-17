@@ -2,6 +2,14 @@
 
 import json
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def stub_balance(monkeypatch):
+    from dashboard import gmgn_api
+    monkeypatch.setattr(gmgn_api, "load_balance", lambda now=None: None)
+
 
 def test_gmgn_route_reads_runner_feed(client, monkeypatch, tmp_path):
     log_dir = tmp_path / "logs"
@@ -102,3 +110,29 @@ def test_gmgn_route_returns_latest_screen(client, monkeypatch, tmp_path):
     assert body["failed"] == 1
     assert body["rows"][0]["symbol"] == "SPX"
     assert body["rows"][0]["reason"] == "volume per holder $159.9 >= $100"
+
+
+def test_quote_usd_uses_exact_decimal():
+    from dashboard.gmgn_api import quote_usd
+    assert quote_usd("0.596435973", "106.38501728") == "63.45"
+
+
+def test_route_attaches_balance(client, monkeypatch, tmp_path):
+    monkeypatch.setenv("GMGN_LOOP_LOG_DIR", str(tmp_path / "logs"))
+    monkeypatch.setenv("GMGN_LOOP_EXTRA_LOG", str(tmp_path / "missing.log"))
+    monkeypatch.setenv("GMGN_LOOP_EVENTS", str(tmp_path / "events.jsonl"))
+    monkeypatch.setenv("GMGN_LOOP_LEDGER", str(tmp_path / "ledger.json"))
+    monkeypatch.setenv("GMGN_LOOP_CLAIMS", str(tmp_path / "claims.json"))
+    monkeypatch.setenv("GMGN_LOOP_SCREEN", str(tmp_path / "missing-screen.json"))
+    from dashboard import gmgn_api
+    gmgn_api._CACHE["body"] = None
+    gmgn_api._CACHE["at"] = 0
+    monkeypatch.setattr(gmgn_api, "load_balance", lambda now=None: {
+        "sol": "0.596435973",
+        "usd": "63.45",
+        "price_usd": "106.38501728",
+        "as_of": 1_700_000_000,
+    })
+    body = client.get("/api/gmgn").get_json()
+    assert body["balance"]["usd"] == "63.45"
+    assert body["balance"]["sol"] == "0.596435973"
