@@ -1,10 +1,10 @@
-const CACHE = "gmgn-shell-14";
+const CACHE = "gmgn-shell-15";
 const SHELL = [
   "/?app=gmgn",
   "/gmgn",
   "/static/css/base.css",
   "/static/css/gmgn.css?v=gmgn11",
-  "/static/js/main.js?v=terran1",
+  "/static/js/main.js?v=terran2",
   "/static/js/gmgn.js?v=gmgn12",
   "/static/js/gmgn-days.js?v=gmgn10",
   "/static/css/gmgn-days.css?v=gmgn10",

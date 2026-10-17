@@ -1,9 +1,8 @@
 // Terran console: selection readout, command-card hotkeys, advisor messages,
 // sound/CRT toggles. Purely a presentation layer: it reads the DOM the other
 // modules already maintain and never calls an API itself.
-import { advise, bindPortrait } from './advisor.js?v=terran1';
+import { advise } from './advisor.js?v=terran2';
 import { initSound, blip } from './sound.js?v=terran1';
-import { initMinimap } from './minimap.js?v=terran1';
 import { initBoot } from './boot.js?v=terran1';
 
 const $ = (id) => document.getElementById(id);
@@ -112,7 +111,7 @@ function initToggles() {
   syncCrt();
   $('tr-help').addEventListener('click', () => {
     advise('Hotkeys: <b>B</b>rief · <b>S</b>tack · <b>F</b>iles · <b>T</b> shell · <b>K</b>anban · <b>G</b>MGN', 'info', 9000);
-    advise('<b>/</b> scan for a system · <b>M</b> sound · <b>C</b> scanlines · minimap scrolls the view', 'info', 9000);
+    advise('<b>/</b> scan for a system · <b>M</b> sound · <b>C</b> scanlines', 'info', 9000);
   });
 }
 
@@ -170,12 +169,10 @@ function initWatchers() {
 
 function init() {
   if (!$('tr-console')) return;
-  bindPortrait($('tr-portrait'));
   initSound($('tr-sound'));
   initHotkeys();
   initToggles();
   initWatchers();
-  initMinimap($('tr-minimap'), $('tr-minimap-canvas'), $('tr-mm-label'));
   renderSelection();
   window.addEventListener('hashchange', () => requestAnimationFrame(renderSelection));
   setInterval(() => { if (!document.hidden) renderSelection(); }, 1000);

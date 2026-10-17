@@ -45,11 +45,11 @@
   <link rel="stylesheet" href="/static/css/modal.css?v=clockpill1">
   <link rel="preload" href="/static/fonts/VT323-Regular.woff2?v=terran1" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/css/terran/core.css?v=terran1">
-  <link rel="stylesheet" href="/static/css/terran/console.css?v=terran2">
+  <link rel="stylesheet" href="/static/css/terran/console.css?v=terran3">
   <link rel="stylesheet" href="/static/css/terran/hud.css?v=terran1">
   <link rel="stylesheet" href="/static/css/terran/panels.css?v=terran1">
   <link rel="stylesheet" href="/static/css/terran/kanban.css?v=terran1">
-  <link rel="stylesheet" href="/static/css/terran/mobile.css?v=terran1">
+  <link rel="stylesheet" href="/static/css/terran/mobile.css?v=terran2">
 </head>
 <body data-view="stack">
   <canvas id="warpfield" aria-hidden="true"></canvas>
@@ -109,12 +109,8 @@
       </div>
     </header>
 
-    <!-- ---------- Terran console: minimap · selection · portrait · command card ---------- -->
+    <!-- ---------- Terran console: selection readout · command card ---------- -->
     <div class="tr-console" id="tr-console">
-      <div class="tr-minimap" id="tr-minimap" title="Minimap: tap or drag to scroll the view">
-        <canvas id="tr-minimap-canvas" aria-hidden="true"></canvas>
-        <span class="tr-mm-label" id="tr-mm-label">sector</span>
-      </div>
       <div class="tr-select" aria-live="polite">
         <div class="tr-wire"><img id="tr-wire-img" src="/static/img/terran/wire-command.webp?v=terran1" alt="" decoding="async"></div>
         <div class="tr-sel-text">
@@ -122,10 +118,6 @@
           <div class="tr-sel-rank" id="tr-sel-rank">Stack</div>
           <div class="tr-sel-stats" id="tr-sel-stats"></div>
         </div>
-      </div>
-      <div class="tr-portrait" id="tr-portrait" aria-hidden="true">
-        <img src="/static/img/terran/portrait.webp?v=terran1" alt="" decoding="async">
-        <span class="tr-portrait-tag">adjutant</span>
       </div>
       <nav class="view-tabs tr-cmd" aria-label="Views">
         <a class="view-btn tr-cmd-btn" id="view-btn-brief" href="#/brief" data-hotkey="b" title="Brief (B)" aria-keyshortcuts="B"><img src="/static/img/terran/ico-brief.webp?v=terran1" alt="" width="64" height="64" decoding="async"><span class="tr-cmd-lbl"><u>B</u>rief</span><kbd>B</kbd></a>
@@ -413,6 +405,6 @@
       if (seen || d.classList.contains('gmgn-app') || location.hash.indexOf('#/kanban/card-') === 0) d.classList.add('tr-booted');
     })();
   </script>
-  <script type="module" src="/static/js/main.js?v=terran1"></script>
+  <script type="module" src="/static/js/main.js?v=terran2"></script>
 </body>
 </html>

@@ -1,10 +1,6 @@
 /* ---------- Responsive console ---------- */
 @media (max-width: 1180px) {
-  .tr-console { grid-template-columns: 150px minmax(0, 1fr) auto; }
-  .tr-portrait { display: none; }
-  .tr-minimap { width: 150px; height: 140px; }
-  .tr-console::before { clip-path: polygon(0 0, 186px 0, 214px 34px, calc(100% - 300px) 34px, calc(100% - 272px) 0, 100% 0, 100% 100%, 0 100%); }
-  .tr-console::after { clip-path: polygon(214px 0, calc(100% - 300px) 0, calc(100% - 300px) 100%, 214px 100%); }
+  .tr-sel-stats { gap: 2px 20px; }
 }
 @media (max-width: 900px) {
   .brief { grid-template-columns: 1fr !important; }
@@ -14,7 +10,7 @@
 }
 
 /* Phones: a compact thumb console — one row of command buttons with labels,
-   resources on their own row up top, no minimap/portrait. */
+   resources on their own row up top, no unit readout. */
 @media (max-width: 760px) {
   :root { --tr-console-h: 70px; --tr-top-h: 96px; }
   body { font-size: 17px; }
@@ -25,7 +21,7 @@
   }
   .tr-console::before { clip-path: none; }
   .tr-console::after { clip-path: none; background-position: 0 0; }
-  .tr-minimap, .tr-select, .tr-portrait { display: none; }
+  .tr-select { display: none; }
   .tr-cmd {
     grid-template-columns: repeat(7, minmax(0, 1fr));
     grid-auto-rows: 56px;
