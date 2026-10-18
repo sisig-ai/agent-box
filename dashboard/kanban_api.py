@@ -16,6 +16,7 @@ bp = Blueprint("kanban", __name__)
 
 TITLE_MAX = 500
 OWNER_MAX = 100
+OPNAME_MAX = 100
 BODY_MAX = 200_000
 LANE_NAME_MAX = 60
 TRUTHY = {"1", "true", "yes", "on", ""}
@@ -56,6 +57,19 @@ def clean_owner(raw):
     if len(owner) > OWNER_MAX:
         raise KanbanError(f"owner must be at most {OWNER_MAX} characters")
     return owner or None
+
+
+def clean_opname(raw):
+    """Optional operation name ("Operation Valhalla"); null or blank clears it.
+    Inner whitespace is collapsed so filters match predictably."""
+    if raw is None:
+        return None
+    if not isinstance(raw, str):
+        raise KanbanError("opname must be a string or null")
+    opname = " ".join(raw.split())
+    if len(opname) > OPNAME_MAX:
+        raise KanbanError(f"opname must be at most {OPNAME_MAX} characters")
+    return opname or None
 
 
 def clean_body(raw):
@@ -108,14 +122,16 @@ def flag(name):
 
 
 def filtered_board(archived=None):
-    """kanban.board() with the shared ?status= / ?owner= / ?include_archived= /
-    ?include_body= filters."""
+    """kanban.board() with the shared ?status= / ?owner= / ?opname= /
+    ?include_archived= / ?include_body= filters."""
     status = request.args.get("status")
     owner = request.args.get("owner")
+    opname = request.args.get("opname")
     if archived is None:
         archived = "include" if flag("include_archived") else "exclude"
     owner = owner.strip() if owner is not None else None
-    return kanban.board(status or None, owner, archived, flag("include_body"))
+    opname = " ".join(opname.split()) if opname is not None else None
+    return kanban.board(status or None, owner, archived, flag("include_body"), opname)
 
 
 # ---------------- board ----------------
@@ -124,7 +140,7 @@ def filtered_board(archived=None):
 @bp.get("/api/opsboard")
 @bp.get("/api/kanban")
 def board_get():
-    """GET /api/kanban?status=&owner=&include_archived=&include_body= — lanes + cards.
+    """GET /api/kanban?status=&owner=&opname=&include_archived=&include_body= — lanes + cards.
 
     Cards carry ``has_body`` / ``body_preview`` / ``body_tasks``; the full
     markdown ``body`` only with ``?include_body=1`` (or GET /api/kanban/cards/:id)."""
@@ -148,6 +164,19 @@ def archived_list():
     return jsonify(filtered_board("only")["cards"])
 
 
+@bp.get("/api/opsboard/opnames")
+@bp.get("/api/kanban/opnames")
+def opnames_list():
+    """GET /api/opsboard/opnames?include_archived= — distinct opnames with counts.
+
+    Archived cards count by default (``include_archived=0`` limits to the board)."""
+    from . import db
+
+    raw = request.args.get("include_archived")
+    archived = "exclude" if raw is not None and raw.strip().lower() not in TRUTHY else "include"
+    return jsonify(kanban.opnames(db.get_db(), archived))
+
+
 @bp.post("/api/opsboard/archive-done")
 @bp.post("/api/kanban/archive-done")
 def archive_done():
@@ -158,7 +187,7 @@ def archive_done():
 @bp.post("/api/opsboard/cards")
 @bp.post("/api/kanban/cards")
 def card_create():
-    body = json_body(("title", "owner", "status", "position", "body"))
+    body = json_body(("title", "owner", "status", "position", "body", "opname"))
     status = clean_status(body["status"]) if body.get("status") not in (None, "") else None
     card = kanban.create_card(
         clean_title(body.get("title")),
@@ -166,6 +195,7 @@ def card_create():
         status,
         clean_position(body.get("position")),
         clean_body(body.get("body")),
+        clean_opname(body.get("opname")),
     )
     return jsonify(card), 201
 
@@ -182,10 +212,10 @@ def card_get(card_id):
 @bp.patch("/api/kanban/cards/<card_id>")
 def card_patch(card_id):
     card_id = parse_card_id(card_id)
-    body = json_body(("title", "owner", "body", "status", "position", "archived"))
+    body = json_body(("title", "owner", "body", "opname", "status", "position", "archived"))
     if not body:
         raise KanbanError(
-            "nothing to update; send any of title, owner, body, status, position, archived"
+            "nothing to update; send any of title, owner, body, opname, status, position, archived"
         )
     changes = {}
     if "title" in body:
@@ -194,6 +224,8 @@ def card_patch(card_id):
         changes["owner"] = clean_owner(body["owner"])
     if "body" in body:
         changes["body"] = clean_body(body["body"])
+    if "opname" in body:
+        changes["opname"] = clean_opname(body["opname"])
     if "status" in body:
         changes["status"] = clean_status(body["status"])
     if "position" in body:

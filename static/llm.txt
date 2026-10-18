@@ -22,7 +22,7 @@ Power, 1s tick with 1h graphs). Hash routes: `#/brief` (Daily Sitrep), `#/` (Sta
 - **Stack** — service grid with the `/`-focused filter scanner.
 - **Files** — host filesystem browser rooted at `~`: browse folders, create files/folders, upload/download, rename, delete, click any entry for full details, and open any text file in an inline editor (syntax highlighting, save in place, download).
 - **Shell** — interactive host tty rooted in `~` (see Web shell below).
-- **Ops Board** (formerly Kanban) — a small Trello-style board: lanes as columns, cards with title + owner + a markdown body, drag and drop, inline owner edit. Click a card to open its detail modal (edit title / owner / lane, rendered markdown body with a Write + live Preview editor, clickable checklists); `#/kanban/card-<id>` deep-links a card, `#/kanban/card-<id>/edit` opens it in the editor. Polls every 3 s, so cards agents write through `/api/opsboard` appear on their own (see Ops Board below).
+- **Ops Board** (formerly Kanban) — a small Trello-style board: lanes as columns, cards with title + owner + optional opname (operation name, shown as a yellow chip; the header **Op** filter or clicking a chip narrows the board to one operation) + a markdown body, drag and drop, inline owner edit. Click a card to open its detail modal (edit title / owner / opname / lane, rendered markdown body with a Write + live Preview editor, clickable checklists); `#/kanban/card-<id>` deep-links a card, `#/kanban/card-<id>/edit` opens it in the editor. Polls every 3 s, so cards agents write through `/api/opsboard` appear on their own (see Ops Board below).
 
 ## API
 
@@ -86,7 +86,16 @@ Card: `{"id", "title", "owner" (string or null), "status" (lane name), "lane_id"
 "archived_at" (null, or when it was archived), "body" (markdown string, "" when
 empty), "has_body" (bool), "body_preview" (first prose line of the body, markers
 stripped, max 140 chars), "body_tasks" (`{"done", "total"}` checklist counts, or
-null)}`.
+null), "opname" (string or null)}`.
+
+Opname: an optional **operation name** grouping related cards across lanes,
+e.g. `"Operation Lightspeed"`. Free text, max 100 chars, whitespace collapsed;
+`null` or "" clears it. Every card payload (listings, single card, POST/PATCH
+responses, both `/api/opsboard` and `/api/kanban`) carries `opname` (null when
+unset); it was added without changing any other field. Filter any listing with
+`?opname=<name>` (case-insensitive exact match; `?opname=` empty = cards with no
+opname); list the operations in use with `GET /api/opsboard/opnames`. Reuse an
+existing spelling from that list rather than inventing a variant.
 
 Body: free-form **markdown** (GFM: headings, lists, `- [ ]` / `- [x]` task
 items, fenced code, links, tables), up to 200,000 characters. It is stored
@@ -115,13 +124,14 @@ deleting a non-empty lane).
 
 | Method | Path | Behavior |
 |--------|------|----------|
-| GET    | /api/opsboard?status=&owner=&include_archived=&include_body= | `{"lanes": [...], "cards": [...]}`. All lanes always; non-archived cards ordered by lane then position, optionally filtered by `status` (lane) and/or `owner` (case-insensitive exact; `owner=` empty = unowned). `include_archived=1` also returns archived cards (after the visible ones, `archived_at` set). Cards carry `has_body` / `body_preview` / `body_tasks` but no `body` unless `include_body=1`. |
-| GET    | /api/opsboard/cards?status=&owner=&include_archived=&include_body= | Just the cards array (same filters). |
-| GET    | /api/opsboard/archived?status=&owner=&include_body= | Archived cards only, most recently archived first. |
+| GET    | /api/opsboard?status=&owner=&opname=&include_archived=&include_body= | `{"lanes": [...], "cards": [...]}`. All lanes always; non-archived cards ordered by lane then position, optionally filtered by `status` (lane), `owner` (case-insensitive exact; `owner=` empty = unowned) and/or `opname` (case-insensitive exact; `opname=` empty = no opname). `include_archived=1` also returns archived cards (after the visible ones, `archived_at` set). Cards carry `has_body` / `body_preview` / `body_tasks` but no `body` unless `include_body=1`. |
+| GET    | /api/opsboard/cards?status=&owner=&opname=&include_archived=&include_body= | Just the cards array (same filters). |
+| GET    | /api/opsboard/archived?status=&owner=&opname=&include_body= | Archived cards only, most recently archived first. |
+| GET    | /api/opsboard/opnames?include_archived= | Distinct opnames, alphabetical: `[{"opname", "card_count", "active_count", "archived_count"}]`. Archived cards are counted by default; `include_archived=0` counts only cards on the board. Case-only variants are merged under the most recently updated spelling. |
 | POST   | /api/opsboard/archive-done | Archive every non-archived card in the lane named "Done" (case-insensitive) → `{"archived": N, "ids": [...], "lane", "archived_at"}`. No body needed. 404 if there is no Done lane. |
-| POST   | /api/opsboard/cards | JSON `{"title", "owner"?, "status"?, "position"?, "body"?}` → 201 + card. `status` defaults to the first lane; `position` defaults to the bottom. Title max 500 chars, owner max 100, body (markdown) max 200,000. |
+| POST   | /api/opsboard/cards | JSON `{"title", "owner"?, "status"?, "position"?, "body"?, "opname"?}` → 201 + card. `status` defaults to the first lane; `position` defaults to the bottom. Title max 500 chars, owner max 100, body (markdown) max 200,000. |
 | GET    | /api/opsboard/cards/:id | One card, **with its full markdown `body`** (archived cards too). 404 if missing. |
-| PATCH  | /api/opsboard/cards/:id | Any of `{"title", "owner", "body", "status", "position", "archived"}`. `body` replaces the whole markdown body (read it first to append; `null` clears). Changing `status` without `position` appends to the bottom of the new lane; `position` alone reorders within the lane. `"owner": null` (or "") clears it. `"archived": true` archives one card; `"archived": false` restores it to the bottom of its lane (or to `status` / `position` if given). `archived` must be a JSON boolean. |
+| PATCH  | /api/opsboard/cards/:id | Any of `{"title", "owner", "body", "opname", "status", "position", "archived"}`. `"opname": null` (or "") clears it; setting it touches no other field. `body` replaces the whole markdown body (read it first to append; `null` clears). Changing `status` without `position` appends to the bottom of the new lane; `position` alone reorders within the lane. `"owner": null` (or "") clears it. `"archived": true` archives one card; `"archived": false` restores it to the bottom of its lane (or to `status` / `position` if given). `archived` must be a JSON boolean. |
 | DELETE | /api/opsboard/cards/:id | Delete → `{"deleted": id, "card": {...}}`. |
 | GET    | /api/opsboard/lanes | Lanes in board order, with `card_count`. |
 | POST   | /api/opsboard/lanes | JSON `{"name", "position"?}` → 201 + lane. Names are unique (case-insensitive), max 60 chars, not all digits. |
@@ -152,6 +162,16 @@ Examples:
     curl -X PATCH http://macmini:5555/api/opsboard/cards/7 \
       -H 'Content-Type: application/json' \
       -d '{"title":"Fix the backup cron job","owner":"kix"}'
+
+    # tag card 7 with an operation; clear it again
+    curl -X PATCH http://macmini:5555/api/opsboard/cards/7 \
+      -H 'Content-Type: application/json' -d '{"opname":"Operation Valhalla"}'
+    curl -X PATCH http://macmini:5555/api/opsboard/cards/7 \
+      -H 'Content-Type: application/json' -d '{"opname":null}'
+
+    # every card in an operation (archived too); the operations in use
+    curl 'http://macmini:5555/api/opsboard/cards?opname=operation%20valhalla&include_archived=1'
+    curl http://macmini:5555/api/opsboard/opnames
 
     # my cards still in flight
     curl 'http://macmini:5555/api/opsboard?owner=hermes&status=in%20progress'

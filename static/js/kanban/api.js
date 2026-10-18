@@ -19,6 +19,7 @@ export const api = {
   addCard: (card) => call('POST', '/api/opsboard/cards', card),
   patchCard: (id, changes) => call('PATCH', `/api/opsboard/cards/${id}`, changes),
   deleteCard: (id) => call('DELETE', `/api/opsboard/cards/${id}`),
+  opnames: () => call('GET', '/api/opsboard/opnames'),
   archiveDone: () => call('POST', '/api/opsboard/archive-done'),
   addLane: (name) => call('POST', '/api/opsboard/lanes', { name }),
   patchLane: (id, changes) => call('PATCH', `/api/opsboard/lanes/${id}`, changes),

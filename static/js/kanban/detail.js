@@ -1,10 +1,10 @@
-// Trello-style card detail modal: editable title / owner / lane, timestamps,
+// Trello-style card detail modal: editable title / owner / opname / lane, timestamps,
 // and the markdown body (rendered view, or Write + live Preview editor).
 // Deep-linkable: #/kanban/card-<id> opens it, #/kanban/card-<id>/edit opens
 // straight into the editor (board.js routes the hash here).
-import { api } from './api.js?v=kanban5';
-import { inlineEdit } from './edit.js?v=kanban5';
-import { loadPurify, renderBody, toggleTask } from './markdown.js?v=kanban5';
+import { api } from './api.js?v=kanban6';
+import { inlineEdit } from './edit.js?v=kanban6';
+import { loadPurify, renderBody, toggleTask } from './markdown.js?v=kanban6';
 
 const ui = {};
 const st = { card: null, id: null, editing: false, seq: 0, ctx: null, busy: { busy: 0 } };
@@ -45,9 +45,18 @@ function build() {
   ui.owner.placeholder = 'unassigned';
   ui.owner.maxLength = 100;
   ownerLab.append(ui.owner);
+  const opLab = el('label', 'kbd-field kbd-op-field', 'Op');
+  ui.opname = el('input', 'kbd-opname');
+  ui.opname.placeholder = 'no operation';
+  ui.opname.maxLength = 100;
+  ui.opname.title = 'Operation name, e.g. Operation Valhalla (blank clears)';
+  ui.opname.setAttribute('list', 'kbd-opname-list');
+  ui.opList = el('datalist');
+  ui.opList.id = 'kbd-opname-list';
+  opLab.append(ui.opname, ui.opList);
   ui.times = el('span', 'kbd-times');
   ui.archive = el('button', 'kb-archive-btn kbd-archive');
-  meta.append(laneLab, ownerLab, ui.times, ui.archive);
+  meta.append(laneLab, ownerLab, opLab, ui.times, ui.archive);
 
   const sec = el('div', 'kbd-section');
   sec.append(el('span', 'kbd-section-label', 'Description'));
@@ -136,6 +145,8 @@ function paint() {
   if (!ui.title.dataset.editing) ui.title.textContent = c.title;
   paintLanes();
   if (document.activeElement !== ui.owner) ui.owner.value = c.owner || '';
+  if (document.activeElement !== ui.opname) ui.opname.value = c.opname || '';
+  ui.opname.classList.toggle('set', !!c.opname);
   ui.times.textContent = `created ${fmt(c.created_at)} · updated ${fmt(c.updated_at)}`
     + (c.archived_at ? ` · archived ${fmt(c.archived_at)}` : '');
   ui.archive.textContent = c.archived_at ? 'Restore' : 'Archive';
@@ -170,6 +181,15 @@ function wire() {
     if (e.key === 'Enter') { e.preventDefault(); ui.owner.blur(); }
     if (e.key === 'Escape') { e.stopPropagation(); ui.owner.value = st.card.owner || ''; ui.owner.blur(); }
   });
+  const commitOp = () => {
+    const v = ui.opname.value.replace(/\s+/g, ' ').trim();
+    if (st.card && v !== (st.card.opname || '')) patch({ opname: v || null }, v ? `op: ${v}` : 'op cleared');
+  };
+  ui.opname.addEventListener('blur', commitOp);
+  ui.opname.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); ui.opname.blur(); }
+    if (e.key === 'Escape') { e.stopPropagation(); ui.opname.value = st.card.opname || ''; ui.opname.blur(); }
+  });
   ui.archive.addEventListener('click', () => patch({ archived: !st.card.archived_at }));
   ui.edit.addEventListener('click', () => setEditing(true));
   ui.previewToggle.addEventListener('click', () => {
@@ -203,6 +223,13 @@ function wire() {
 }
 
 export function setupDetail(ctx) { st.ctx = ctx; }
+
+// Suggestions for the Op input (every opname, archived cards included).
+function loadOpnames() {
+  api.opnames().then((ops) => {
+    ui.opList.replaceChildren(...ops.map((o) => { const n = el('option'); n.value = o.opname; return n; }));
+  }).catch(() => {});
+}
 export const openId = () => (ui.backdrop && !ui.backdrop.hidden ? st.id : null);
 
 export async function openCard(id, { edit = false } = {}) {
@@ -226,6 +253,7 @@ export async function openCard(id, { edit = false } = {}) {
   ui.editor.hidden = true;
   ui.foot.hidden = true;
   setMsg('');
+  loadOpnames();
   try {
     const [card] = await Promise.all([api.getCard(id), loadPurify()]);
     if (seq !== st.seq) return;
@@ -248,6 +276,7 @@ export function requestClose() {
 export function closeCard() {
   if (!ui.backdrop || ui.backdrop.hidden) return;
   if (document.activeElement === ui.owner) ui.owner.blur();
+  if (document.activeElement === ui.opname) ui.opname.blur();
   ui.backdrop.hidden = true;
   document.body.classList.remove('kbd-open');
   st.editing = false;

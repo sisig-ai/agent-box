@@ -245,3 +245,21 @@
 .kb-badge { color: rgba(144,152,184,0.75); white-space: nowrap; }
 .kb-badge-body { font-size: 0.8rem; line-height: 1; }
 .kb-badge-tasks.done { color: #7fe0a8; }
+
+/* opname (operation) chip + header filter */
+.kb-opname {
+  display: flex; align-items: center; gap: 0.3rem; width: fit-content; max-width: 100%;
+  margin: 0 0 0.3rem; padding: 0.05rem 0.4rem;
+  font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.04em; text-transform: uppercase;
+  color: #f5c84c; background: rgba(245,200,76,0.08); border: 1px solid rgba(245,200,76,0.35);
+  border-radius: 4px; cursor: pointer;
+}
+.kb-opname-txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kb-opname:hover, .kb-opname.active { background: rgba(245,200,76,0.18); border-color: #f5c84c; }
+.kb-op-filter { display: inline-flex; align-items: center; gap: 0.3rem; font-family: var(--mono); font-size: 0.7rem; color: var(--muted); }
+.kb-op-filter select {
+  font-family: var(--mono); font-size: 0.72rem; color: var(--text); max-width: 14rem;
+  background: rgba(5,8,20,0.6); border: 1px solid var(--border); border-radius: 6px; padding: 0.2rem 0.3rem;
+}
+.kb-op-filter select.active { border-color: #f5c84c; color: #f5c84c; }
+.kb-add-form .kb-add-opname { font-family: var(--mono); font-size: 0.72rem; }

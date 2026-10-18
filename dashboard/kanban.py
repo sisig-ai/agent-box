@@ -52,7 +52,8 @@ def init_schema(conn):
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             archived_at TEXT,
-            body       TEXT NOT NULL DEFAULT ''
+            body       TEXT NOT NULL DEFAULT '',
+            opname     TEXT
         )
         """
     )
@@ -73,13 +74,16 @@ def migrate(conn):
         conn.execute("ALTER TABLE kanban_card ADD COLUMN archived_at TEXT")
     if "body" not in columns:
         conn.execute("ALTER TABLE kanban_card ADD COLUMN body TEXT NOT NULL DEFAULT ''")
+    if "opname" not in columns:
+        # Optional operation name ("Operation Valhalla"); nullable, so old rows stay valid.
+        conn.execute("ALTER TABLE kanban_card ADD COLUMN opname TEXT")
 
 
 # ---------------- reads ----------------
 
 CARD_SQL = (
     "SELECT c.id, c.title, c.owner, l.name AS status, c.lane_id, c.position,"
-    " c.created_at, c.updated_at, c.archived_at, c.body"
+    " c.created_at, c.updated_at, c.archived_at, c.body, c.opname"
     " FROM kanban_card c JOIN kanban_lane l ON l.id = c.lane_id"
 )
 
@@ -120,9 +124,11 @@ def require_lane(conn, ref, label="status"):
     return lane
 
 
-def cards(conn, lane_id=None, owner=None, archived="exclude", include_body=False):
+def cards(conn, lane_id=None, owner=None, archived="exclude", include_body=False, opname=None):
     """Cards in board order. ``archived``: "exclude" (default), "include", or "only".
-    Full ``body`` only with ``include_body``; the summary fields are always set."""
+    Full ``body`` only with ``include_body``; the summary fields are always set.
+    ``opname``: None = no filter, "" = cards without an opname, else a
+    case-insensitive exact match."""
     sql, args, where = CARD_SQL, [], []
     if archived == "exclude":
         where.append("c.archived_at IS NULL")
@@ -136,6 +142,11 @@ def cards(conn, lane_id=None, owner=None, archived="exclude", include_body=False
     elif owner is not None:
         where.append("c.owner = ? COLLATE NOCASE")
         args.append(owner)
+    if opname == "":
+        where.append("c.opname IS NULL")
+    elif opname is not None:
+        where.append("c.opname = ? COLLATE NOCASE")
+        args.append(opname)
     if where:
         sql += " WHERE " + " AND ".join(where)
     if archived == "only":
@@ -154,13 +165,39 @@ def card(conn, card_id):
     return with_body_summary(row)
 
 
-def board(status=None, owner=None, archived="exclude", include_body=False):
+def board(status=None, owner=None, archived="exclude", include_body=False, opname=None):
     conn = db.get_db()
     lane_id = require_lane(conn, status)["id"] if status is not None else None
     return {
         "lanes": lanes(conn),
-        "cards": cards(conn, lane_id, owner, archived, include_body),
+        "cards": cards(conn, lane_id, owner, archived, include_body, opname),
     }
+
+
+def opnames(conn, archived="include"):
+    """Distinct opnames with card counts, alphabetical (case-insensitive).
+
+    Spelling variants that differ only by case are merged under the most
+    recently updated spelling. ``archived`` as in ``cards()``."""
+    where = ["c.opname IS NOT NULL"]
+    if archived == "exclude":
+        where.append("c.archived_at IS NULL")
+    elif archived == "only":
+        where.append("c.archived_at IS NOT NULL")
+    rows = conn.execute(
+        "SELECT c.opname, c.archived_at, c.updated_at FROM kanban_card c WHERE "
+        + " AND ".join(where)
+        + " ORDER BY c.updated_at DESC, c.id DESC"
+    ).fetchall()
+    out = {}
+    for r in rows:
+        key = r["opname"].casefold()
+        entry = out.setdefault(
+            key, {"opname": r["opname"], "card_count": 0, "active_count": 0, "archived_count": 0}
+        )
+        entry["card_count"] += 1
+        entry["archived_count" if r["archived_at"] else "active_count"] += 1
+    return sorted(out.values(), key=lambda e: e["opname"].casefold())
 
 
 # ---------------- ordering helpers ----------------
@@ -192,7 +229,7 @@ def _place(ids, item, position):
 # ---------------- card writes ----------------
 
 
-def create_card(title, owner=None, status=None, position=None, body=""):
+def create_card(title, owner=None, status=None, position=None, body="", opname=None):
     with _WRITE_LOCK, db.get_db() as conn:
         if status is None:
             first = conn.execute(
@@ -206,9 +243,9 @@ def create_card(title, owner=None, status=None, position=None, body=""):
         stamp = now_iso()
         cur = conn.execute(
             "INSERT INTO kanban_card"
-            " (title, owner, lane_id, position, created_at, updated_at, body)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (title, owner, lane["id"], 1 << 30, stamp, stamp, body or ""),
+            " (title, owner, lane_id, position, created_at, updated_at, body, opname)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (title, owner, lane["id"], 1 << 30, stamp, stamp, body or "", opname),
         )
         new_id = cur.lastrowid
         ids = _place(_lane_card_ids(conn, lane["id"], exclude=new_id), new_id, position)
@@ -217,7 +254,7 @@ def create_card(title, owner=None, status=None, position=None, body=""):
 
 
 def update_card(card_id, changes):
-    """Apply any of title / owner / body / status / position / archived. Returns the card.
+    """Apply any of title / owner / body / opname / status / position / archived; returns the card.
 
     Archiving takes the card out of its lane's ordering (the visible cards are
     renumbered); unarchiving puts it back at ``position`` or the bottom.
@@ -227,7 +264,7 @@ def update_card(card_id, changes):
         old_lane = current["lane_id"]
         was = current["archived_at"] is not None
         will = changes.get("archived", was)
-        fields = {k: changes[k] for k in ("title", "owner", "body") if k in changes}
+        fields = {k: changes[k] for k in ("title", "owner", "body", "opname") if k in changes}
         target = require_lane(conn, changes["status"])["id"] if "status" in changes else old_lane
         if will:
             if not was:

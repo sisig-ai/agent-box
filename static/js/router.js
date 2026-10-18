@@ -30,7 +30,7 @@ function ensure(v) {
   } else if (v === 'files') {
     (lazy.files ||= import('./files/actions.js')).then(m => m.initFiles());
   } else if (v === 'kanban') {
-    (lazy.kanban ||= import('./kanban/board.js?v=kanban5')).then(m => m.initKanban());
+    (lazy.kanban ||= import('./kanban/board.js?v=kanban6')).then(m => m.initKanban());
   }
 }
 function apply() {

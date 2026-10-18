@@ -2,13 +2,19 @@
 // and a 3s poll (only while the tab is visible and nobody is mid-edit/drag) so
 // changes agents make through /api/opsboard show up on their own. Clicking a
 // card opens the detail modal (detail.js); #/kanban/card-<id> deep-links it.
-import { api } from './api.js?v=kanban5';
-import { inlineEdit, armDelete } from './edit.js?v=kanban5';
-import { closeCard, openCard, openId, setupDetail, syncFromBoard } from './detail.js?v=kanban5';
+// Cards may carry an `opname` (operation name): shown as a chip; the header
+// "op" filter (or clicking a chip) narrows the board to one operation.
+import { api } from './api.js?v=kanban6';
+import { inlineEdit, armDelete } from './edit.js?v=kanban6';
+import { closeCard, openCard, openId, setupDetail, syncFromBoard } from './detail.js?v=kanban6';
 
 const POLL_MS = 3000;
 const $ = (id) => document.getElementById(id);
-const state = { data: null, sig: '', busy: 0, dragId: null, dragEnd: 0, started: false };
+const OP_KEY = 'opsboard.opname';
+const NO_OP = '__none__'; // filter value for cards without an opname
+const state = { data: null, sig: '', busy: 0, dragId: null, dragEnd: 0, started: false, op: '' };
+try { state.op = localStorage.getItem(OP_KEY) || ''; } catch { /* storage blocked */ }
+const opKey = (v) => (v || '').trim().toLowerCase();
 
 function el(tag, cls, text) {
   const n = document.createElement(tag);
@@ -42,13 +48,66 @@ async function mutate(fn) {
   await refresh(true);
 }
 
+// Distinct opnames on the board (first spelling wins), alphabetical.
+function boardOps(cards) {
+  const seen = new Map();
+  for (const c of cards) if (c.opname && !seen.has(opKey(c.opname))) seen.set(opKey(c.opname), c.opname);
+  return [...seen.values()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+}
+
+function setOp(op) {
+  state.op = op || '';
+  try { if (state.op) localStorage.setItem(OP_KEY, state.op); else localStorage.removeItem(OP_KEY); } catch { /* ignore */ }
+  if (state.data) render();
+}
+
+// Header "op" filter: All ops / each opname / (no op). Built in JS so index.html stays untouched.
+function paintOpFilter(cards) {
+  let sel = $('kanban-opname');
+  if (!sel) {
+    const wrap = el('label', 'kb-op-filter');
+    wrap.title = 'Filter the board by operation (opname)';
+    wrap.append(el('span', 'kb-op-filter-lbl', 'Op'));
+    sel = el('select');
+    sel.id = 'kanban-opname';
+    sel.addEventListener('change', () => setOp(sel.value));
+    wrap.append(sel);
+    $('kanban-refresh').before(wrap);
+  }
+  const ops = boardOps(cards);
+  if (document.activeElement === sel) return; // never rebuild an open dropdown
+  if (state.op && state.op !== NO_OP && !ops.some((o) => opKey(o) === opKey(state.op))) ops.push(state.op);
+  const opts = [['', 'All ops'], ...ops.map((o) => [o, o]), [NO_OP, '— no op —']];
+  sel.replaceChildren(...opts.map(([v, label]) => {
+    const o = el('option', '', label);
+    o.value = v;
+    o.selected = v === NO_OP ? state.op === v : opKey(v) === opKey(state.op);
+    return o;
+  }));
+  sel.classList.toggle('active', !!state.op);
+  let list = $('kb-opname-list');
+  if (!list) { list = el('datalist'); list.id = 'kb-opname-list'; document.body.append(list); }
+  list.replaceChildren(...boardOps(cards).map((o) => { const n = el('option'); n.value = o; return n; }));
+}
+
+function opMatch(card) {
+  if (!state.op) return true;
+  if (state.op === NO_OP) return !card.opname;
+  return opKey(card.opname) === opKey(state.op);
+}
+
 function render() {
-  const { lanes, cards } = state.data;
+  const { lanes, cards: all } = state.data;
+  paintOpFilter(all);
+  const cards = all.filter(opMatch);
   const board = $('kanban-board');
+  board.classList.toggle('op-filtered', !!state.op);
   board.replaceChildren(...lanes.map((lane) => renderLane(lane, cards.filter((c) => c.lane_id === lane.id))));
   const archived = lanes.reduce((n, l) => n + (l.archived_count || 0), 0);
-  $('kanban-count').textContent = `${cards.length} card${cards.length === 1 ? '' : 's'} · ${lanes.length} lanes`
-    + (archived ? ` · ${archived} archived` : '');
+  const shown = state.op ? `${cards.length}/${all.length}` : `${all.length}`;
+  $('kanban-count').textContent = `${shown} card${all.length === 1 ? '' : 's'} · ${lanes.length} lanes`
+    + (archived ? ` · ${archived} archived` : '')
+    + (state.op ? ` · op: ${state.op === NO_OP ? 'none' : state.op}` : '');
   if (!lanes.length) board.append(el('div', 'kb-empty', 'No lanes yet — add one with + Lane.'));
 }
 
@@ -96,6 +155,7 @@ function renderCard(card) {
   n.tabIndex = 0;
   n.title = 'Open card';
   const title = el('div', 'kb-card-title', card.title);
+  if (card.opname) n.classList.add('has-op');
   const meta = el('div', 'kb-card-meta');
   const owner = el('span', card.owner ? 'kb-owner' : 'kb-owner none', card.owner ? `@${card.owner}` : '+ owner');
   owner.title = 'Click to set owner (blank clears)';
@@ -110,6 +170,7 @@ function renderCard(card) {
   del.title = 'Delete card (click twice)';
   armDelete(del, () => mutate(() => api.deleteCard(card.id)));
   meta.append(id, del);
+  if (card.opname) n.append(opChip(card.opname));
   n.append(title);
   if (card.body_preview) n.append(el('div', 'kb-card-preview', card.body_preview));
   n.append(meta);
@@ -117,7 +178,7 @@ function renderCard(card) {
   n.addEventListener('click', (e) => {
     // A drag never opens the card (some browsers emit a click right after dragend).
     if (state.dragId !== null || Date.now() - state.dragEnd < 350) return;
-    if (e.target.closest('input, button, a, .kb-owner')) return;
+    if (e.target.closest('input, button, a, .kb-owner, .kb-opname')) return;
     open();
   });
   n.addEventListener('keydown', (e) => {
@@ -138,6 +199,18 @@ function renderCard(card) {
     state.dragEnd = Date.now();
   });
   return n;
+}
+
+// Operation chip; click toggles the board filter to that op.
+function opChip(opname) {
+  const chip = el('button', 'kb-opname');
+  chip.type = 'button';
+  chip.append(el('span', 'kb-opname-ico', '◆'), el('span', 'kb-opname-txt', opname));
+  const active = opKey(state.op) === opKey(opname);
+  chip.classList.toggle('active', active);
+  chip.title = active ? 'Show all ops' : `Show only ${opname}`;
+  chip.addEventListener('click', (e) => { e.stopPropagation(); setOp(active ? '' : opname); });
+  return chip;
 }
 
 // Small "has a description" / checklist badges for a card's meta row.
@@ -209,15 +282,24 @@ function renderAdd(lane) {
   const owner = el('input', 'kb-add-owner');
   owner.placeholder = 'owner (optional)';
   owner.maxLength = 100;
+  const opname = el('input', 'kb-add-opname');
+  opname.placeholder = 'opname (optional)';
+  opname.maxLength = 100;
+  opname.setAttribute('list', 'kb-opname-list');
   const actions = el('div', 'kb-add-actions');
   const ok = el('button', 'brief-btn', 'Add');
   ok.type = 'submit';
   const cancel = el('button', 'brief-btn', 'Cancel');
   cancel.type = 'button';
   actions.append(ok, cancel);
-  form.append(title, owner, actions);
+  form.append(title, owner, opname, actions);
   const close = () => { form.hidden = true; open.hidden = false; state.busy = Math.max(0, state.busy - 1); };
-  open.addEventListener('click', () => { form.hidden = false; open.hidden = true; state.busy++; title.focus(); });
+  open.addEventListener('click', () => {
+    form.hidden = false; open.hidden = true; state.busy++;
+    // A new card starts in the op you are filtered to.
+    if (!opname.value && state.op && state.op !== NO_OP) opname.value = state.op;
+    title.focus();
+  });
   cancel.addEventListener('click', close);
   form.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
   form.addEventListener('submit', (e) => {
@@ -225,7 +307,10 @@ function renderAdd(lane) {
     const t = title.value.trim();
     if (!t) { title.focus(); return; }
     close();
-    mutate(() => api.addCard({ title: t, owner: owner.value.trim() || null, status: lane.id }));
+    const card = { title: t, owner: owner.value.trim() || null, status: lane.id };
+    const op = opname.value.trim();
+    if (op) card.opname = op;
+    mutate(() => api.addCard(card));
   });
   wrap.append(open, form);
   return wrap;
