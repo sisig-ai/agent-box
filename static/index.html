@@ -45,11 +45,11 @@
   <link rel="stylesheet" href="/static/css/modal.css?v=clockpill1">
   <link rel="preload" href="/static/fonts/VT323-Regular.woff2?v=terran1" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/css/terran/core.css?v=terran1">
-  <link rel="stylesheet" href="/static/css/terran/console.css?v=terran4">
+  <link rel="stylesheet" href="/static/css/terran/console.css?v=terran6">
   <link rel="stylesheet" href="/static/css/terran/hud.css?v=terran4">
   <link rel="stylesheet" href="/static/css/terran/panels.css?v=terran1">
   <link rel="stylesheet" href="/static/css/terran/kanban.css?v=terran1">
-  <link rel="stylesheet" href="/static/css/terran/mobile.css?v=terran4">
+  <link rel="stylesheet" href="/static/css/terran/mobile.css?v=terran6">
 </head>
 <body data-view="stack">
   <canvas id="warpfield" aria-hidden="true"></canvas>
@@ -104,7 +104,6 @@
       </section>
       <div class="tr-chip" id="tr-chip" data-adjutant aria-hidden="true">
         <img class="tr-adj-idle" src="/static/img/terran/adjutant-idle-chip.webp?v=terran4" alt="" decoding="async">
-        <img class="tr-adj-talk" src="/static/img/terran/adjutant-talk-chip.webp?v=terran4" alt="" decoding="async">
       </div>
       <div class="readout" style="--accent:#4fe3c1" aria-label="Local time">
         <div class="tele-label"><span>Local</span><span class="readout-tz" id="readout-tz"></span></div>
@@ -125,7 +124,6 @@
       </div>
       <div class="tr-portrait" id="tr-portrait" data-adjutant aria-hidden="true">
         <img class="tr-adj-idle" src="/static/img/terran/adjutant-idle.webp?v=terran4" alt="" decoding="async">
-        <img class="tr-adj-talk" src="/static/img/terran/adjutant-talk.webp?v=terran4" alt="" decoding="async">
         <img class="tr-adj-color" src="/static/img/terran/adjutant-color.webp?v=terran4" alt="" decoding="async">
         <span class="tr-portrait-tag">adjutant</span>
       </div>
@@ -415,6 +413,6 @@
       if (seen || d.classList.contains('gmgn-app') || location.hash.indexOf('#/kanban/card-') === 0) d.classList.add('tr-booted');
     })();
   </script>
-  <script type="module" src="/static/js/main.js?v=terran5"></script>
+  <script type="module" src="/static/js/main.js?v=terran6"></script>
 </body>
 </html>

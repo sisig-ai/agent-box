@@ -8,4 +8,4 @@ import './router.js?v=kanban4';
 import './notes/brief.js';
 import './notes/schedule.js';
 import './gmgn.js?v=gmgn13';
-import './terran/console.js?v=terran4';
+import './terran/console.js?v=terran6';

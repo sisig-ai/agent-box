@@ -1,8 +1,8 @@
-// Advisor transmissions: BW-style chat lines above the console, and the
-// adjutant portrait "talking" (idle/talk frames alternating) while a line is
-// on screen. Lines fade after a few seconds; at most MAX are shown.
+// Advisor transmissions: BW-style chat lines above the console. While a line
+// is on screen the adjutant portrait/chip get a `talking` class (a static
+// label/glow cue in CSS; the image never changes). Lines fade after a few
+// seconds; at most MAX are shown.
 const MAX = 5;
-const FRAME_MS = 180;
 let log = null;
 let portraits = [];
 let talkUntil = 0;
@@ -10,37 +10,14 @@ let talkTimer = 0;
 
 export function bindPortraits(els) { portraits = [...els]; }
 
-function setTalking(on, open) {
-  for (const p of portraits) {
-    p.classList.toggle('talking', on);
-    p.classList.toggle('mouth-open', on && open);
-  }
-}
-
-// Talk while any advisor line is visible. Reduced motion: hold the talk
-// frame steadily instead of flickering.
 function talk(ms) {
   if (!portraits.length) return;
   talkUntil = Math.max(talkUntil, Date.now() + ms);
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    setTalking(true, true);
-    clearTimeout(talkTimer);
-    talkTimer = setTimeout(() => setTalking(false, false), talkUntil - Date.now());
-    return;
-  }
-  if (talkTimer) return;
-  let open = true;
-  const tick = () => {
-    if (Date.now() >= talkUntil || document.hidden) {
-      talkTimer = 0;
-      setTalking(false, false);
-      return;
-    }
-    setTalking(true, open);
-    open = !open;
-    talkTimer = setTimeout(tick, FRAME_MS);
-  };
-  tick();
+  for (const p of portraits) p.classList.add('talking');
+  clearTimeout(talkTimer);
+  talkTimer = setTimeout(() => {
+    for (const p of portraits) p.classList.remove('talking');
+  }, talkUntil - Date.now());
 }
 
 // `html` is our own static markup; callers escape any page-derived text.
