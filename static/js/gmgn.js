@@ -1,6 +1,6 @@
-import { createPnlGraphs } from './gmgn-graphs.js?v=gmgn10';
+import { createPnlGraphs } from './gmgn-graphs.js?v=gmgn13';
 import { installGmgnViewport } from './gmgn-viewport.js?v=gmgn10';
-import { seconds, createDayPager } from './gmgn-days.js?v=gmgn10';
+import { seconds, createDayPager } from './gmgn-days.js?v=gmgn13';
 // GMGN tab. Polls /api/gmgn only while this view is open.
 const root = document.getElementById('gmgn-timeline');
 const openRoot = document.getElementById('gmgn-open');

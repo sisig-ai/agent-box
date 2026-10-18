@@ -1,14 +1,14 @@
-const CACHE = "gmgn-shell-16";
+const CACHE = "gmgn-shell-17";
 const SHELL = [
   "/?app=gmgn",
   "/gmgn",
   "/static/css/base.css",
   "/static/css/gmgn.css?v=gmgn11",
-  "/static/js/main.js?v=terran4",
-  "/static/js/gmgn.js?v=gmgn12",
-  "/static/js/gmgn-days.js?v=gmgn10",
+  "/static/js/main.js?v=terran5",
+  "/static/js/gmgn.js?v=gmgn13",
+  "/static/js/gmgn-days.js?v=gmgn13",
   "/static/css/gmgn-days.css?v=gmgn10",
-  "/static/js/gmgn-graphs.js?v=gmgn10",
+  "/static/js/gmgn-graphs.js?v=gmgn13",
   "/static/js/gmgn-viewport.js?v=gmgn10",
   "/static/css/gmgn-graphs.css?v=gmgn10",
   "/icons/icon-192.png?v=terran1",

@@ -1,4 +1,4 @@
-import { seconds } from './gmgn-days.js?v=gmgn10';
+import { seconds } from './gmgn-days.js?v=gmgn13';
 
 export const WINDOWS = {
   h12: { duration: 43200, interval: 1800, label: '12h', sample: '30m' },
