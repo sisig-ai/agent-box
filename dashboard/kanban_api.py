@@ -1,4 +1,7 @@
-"""HTTP blueprint for the Kanban board (lanes + cards).
+"""HTTP blueprint for the Ops Board (formerly Kanban): lanes + cards.
+
+Canonical routes live under /api/opsboard; /api/kanban/* are deprecated
+aliases bound to the same view functions (other bots still call them).
 
 No auth, same as the rest of the dashboard: local stack, tailnet only.
 Errors are JSON ``{"error": "..."}`` with a 400 / 404 / 409 status.
@@ -118,6 +121,7 @@ def filtered_board(archived=None):
 # ---------------- board ----------------
 
 
+@bp.get("/api/opsboard")
 @bp.get("/api/kanban")
 def board_get():
     """GET /api/kanban?status=&owner=&include_archived=&include_body= — lanes + cards.
@@ -130,24 +134,28 @@ def board_get():
 # ---------------- cards ----------------
 
 
+@bp.get("/api/opsboard/cards")
 @bp.get("/api/kanban/cards")
 def cards_list():
     """GET /api/kanban/cards — the cards array alone (same filters)."""
     return jsonify(filtered_board()["cards"])
 
 
+@bp.get("/api/opsboard/archived")
 @bp.get("/api/kanban/archived")
 def archived_list():
     """GET /api/kanban/archived?status=&owner= — archived cards, newest first."""
     return jsonify(filtered_board("only")["cards"])
 
 
+@bp.post("/api/opsboard/archive-done")
 @bp.post("/api/kanban/archive-done")
 def archive_done():
     """POST /api/kanban/archive-done — archive every visible card in the Done lane."""
     return jsonify(kanban.archive_lane("Done"))
 
 
+@bp.post("/api/opsboard/cards")
 @bp.post("/api/kanban/cards")
 def card_create():
     body = json_body(("title", "owner", "status", "position", "body"))
@@ -162,6 +170,7 @@ def card_create():
     return jsonify(card), 201
 
 
+@bp.get("/api/opsboard/cards/<card_id>")
 @bp.get("/api/kanban/cards/<card_id>")
 def card_get(card_id):
     from . import db
@@ -169,6 +178,7 @@ def card_get(card_id):
     return jsonify(kanban.card(db.get_db(), parse_card_id(card_id)))
 
 
+@bp.patch("/api/opsboard/cards/<card_id>")
 @bp.patch("/api/kanban/cards/<card_id>")
 def card_patch(card_id):
     card_id = parse_card_id(card_id)
@@ -195,6 +205,7 @@ def card_patch(card_id):
     return jsonify(kanban.update_card(card_id, changes))
 
 
+@bp.delete("/api/opsboard/cards/<card_id>")
 @bp.delete("/api/kanban/cards/<card_id>")
 def card_delete(card_id):
     card = kanban.delete_card(parse_card_id(card_id))
@@ -204,6 +215,7 @@ def card_delete(card_id):
 # ---------------- lanes ----------------
 
 
+@bp.get("/api/opsboard/lanes")
 @bp.get("/api/kanban/lanes")
 def lanes_list():
     from . import db
@@ -211,6 +223,7 @@ def lanes_list():
     return jsonify(kanban.lanes(db.get_db()))
 
 
+@bp.post("/api/opsboard/lanes")
 @bp.post("/api/kanban/lanes")
 def lane_create():
     body = json_body(("name", "position"))
@@ -220,6 +233,7 @@ def lane_create():
     return jsonify(lane), 201
 
 
+@bp.patch("/api/opsboard/lanes/<lane_ref>")
 @bp.patch("/api/kanban/lanes/<lane_ref>")
 def lane_patch(lane_ref):
     body = json_body(("name", "position"))
@@ -229,6 +243,7 @@ def lane_patch(lane_ref):
     return jsonify(kanban_lanes.update_lane(lane_ref, name, clean_position(body.get("position"))))
 
 
+@bp.delete("/api/opsboard/lanes/<lane_ref>")
 @bp.delete("/api/kanban/lanes/<lane_ref>")
 def lane_delete(lane_ref):
     force = request.args.get("force")

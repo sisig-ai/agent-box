@@ -40,16 +40,16 @@
   <link rel="stylesheet" href="/static/css/gmgn.css?v=gmgn11">
   <link rel="stylesheet" href="/static/css/gmgn-days.css?v=gmgn10">
   <link rel="stylesheet" href="/static/css/gmgn-graphs.css?v=gmgn10">
-  <link rel="stylesheet" href="/static/css/kanban.css?v=kanban4">
-  <link rel="stylesheet" href="/static/css/kanban-detail.css?v=kanban4">
+  <link rel="stylesheet" href="/static/css/kanban.css?v=kanban5">
+  <link rel="stylesheet" href="/static/css/kanban-detail.css?v=kanban5">
   <link rel="stylesheet" href="/static/css/modal.css?v=clockpill1">
   <link rel="preload" href="/static/fonts/VT323-Regular.woff2?v=terran1" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/css/terran/core.css?v=terran1">
-  <link rel="stylesheet" href="/static/css/terran/console.css?v=terran6">
+  <link rel="stylesheet" href="/static/css/terran/console.css?v=terran7">
   <link rel="stylesheet" href="/static/css/terran/hud.css?v=terran4">
   <link rel="stylesheet" href="/static/css/terran/panels.css?v=terran1">
   <link rel="stylesheet" href="/static/css/terran/kanban.css?v=terran1">
-  <link rel="stylesheet" href="/static/css/terran/mobile.css?v=terran6">
+  <link rel="stylesheet" href="/static/css/terran/mobile.css?v=terran7">
 </head>
 <body data-view="stack">
   <canvas id="warpfield" aria-hidden="true"></canvas>
@@ -128,11 +128,11 @@
         <span class="tr-portrait-tag">adjutant</span>
       </div>
       <nav class="view-tabs tr-cmd" aria-label="Views">
-        <a class="view-btn tr-cmd-btn" id="view-btn-brief" href="#/brief" data-hotkey="b" title="Brief (B)" aria-keyshortcuts="B"><img src="/static/img/terran/ico-brief.webp?v=terran1" alt="" width="64" height="64" decoding="async"><span class="tr-cmd-lbl"><u>B</u>rief</span><kbd>B</kbd></a>
+        <a class="view-btn tr-cmd-btn" id="view-btn-brief" href="#/brief" data-hotkey="b" title="Daily Sitrep (B)" aria-keyshortcuts="B"><img src="/static/img/terran/ico-brief.webp?v=terran1" alt="" width="64" height="64" decoding="async"><span class="tr-cmd-lbl">Sitrep<span class="tr-long"> [<u>B</u>]</span></span><kbd>B</kbd></a>
         <a class="view-btn tr-cmd-btn" id="view-btn-stack" href="#/" data-hotkey="s" title="Stack (S)" aria-keyshortcuts="S"><img src="/static/img/terran/ico-stack.webp?v=terran1" alt="" width="64" height="64" decoding="async"><span class="tr-cmd-lbl"><u>S</u>tack</span><kbd>S</kbd></a>
         <a class="view-btn tr-cmd-btn" id="view-btn-files" href="#/files" data-hotkey="f" title="Files (F)" aria-keyshortcuts="F"><img src="/static/img/terran/ico-files.webp?v=terran1" alt="" width="64" height="64" decoding="async"><span class="tr-cmd-lbl"><u>F</u>iles</span><kbd>F</kbd></a>
         <a class="view-btn tr-cmd-btn" id="view-btn-shell" href="#/shell" data-hotkey="t" title="Shell (T)" aria-keyshortcuts="T"><img src="/static/img/terran/ico-shell.webp?v=terran1" alt="" width="64" height="64" decoding="async"><span class="tr-cmd-lbl">Shell<span class="tr-long"> [<u>T</u>]</span></span><kbd>T</kbd></a>
-        <a class="view-btn tr-cmd-btn" id="view-btn-kanban" href="#/kanban" data-hotkey="k" title="Kanban (K)" aria-keyshortcuts="K"><img src="/static/img/terran/ico-kanban.webp?v=terran1" alt="" width="64" height="64" decoding="async"><span class="tr-cmd-lbl"><u>K</u>anban</span><kbd>K</kbd></a>
+        <a class="view-btn tr-cmd-btn" id="view-btn-kanban" href="#/kanban" data-hotkey="k" title="Ops Board (K)" aria-keyshortcuts="K"><img src="/static/img/terran/ico-kanban.webp?v=terran1" alt="" width="64" height="64" decoding="async"><span class="tr-cmd-lbl">Ops Board<span class="tr-long"> [<u>K</u>]</span></span><kbd>K</kbd></a>
         <a class="view-btn tr-cmd-btn" id="view-btn-gmgn" href="#/gmgn" data-hotkey="g" title="GMGN (G)" aria-keyshortcuts="G"><img src="/static/img/terran/ico-gmgn.webp?v=terran1" alt="" width="64" height="64" decoding="async"><span class="tr-cmd-lbl"><u>G</u>MGN</span><kbd>G</kbd></a>
         <button type="button" class="tr-cmd-btn tr-cmd-util" id="tr-sound" data-hotkey="m" title="Sound effects (M)" aria-pressed="false"><span class="tr-glyph" aria-hidden="true">♪</span><span class="tr-cmd-lbl">Muted</span><kbd>M</kbd></button>
         <button type="button" class="tr-cmd-btn tr-cmd-util" id="tr-crt" data-hotkey="c" title="CRT scanlines (C)" aria-pressed="true"><span class="tr-glyph" aria-hidden="true">▤</span><span class="tr-cmd-lbl">CRT on</span><kbd>C</kbd></button>
@@ -142,17 +142,17 @@
     <div class="tr-msgs" id="tr-msgs" role="log" aria-live="polite" aria-label="Advisor messages"></div>
 
 
-    <!-- ---------- Daily Brief + Weekly Schedule ---------- -->
-    <section class="brief" data-tabpanel="brief" id="brief" aria-label="Daily Brief and weekly schedule">
+    <!-- ---------- Daily Sitrep + Weekly Schedule ---------- -->
+    <section class="brief" data-tabpanel="brief" id="brief" aria-label="Daily Sitrep and weekly schedule">
       <div class="brief-main">
         <div class="brief-head">
           <div class="brief-title">
-            <h2>Daily Brief</h2>
+            <h2>Daily Sitrep</h2>
             <span class="brief-date-label" id="brief-date-label"></span>
           </div>
           <div class="brief-nav">
             <button class="brief-btn" id="brief-prev" title="Previous day" aria-label="Previous day">‹</button>
-            <input type="date" id="brief-date" aria-label="Brief date">
+            <input type="date" id="brief-date" aria-label="Sitrep date">
             <button class="brief-btn" id="brief-next" title="Next day" aria-label="Next day">›</button>
             <button class="brief-btn" id="brief-today" title="Jump to today" aria-label="Jump to today">Today</button>
           </div>
@@ -187,7 +187,7 @@
 
         <div class="brief-panes">
           <textarea class="brief-editor" id="brief-editor"
-            placeholder="Type today's brief… markdown supported. Saved automatically."></textarea>
+            placeholder="Type today's sitrep… markdown supported. Saved automatically."></textarea>
           <div class="brief-preview" id="brief-preview"></div>
         </div>
 
@@ -324,12 +324,12 @@
       </div>
     </section>
 
-    <!-- ---------- Kanban (lanes + cards, driven by /api/kanban) ---------- -->
-    <section class="kanban" data-tabpanel="kanban" id="kanban-view" aria-label="Kanban board">
+    <!-- ---------- Ops Board (lanes + cards, driven by /api/opsboard) ---------- -->
+    <section class="kanban" data-tabpanel="kanban" id="kanban-view" aria-label="Ops Board">
       <div class="kanban-head">
         <div class="kanban-title">
-          <h2>Kanban</h2>
-          <span class="kanban-sub">drag cards between lanes · click a card to open · agents: /api/kanban</span>
+          <h2>Ops Board</h2>
+          <span class="kanban-sub">drag cards between lanes · click a card to open · agents: /api/opsboard</span>
         </div>
         <div class="kanban-actions">
           <button class="brief-btn" id="kanban-add-lane" title="Add a lane">+ Lane</button>
@@ -413,6 +413,6 @@
       if (seen || d.classList.contains('gmgn-app') || location.hash.indexOf('#/kanban/card-') === 0) d.classList.add('tr-booted');
     })();
   </script>
-  <script type="module" src="/static/js/main.js?v=terran6"></script>
+  <script type="module" src="/static/js/main.js?v=terran7"></script>
 </body>
 </html>

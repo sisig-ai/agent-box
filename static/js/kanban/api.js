@@ -1,4 +1,4 @@
-// Thin JSON client for /api/kanban. Every call resolves to the parsed body or
+// Thin JSON client for /api/opsboard (Ops Board; /api/kanban is a deprecated alias). Every call resolves to the parsed body or
 // throws an Error carrying the server's {"error"} message.
 async function call(method, path, body) {
   const opts = { method, headers: {} };
@@ -14,13 +14,13 @@ async function call(method, path, body) {
 }
 
 export const api = {
-  board: () => call('GET', '/api/kanban'),
-  getCard: (id) => call('GET', `/api/kanban/cards/${id}`),
-  addCard: (card) => call('POST', '/api/kanban/cards', card),
-  patchCard: (id, changes) => call('PATCH', `/api/kanban/cards/${id}`, changes),
-  deleteCard: (id) => call('DELETE', `/api/kanban/cards/${id}`),
-  archiveDone: () => call('POST', '/api/kanban/archive-done'),
-  addLane: (name) => call('POST', '/api/kanban/lanes', { name }),
-  patchLane: (id, changes) => call('PATCH', `/api/kanban/lanes/${id}`, changes),
-  deleteLane: (id) => call('DELETE', `/api/kanban/lanes/${id}`),
+  board: () => call('GET', '/api/opsboard'),
+  getCard: (id) => call('GET', `/api/opsboard/cards/${id}`),
+  addCard: (card) => call('POST', '/api/opsboard/cards', card),
+  patchCard: (id, changes) => call('PATCH', `/api/opsboard/cards/${id}`, changes),
+  deleteCard: (id) => call('DELETE', `/api/opsboard/cards/${id}`),
+  archiveDone: () => call('POST', '/api/opsboard/archive-done'),
+  addLane: (name) => call('POST', '/api/opsboard/lanes', { name }),
+  patchLane: (id, changes) => call('PATCH', `/api/opsboard/lanes/${id}`, changes),
+  deleteLane: (id) => call('DELETE', `/api/opsboard/lanes/${id}`),
 };

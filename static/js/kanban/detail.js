@@ -2,9 +2,9 @@
 // and the markdown body (rendered view, or Write + live Preview editor).
 // Deep-linkable: #/kanban/card-<id> opens it, #/kanban/card-<id>/edit opens
 // straight into the editor (board.js routes the hash here).
-import { api } from './api.js?v=kanban4';
-import { inlineEdit } from './edit.js?v=kanban4';
-import { loadPurify, renderBody, toggleTask } from './markdown.js?v=kanban4';
+import { api } from './api.js?v=kanban5';
+import { inlineEdit } from './edit.js?v=kanban5';
+import { loadPurify, renderBody, toggleTask } from './markdown.js?v=kanban5';
 
 const ui = {};
 const st = { card: null, id: null, editing: false, seq: 0, ctx: null, busy: { busy: 0 } };

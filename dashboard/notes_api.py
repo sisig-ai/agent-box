@@ -1,4 +1,7 @@
-"""HTTP blueprint for the Daily Brief and Weekly Schedule endpoints.
+"""HTTP blueprint for the Daily Sitrep (formerly Daily Brief) and Weekly Schedule endpoints.
+
+Canonical: /api/sitrep[/list]. /api/brief[/list] are deprecated aliases bound to
+the same view functions.
 
 No auth: local stack, exposed only over the tailnet.
 """
@@ -21,9 +24,10 @@ def parse_limit(raw, default, maximum):
         return None
 
 
-# ---------------- Daily Brief API ----------------
+# ---------------- Daily Sitrep API (/api/sitrep; /api/brief = deprecated alias) ----------------
 
 
+@bp.get("/api/sitrep")
 @bp.get("/api/brief")
 def brief_get():
     """GET /api/brief?date=YYYY-MM-DD (defaults to today)."""
@@ -36,6 +40,7 @@ def brief_get():
     return jsonify(row)
 
 
+@bp.get("/api/sitrep/list")
 @bp.get("/api/brief/list")
 def brief_list():
     """GET /api/brief/list?limit=N — most recent days first."""
@@ -45,7 +50,9 @@ def brief_list():
     return jsonify(notes.list_briefs(limit))
 
 
+@bp.put("/api/sitrep")
 @bp.put("/api/brief")
+@bp.post("/api/sitrep")
 @bp.post("/api/brief")
 def brief_upsert():
     """PUT /api/brief with JSON {"date"?, "content"} — create or replace that day's entry."""
@@ -58,6 +65,7 @@ def brief_upsert():
     return jsonify(notes.upsert_brief(date, body["content"]))
 
 
+@bp.delete("/api/sitrep")
 @bp.delete("/api/brief")
 def brief_delete():
     """DELETE /api/brief?date=YYYY-MM-DD — remove that day's entry."""

@@ -4,8 +4,8 @@
 import './warpfield.js';
 import './stack.js?v=clockpill1';
 import './telemetry/poll.js';
-import './router.js?v=kanban4';
-import './notes/brief.js';
+import './router.js?v=kanban5';
+import './notes/brief.js?v=sitrep1';
 import './notes/schedule.js';
 import './gmgn.js?v=gmgn13';
-import './terran/console.js?v=terran6';
+import './terran/console.js?v=terran7';

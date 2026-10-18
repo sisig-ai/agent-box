@@ -1,8 +1,8 @@
-// Daily Brief panel: markdown canvas wired to /api/brief (autosaved per day).
+// Daily Sitrep panel: markdown canvas wired to /api/sitrep (autosaved per day).
 import { makeNotePanel } from './note-panel.js';
 
 makeNotePanel({
-  root: 'brief', api: '/api/brief',
+  root: 'brief', api: '/api/sitrep',
   editor: 'brief-editor', preview: 'brief-preview',
   dateInput: 'brief-date', dateLabel: 'brief-date-label',
   saveState: 'brief-save-state', wordcount: 'brief-wordcount',

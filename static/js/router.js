@@ -1,5 +1,6 @@
-// Hash routing for the views (Brief / Stack / Files / Shell / Kanban / GMGN).
-// Kanban also owns #/kanban/card-<id>[/edit] and the short #card-<id> (card modal).
+// Hash routing for the views (Daily Sitrep / Stack / Files / Shell / Ops Board / GMGN;
+// internal view ids stay brief / kanban so hash routes and element ids are unchanged).
+// Ops Board (kanban) also owns #/kanban/card-<id>[/edit] and the short #card-<id> (card modal).
 // Shell and Files are code-split via dynamic import(): their modules are
 // fetched on first tab activation and the import promise is cached, so a
 // second visit is a no-op. No window.* globals are involved.
@@ -29,7 +30,7 @@ function ensure(v) {
   } else if (v === 'files') {
     (lazy.files ||= import('./files/actions.js')).then(m => m.initFiles());
   } else if (v === 'kanban') {
-    (lazy.kanban ||= import('./kanban/board.js?v=kanban4')).then(m => m.initKanban());
+    (lazy.kanban ||= import('./kanban/board.js?v=kanban5')).then(m => m.initKanban());
   }
 }
 function apply() {

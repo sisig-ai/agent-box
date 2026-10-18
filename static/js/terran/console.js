@@ -1,7 +1,7 @@
 // Terran console: selection readout, command-card hotkeys, advisor messages,
 // sound/CRT toggles. Purely a presentation layer: it reads the DOM the other
 // modules already maintain and never calls an API itself.
-import { advise, bindPortraits } from './advisor.js?v=terran6';
+import { advise, bindPortraits } from './advisor.js?v=terran7';
 import { initSound, blip } from './sound.js?v=terran1';
 import { initBoot } from './boot.js?v=terran1';
 
@@ -18,7 +18,7 @@ const UNITS = {
   },
   brief: {
     name: 'Briefing Room', wire: 'marine', hello: 'Briefing room secured. Awaiting orders.',
-    rank: () => txt('brief-date-label') || 'Daily brief',
+    rank: () => txt('brief-date-label') || 'Daily sitrep',
     stats: () => [`log: <b>${txt('brief-save-state') || 'ready'}</b>`, txt('brief-wordcount'), txt('schedule-week-label')],
   },
   files: {

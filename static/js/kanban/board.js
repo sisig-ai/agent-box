@@ -1,10 +1,10 @@
-// Kanban tab: lanes as columns, cards with inline edit, HTML5 drag and drop,
+// Ops Board tab (internal id: kanban): lanes as columns, cards with inline edit, HTML5 drag and drop,
 // and a 3s poll (only while the tab is visible and nobody is mid-edit/drag) so
-// changes agents make through /api/kanban show up on their own. Clicking a
+// changes agents make through /api/opsboard show up on their own. Clicking a
 // card opens the detail modal (detail.js); #/kanban/card-<id> deep-links it.
-import { api } from './api.js?v=kanban4';
-import { inlineEdit, armDelete } from './edit.js?v=kanban4';
-import { closeCard, openCard, openId, setupDetail, syncFromBoard } from './detail.js?v=kanban4';
+import { api } from './api.js?v=kanban5';
+import { inlineEdit, armDelete } from './edit.js?v=kanban5';
+import { closeCard, openCard, openId, setupDetail, syncFromBoard } from './detail.js?v=kanban5';
 
 const POLL_MS = 3000;
 const $ = (id) => document.getElementById(id);
