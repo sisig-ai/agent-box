@@ -1,7 +1,7 @@
 // Terran console: selection readout, command-card hotkeys, advisor messages,
 // sound/CRT toggles. Purely a presentation layer: it reads the DOM the other
 // modules already maintain and never calls an API itself.
-import { advise } from './advisor.js?v=terran2';
+import { advise, bindPortraits } from './advisor.js?v=terran4';
 import { initSound, blip } from './sound.js?v=terran1';
 import { initBoot } from './boot.js?v=terran1';
 
@@ -169,6 +169,7 @@ function initWatchers() {
 
 function init() {
   if (!$('tr-console')) return;
+  bindPortraits(document.querySelectorAll('[data-adjutant]'));
   initSound($('tr-sound'));
   initHotkeys();
   initToggles();

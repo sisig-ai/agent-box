@@ -109,6 +109,9 @@ h1#title {
 .tele-alerts, .tele-alert-row { font-family: var(--tr-px); font-size: 1rem; }
 .pwr-badge { border-radius: 0 !important; font-family: var(--tr-px) !important; }
 
+/* phone-only adjutant chip (desktop has the console portrait) */
+.tr-chip { display: none; }
+
 /* clock: a small yellow readout like the game timer */
 .readout {
   min-width: 0 !important;
