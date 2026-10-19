@@ -1,6 +1,7 @@
 // Daily-note panel factory: editor/toolbar/tabs/autosave/wordcount/date-nav.
 import { $ } from '../dom.js';
 import { renderMarkdown } from './markdown.js';
+import { taskLines, toggleTask, rebaseToggle } from './tasks.js?v=sitrep2';
 
 export function makeNotePanel(cfg) {
   const root = $(cfg.root);
@@ -189,29 +190,56 @@ export function makeNotePanel(cfg) {
     btn.addEventListener('click', () => setTab(btn.dataset.tab));
   });
 
-  /* Clicking a task checkbox in preview flips the markdown and saves */
-  preview.addEventListener('change', (e) => {
+  /* Clicking a task checkbox in preview flips that line's "[ ]"/"[x]" in the
+     markdown and saves right away. Checkboxes map to source lines in order,
+     skipping code fences (tasks.js). Without unsaved local edits, re-fetch
+     first so a tick never clobbers a newer copy another writer just PUT. */
+  preview.addEventListener('change', async (e) => {
     const cb = e.target;
     if (!cb || cb.tagName !== 'INPUT' || cb.type !== 'checkbox') return;
-    const boxes = Array.from(preview.querySelectorAll('input[type="checkbox"]'));
-    const idx = boxes.indexOf(cb);
-    if (idx < 0) return;
-    // Find the idx-th task-list line in the source markdown and flip it
-    const lines = editor.value.split('\n');
-    let taskN = -1;
-    for (let i = 0; i < lines.length; i++) {
-      const m = lines[i].match(/^(\s*[-*+]\s+)\[[ xX]\]/);
-      if (!m) continue;
-      taskN++;
-      if (taskN === idx) {
-        lines[i] = cb.checked
-          ? lines[i].replace(/^(\s*[-*+]\s+)\[[ xX]\]/, '$1[x]')
-          : lines[i].replace(/^(\s*[-*+]\s+)\[[ xX]\]/, '$1[ ]');
-        break;
+    const boxes = Array.from(preview.querySelectorAll('li input[type="checkbox"]'));
+    const n = boxes.indexOf(cb);
+    const checked = cb.checked;
+    const date = currentDate;
+    const base = editor.value;
+    if (n < 0 || boxes.length !== taskLines(base).length) {
+      cb.checked = !checked;
+      setState('error', 'checkbox not mapped — tick it in Edit');
+      return;
+    }
+    let next = null;
+    if (dirty) {
+      next = toggleTask(base, n, checked); // local unsaved edits are newest
+    } else {
+      setState('saving', 'syncing…');
+      let fresh = base;
+      try {
+        const res = await fetch(`${cfg.api}?date=${date}`, { cache: 'no-store' });
+        if (res.ok) fresh = (await res.json()).content || '';
+      } catch (err) { /* offline: fall back to what we have */ }
+      if (date !== currentDate) return; // day switched mid-flight
+      if (editor.value !== base) {
+        next = toggleTask(editor.value, n, checked);
+      } else if (fresh === base) {
+        next = toggleTask(base, n, checked);
+      } else {
+        next = rebaseToggle(base, fresh, n, checked);
+        lastSavedContent = fresh;
+        if (next === null) { // item gone/ambiguous upstream: show newest, no write
+          editor.value = fresh;
+          renderPreview();
+          countWords();
+          setState('error', 'sitrep changed elsewhere — reloaded, tick again');
+          return;
+        }
       }
     }
-    editor.value = lines.join('\n');
-    scheduleSave(); // re-renders preview with the flipped state + persists
+    if (next === null) { cb.checked = !checked; return; }
+    editor.value = next;
+    dirty = true;
+    renderPreview();
+    countWords();
+    await saveNow();
   });
 
   /* ----- Editor events ----- */

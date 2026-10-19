@@ -39,6 +39,8 @@ Stored in SQLite at /Users/kixpanganiban/quick-arr-stack/arr-dashboard/data/brie
 
 Markdown previews (Daily Sitrep and weekly schedule) render through a sanitizer: script/style/iframe/object/embed/link/meta/base/form elements, `on*=` handlers, and `javascript:`/`data:`/`vbscript:` URLs are stripped before insert; the stored markdown is unchanged.
 
+**Sitrep task lists are clickable and persist.** Any GFM task item in a sitrep (`- [ ] item`, `- [x] done`; also `*`/`+`/`1.` bullets, nested or in `>` quotes) renders as a live checkbox in the Daily Sitrep preview. Ticking/unticking flips that line's `[ ]` ↔ `[x]` in the stored markdown and saves immediately through `PUT /api/sitrep` (same date + content); nothing else in the entry changes, and items inside fenced code blocks are not checkboxes. Before writing, the page re-fetches the day's entry, so a tick lands on the newest copy (matched by item text) instead of clobbering a rewrite another agent just PUT; if the item no longer exists it reloads and writes nothing. **Operators/agents: write every actionable sitrep item as a task line prefixed with `- [ ] `** (one per line, the checkbox first) so Kix can tick it off; when rewriting an entry, keep items he already ticked as `- [x]` — read the entry first with `GET /api/sitrep?date=…`.
+
 | Method | Path | Behavior |
 |--------|------|----------|
 | GET    | /api/sitrep?date=YYYY-MM-DD | Fetch a day's entry. Returns {"date", "content"} — content is "" when no entry exists yet. |
@@ -336,6 +338,7 @@ Server → client:
 
 - Daily Sitrep content is markdown. Preserve existing structure when appending — don't rewrite an entry unless the user asks.
 - The Daily Sitrep (formerly Daily Brief) is meant for Kix: one markdown entry per calendar day. If asked to "post the daily sitrep" (or the "daily brief"), write today's entry in Manila time via `PUT /api/sitrep`.
+- Sitrep items Kix should act on go in as `- [ ] ` task lines — the sitrep is always checkable, and his ticks persist as `- [x]` in the stored markdown. Don't reset his ticks when updating an entry.
 - The UI at / is read-only from an agent's perspective; do all writes through the API.
 - Ops Board (formerly Kanban): use your agent name as `owner` so cards are attributable; move cards rather than deleting them when work finishes (Done is a lane). Don't delete or rename lanes unless asked, and only call archive-done when asked (it sweeps everyone's Done cards); archive a single card with PATCH instead.
 - No auth headers needed. Keep requests on the LAN/tailnet.

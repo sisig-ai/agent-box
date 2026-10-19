@@ -1,5 +1,5 @@
 // Daily Sitrep panel: markdown canvas wired to /api/sitrep (autosaved per day).
-import { makeNotePanel } from './note-panel.js';
+import { makeNotePanel } from './note-panel.js?v=sitrep2';
 
 makeNotePanel({
   root: 'brief', api: '/api/sitrep',
