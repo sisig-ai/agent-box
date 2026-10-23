@@ -2,9 +2,10 @@
 // and the markdown body (rendered view, or Write + live Preview editor).
 // Deep-linkable: #/kanban/card-<id> opens it, #/kanban/card-<id>/edit opens
 // straight into the editor (board.js routes the hash here).
-import { api } from './api.js?v=kanban6';
-import { inlineEdit } from './edit.js?v=kanban6';
-import { loadPurify, renderBody, toggleTask } from './markdown.js?v=kanban6';
+import { api } from './api.js?v=kanban7';
+import { inlineEdit } from './edit.js?v=kanban7';
+import { loadPurify, renderBody, toggleTask } from './markdown.js?v=kanban7';
+import { buildComments, paintComments } from './comments.js?v=kanban7';
 
 const ui = {};
 const st = { card: null, id: null, editing: false, seq: 0, ctx: null, busy: { busy: 0 } };
@@ -21,8 +22,7 @@ const fmt = (iso) => (iso ? new Date(iso).toLocaleString([], {
 }) : '—');
 
 function build() {
-  ui.backdrop = el('div', 'kbd-backdrop');
-  ui.backdrop.hidden = true;
+  ui.backdrop = el('div', 'kbd-backdrop'); ui.backdrop.hidden = true;
   const modal = el('div', 'kbd-modal');
   modal.setAttribute('role', 'dialog');
   modal.setAttribute('aria-modal', 'true');
@@ -82,7 +82,7 @@ function build() {
   ui.foot.append(ui.cancel, ui.save);
   foot.append(ui.msg, ui.foot);
 
-  modal.append(head, meta, sec, ui.view, ui.editor, foot);
+  modal.append(head, meta, sec, ui.view, ui.editor, foot, buildComments());
   ui.backdrop.append(modal);
   document.body.append(ui.backdrop);
   wire();
@@ -156,6 +156,7 @@ function paint() {
   ui.view.hidden = st.editing;
   ui.editor.hidden = !st.editing;
   ui.foot.hidden = !st.editing;
+  paintComments(c);
   if (!st.editing) {
     if ((c.body || '').trim()) renderBody(ui.view, c.body, true);
     else ui.view.replaceChildren(el('p', 'kbd-empty', 'No description yet — click ✎ Edit to add one.'));

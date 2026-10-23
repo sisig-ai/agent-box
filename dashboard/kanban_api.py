@@ -204,8 +204,10 @@ def card_create():
 @bp.get("/api/kanban/cards/<card_id>")
 def card_get(card_id):
     from . import db
+    from .kanban_comments import comments
 
-    return jsonify(kanban.card(db.get_db(), parse_card_id(card_id)))
+    conn, card_id = db.get_db(), parse_card_id(card_id)
+    return jsonify({**kanban.card(conn, card_id), "comments": comments(conn, card_id)})
 
 
 @bp.patch("/api/opsboard/cards/<card_id>")
@@ -287,3 +289,6 @@ def lane_delete(lane_ref):
             target=target or None,
         )
     )
+
+
+from . import kanban_comments_api  # noqa: E402,F401  (registers comment routes on bp)

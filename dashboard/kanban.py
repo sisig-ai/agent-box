@@ -58,6 +58,9 @@ def init_schema(conn):
         """
     )
     migrate(conn)
+    from .kanban_comments import init_schema as init_comments
+
+    init_comments(conn)
     conn.execute("CREATE INDEX IF NOT EXISTS kanban_card_lane ON kanban_card (lane_id, position)")
     if not existed:
         stamp = now_iso()
@@ -83,7 +86,8 @@ def migrate(conn):
 
 CARD_SQL = (
     "SELECT c.id, c.title, c.owner, l.name AS status, c.lane_id, c.position,"
-    " c.created_at, c.updated_at, c.archived_at, c.body, c.opname"
+    " c.created_at, c.updated_at, c.archived_at, c.body, c.opname,"
+    " (SELECT COUNT(*) FROM kanban_comment k WHERE k.card_id = c.id) AS comment_count"
     " FROM kanban_card c JOIN kanban_lane l ON l.id = c.lane_id"
 )
 
@@ -308,6 +312,7 @@ def archive_lane(lane_name="Done"):
 def delete_card(card_id):
     with _WRITE_LOCK, db.get_db() as conn:
         current = card(conn, card_id)
+        conn.execute("DELETE FROM kanban_comment WHERE card_id = ?", (card_id,))
         conn.execute("DELETE FROM kanban_card WHERE id = ?", (card_id,))
         _write_order(conn, current["lane_id"], _lane_card_ids(conn, current["lane_id"]))
         return current

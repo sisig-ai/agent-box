@@ -4,9 +4,9 @@
 // card opens the detail modal (detail.js); #/kanban/card-<id> deep-links it.
 // Cards may carry an `opname` (operation name): shown as a chip; the header
 // "op" filter (or clicking a chip) narrows the board to one operation.
-import { api } from './api.js?v=kanban6';
-import { inlineEdit, armDelete } from './edit.js?v=kanban6';
-import { closeCard, openCard, openId, setupDetail, syncFromBoard } from './detail.js?v=kanban6';
+import { api } from './api.js?v=kanban7';
+import { inlineEdit, armDelete } from './edit.js?v=kanban7';
+import { closeCard, openCard, openId, setupDetail, syncFromBoard } from './detail.js?v=kanban7';
 
 const POLL_MS = 3000;
 const $ = (id) => document.getElementById(id);
@@ -225,6 +225,11 @@ function bodyBadges(card) {
   if (t && t.total) {
     const b = el('span', `kb-badge kb-badge-tasks${t.done === t.total ? ' done' : ''}`, `☑ ${t.done}/${t.total}`);
     b.title = `${t.done} of ${t.total} checklist items done`;
+    out.push(b);
+  }
+  if (card.comment_count) {
+    const b = el('span', 'kb-badge kb-badge-comments', `💬 ${card.comment_count}`);
+    b.title = `${card.comment_count} comment${card.comment_count === 1 ? '' : 's'}`;
     out.push(b);
   }
   return out;

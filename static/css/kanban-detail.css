@@ -179,3 +179,19 @@ body.kbd-open { overflow: hidden; }
 }
 .kbd-opname.set { color: #f5c84c; border-color: rgba(245,200,76,0.45); }
 .kbd-opname:focus { border-color: rgba(245,200,76,0.7); outline: none; }
+
+/* ---- card comments ---- */
+.kbc-wrap { margin-top: 14px; }
+.kbc-list { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 10px; }
+.kbc-item { border-left: 2px solid var(--muted); padding: 4px 0 4px 10px; }
+.kbc-meta { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 0.72rem; color: var(--muted); }
+.kbc-author-name { color: var(--text); font-weight: 600; }
+.kbc-del { margin-left: auto; opacity: 0.5; }
+.kbc-del.armed { opacity: 1; color: #e55; }
+.kbc-body { font-size: 0.84rem; }
+.kbc-form { display: flex; flex-direction: column; gap: 6px; }
+.kbc-text { min-height: 56px; resize: vertical; font: inherit; font-size: 0.84rem; }
+.kbc-row { display: flex; align-items: center; gap: 8px; }
+.kbc-author { width: 120px; font-family: var(--mono); font-size: 0.75rem; }
+.kbc-msg { flex: 1; }
+.kb-badge-comments { white-space: nowrap; }
