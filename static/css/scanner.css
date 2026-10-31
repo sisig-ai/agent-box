@@ -1,0 +1,61 @@
+/* ---------- Scanner ---------- */
+.scanner {
+  position: relative;
+  margin-bottom: 1.75rem;
+}
+
+.scanner .glyph {
+  position: absolute;
+  left: 1.1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  pointer-events: none;
+  transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+
+#search {
+  width: 100%;
+  padding: 0.9rem 4.5rem 0.9rem 2.9rem;
+  font-family: var(--mono);
+  font-size: 0.88rem;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  outline: none;
+  transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+}
+
+#search::placeholder { color: var(--muted); }
+
+#search:focus {
+  border-color: rgba(114,167,255, 0.55);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 0 0 4px rgba(114,167,255, 0.1), 0 0 30px -6px rgba(114,167,255, 0.4);
+}
+
+.scanner:focus-within .glyph {
+  color: var(--blue);
+  text-shadow: 0 0 12px rgba(114,167,255, 0.7);
+}
+
+.kbd {
+  position: absolute;
+  right: 0.9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 0.12rem 0.42rem;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+#search:focus ~ .kbd { opacity: 0; }

@@ -1,0 +1,151 @@
+/* ==========================================================================
+   Attention: 8-bit, dithered "this changed since you last looked" effects.
+   Hard-edged pixel bands, square particles in 2-4px sizes, stepped timing.
+   No glows, blurs, gradients or smooth easing.
+   ========================================================================== */
+
+.attention-hit {
+  position: relative;
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  animation: attention-outline 1.45s steps(4) both;
+}
+@keyframes attention-outline {
+  0%, 100% { outline-color: transparent; }
+  20% { outline-color: var(--warn); }
+  45% { outline-color: var(--ink); }
+  70% { outline-color: var(--warn); }
+}
+
+/* A dithered band sweeping across the card, with a single amber leading pixel. */
+.attention-sweep-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  overflow: hidden;
+  pointer-events: none;
+}
+.attention-sweep {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -55%;
+  width: 55%;
+  background-color: rgba(198, 169, 106, 0.13);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='2' shape-rendering='crispEdges'%3E%3Cpath fill='%23e8ebef' fill-opacity='.5' d='M0 0h1v1H0zM1 1h1v1H1z'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 2px 2px;
+  opacity: 0.95;
+  animation: attention-sweep-x 1.3s steps(9) both;
+}
+.attention-sweep::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--warn);
+}
+@keyframes attention-sweep-x {
+  from { left: -55%; }
+  to { left: 105%; }
+}
+
+/* Meter: same sweep, tinted brighter so the bar itself draws the eye. */
+.attention-meter {
+  position: relative;
+  outline: 2px solid var(--warn);
+  outline-offset: 1px;
+}
+.pb-meter .attention-sweep {
+  background-color: rgba(232, 235, 239, 0.2);
+  animation-duration: 1.15s;
+}
+
+/* Pixel particles live above the page and ignore lane scroll clipping. */
+.attention-fx {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  overflow: hidden;
+  pointer-events: none;
+}
+.attention-p {
+  position: fixed;
+  display: block;
+  z-index: 1;
+  image-rendering: pixelated;
+}
+
+/* The moving card tag: dithered amber plate, stepped flight path. */
+.attention-ghost {
+  position: fixed;
+  z-index: 96;
+  padding: 2px 6px;
+  color: var(--ink);
+  background-color: var(--well);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='2' shape-rendering='crispEdges'%3E%3Cpath fill='%23c6a96a' fill-opacity='.35' d='M0 0h1v1H0zM1 1h1v1H1z'/%3E%3C/svg%3E");
+  background-size: 2px 2px;
+  border: 1px solid var(--warn);
+  font-size: 0.66rem;
+  line-height: 1.6;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.attention-ghost::before { content: "▸ "; color: var(--warn); }
+
+/* Destination lane flashes when a flying card lands. */
+.attention-lane .kb-lane-head {
+  animation: attention-lane-pulse 1.1s steps(4) both;
+}
+@keyframes attention-lane-pulse {
+  0%, 100% { background: transparent; }
+  35% { background: #2b2518; }
+  65% { background: #211f1a; }
+}
+
+/* Reduced motion: keep a static marker instead of movement. */
+.attention-static {
+  outline: 1px solid var(--warn);
+  outline-offset: -1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .attention-sweep, .attention-ghost, .attention-fx { display: none; }
+  .attention-hit { animation: none; outline-color: var(--warn); }
+}
+
+/* Unread cards keep a slow dithered sweep until they are clicked open. */
+.attention-unread {
+  position: relative;
+  border-left: 2px solid var(--warn);
+}
+.attention-sweep-wrap.is-loop .attention-sweep {
+  opacity: 0.85;
+  animation: attention-loop 2.8s steps(8, end) infinite;
+}
+@keyframes attention-loop {
+  0% { left: -55%; opacity: 0; }
+  4% { opacity: 0.85; }
+  60% { left: 105%; opacity: 0.85; }
+  61%, 100% { left: 105%; opacity: 0; }
+}
+
+/* New comments since the card was last read. */
+.kbc-item.is-new {
+  position: relative;
+  overflow: hidden;
+  border-left: 2px solid var(--warn);
+  background: #1c1a16;
+}
+.kbc-item.is-new .kbc-new {
+  margin-left: auto;
+  color: var(--warn);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.attention-sweep-wrap.is-comment .attention-sweep {
+  animation: attention-sweep-x 1.35s steps(9) 2 both;
+}

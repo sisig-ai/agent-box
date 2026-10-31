@@ -1,0 +1,164 @@
+/* ---------- Fleet ---------- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(266px, 1fr));
+  gap: 0.95rem;
+  margin-top: 3rem;
+}
+
+.card {
+  --accent: var(--blue);
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.05rem 1.15rem;
+  border-radius: 16px;
+  background: linear-gradient(160deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02)),
+              linear-gradient(rgba(12,18,37,0.78), rgba(8,12,27,0.72));
+  border: 1px solid var(--border);
+  text-decoration: none;
+  color: inherit;
+  overflow: hidden;
+  isolation: isolate;
+  transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.25, 1.25),
+              border-color 0.3s ease, box-shadow 0.3s ease;
+  animation: warpIn 0.6s cubic-bezier(0.18, 0.9, 0.25, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+
+@keyframes warpIn {
+  from { opacity: 0; transform: translateZ(0) scale(0.9) translateY(18px); filter: blur(6px); }
+  to   { opacity: 1; transform: none; filter: none; }
+}
+
+/* accent bloom */
+.card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  background: radial-gradient(90% 130% at 8% 0%, var(--accent), transparent 62%);
+  opacity: 0.07;
+  transition: opacity 0.3s ease;
+}
+
+/* left edge light bar */
+.card::after {
+  content: "";
+  position: absolute;
+  left: 0; top: 22%; bottom: 22%;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0.35;
+  box-shadow: 0 0 12px var(--accent);
+  transition: all 0.3s ease;
+}
+
+.card:hover, .card:focus-visible {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--accent) 52%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent),
+              0 18px 50px -18px color-mix(in srgb, var(--accent) 85%, transparent);
+  outline: none;
+}
+
+.card:hover::before, .card:focus-visible::before { opacity: 0.16; }
+.card:hover::after, .card:focus-visible::after { top: 8%; bottom: 8%; opacity: 1; }
+
+.card:active { transform: translateY(-1px) scale(0.99); }
+
+/* Icon pod with corner brackets */
+.pod {
+  position: relative;
+  width: 50px; height: 50px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  font-size: 1.35rem;
+  line-height: 1;
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+  box-shadow: inset 0 0 18px -6px var(--accent), 0 0 16px -6px var(--accent);
+  transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.25, 1.4), box-shadow 0.3s ease;
+}
+
+/* monogram fallback picks up the accent colour */
+.pod.mono {
+  font-family: var(--mono);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.card:hover .pod {
+  transform: scale(1.08) rotate(-4deg);
+  box-shadow: inset 0 0 22px -5px var(--accent), 0 0 26px -4px var(--accent);
+}
+
+.info { flex: 1; min-width: 0; }
+
+.name {
+  display: block;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+  min-width: 0;
+}
+
+.description {
+  color: var(--muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.port {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.03em;
+  color: color-mix(in srgb, var(--accent) 78%, white);
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, transparent);
+  border-radius: 5px;
+  padding: 0.06rem 0.34rem;
+  flex-shrink: 0;
+}
+
+.chevron {
+  font-family: var(--mono);
+  font-size: 0.95rem;
+  color: var(--accent);
+  flex-shrink: 0;
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: all 0.3s cubic-bezier(0.2, 0.9, 0.25, 1.3);
+}
+
+.card:hover .chevron, .card:focus-visible .chevron {
+  opacity: 1;
+  transform: none;
+  text-shadow: 0 0 12px var(--accent);
+}
+
+.empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  padding: 3rem 1rem;
+}

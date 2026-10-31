@@ -1,0 +1,297 @@
+/* ==========================================================================
+   agent-box — flat ascii/terminal skin
+   One monospace family, one dark palette, square corners, dotted rules.
+   Loaded last: it re-skins every view in place without renaming a single
+   id or class the JS depends on. No images, gradients, glows or animation.
+   ========================================================================== */
+
+:root {
+  --bg: #131518;
+  --well: #1a1d21;
+  --line: #2b3037;
+  --ink: #e8ebef;
+  --text: #c3c9d1;
+  --muted: #8c95a1;
+  --dim: #6a727c;
+  --ok: #93b8a0;
+  --warn: #c6a96a;
+  --bad: #cf8b8b;
+
+  /* legacy tokens, re-pointed so the view stylesheets follow along */
+  --void: var(--bg);
+  --blue: var(--ink);
+  --violet: var(--ink);
+  --surface: var(--well);
+  --border: var(--line);
+  --mono: "FiraCode Nerd Font Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* Flat by default: legacy gradients, blooms and glows go away. */
+
+.brief, .shell, .files, .kanban, .tele-card, .card, .pod, .readout, .kbd-modal, .fs-modal,
+.kb-card, .brief-editor, .term, .files-editor-host, h1 {
+  background-image: none !important;
+}
+
+h1 {
+  background: none !important;
+  color: var(--ink) !important;
+  -webkit-text-fill-color: var(--ink);
+  filter: none !important;
+}
+.brand:hover h1 { animation: none !important; }
+
+.kbd-backdrop, .fs-modal-backdrop, .ascii-dialog::backdrop { backdrop-filter: none !important; }
+
+html {
+  scrollbar-color: var(--line) var(--bg);
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.65;
+  font-variant-ligatures: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: var(--ink); color: var(--bg); }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: #2f343b; border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: #3d434b; }
+
+h1, h2, h3 { margin: 0; color: var(--ink); font-weight: 500; line-height: 1.4; }
+
+a { color: var(--ink); text-decoration: none; }
+
+button { font: inherit; color: inherit; }
+
+:focus-visible { outline: 1px dotted var(--muted); outline-offset: 2px; }
+
+/* ---------- Frame: sidebar + page ---------- */
+
+.container {
+  display: grid;
+  grid-template-columns: 18ch minmax(0, 1fr);
+  gap: 4ch;
+  width: calc(100% - 2.4rem);
+  max-width: none;
+  margin: 0 auto;
+  padding: 2.5rem 0 3rem;
+  min-height: 100vh;
+}
+
+.side {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  padding: 0.25rem 0 2rem;
+  font-size: 0.83rem;
+}
+
+.side .home {
+  display: inline-block;
+  color: var(--ink);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.side .home:hover { background: var(--ink); color: var(--bg); }
+
+.side .by { margin: 0.15rem 0 1.6rem; color: var(--muted); }
+
+.view-tabs { display: flex; flex-direction: column; gap: 0.1rem; }
+
+.view-btn {
+  display: inline-block;
+  padding: 0 0.35rem;
+  margin-left: -0.35rem;
+  width: fit-content;
+  font-size: 0.83rem;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  letter-spacing: 0;
+}
+.view-btn:hover { color: var(--ink); }
+.view-btn.active { background: var(--ink); color: var(--bg); }
+
+.side-foot { margin-top: 2.4rem; color: var(--muted); font-size: 0.78rem; }
+.side-foot p { margin: 0; }
+.side-foot .dim { color: var(--dim); }
+.side-foot #host { color: var(--text); overflow-wrap: anywhere; }
+
+.linkbtn {
+  margin-top: 0.9rem;
+  padding: 0;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-size: 0.83rem;
+}
+.linkbtn:hover { background: var(--ink); color: var(--bg); }
+
+.page { display: flex; flex-direction: column; gap: 1.6rem; min-width: 0; }
+
+/* ---------- Header ---------- */
+
+header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin: 0;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px dotted var(--line);
+}
+
+h1 {
+  font-size: 1.45rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-transform: lowercase;
+}
+
+.subtitle { margin: 0.15rem 0 0; color: var(--muted); font-size: 0.83rem; }
+
+.readout {
+  text-align: right;
+  color: var(--muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.readout::after { display: none; }
+.readout-time { display: block; color: var(--ink); font-size: 1.25rem; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.readout-meta { color: var(--muted); text-transform: lowercase; }
+
+/* ---------- Telemetry strip ---------- */
+
+.telemetry {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  max-width: none;
+  flex: none;
+  align-self: stretch;
+  border: 1px solid var(--line);
+  background: var(--well);
+  margin: 0;
+}
+
+.tele-card {
+  position: relative;
+  min-width: 0;
+  padding: 0.55rem 0.8rem 0.6rem;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: transparent;
+  cursor: pointer;
+}
+.tele-card:first-child { border-left: 0; }
+.tele-card:hover, .tele-card:focus-visible { background: #1e2227; outline: none; }
+.tele-card::after { display: none; }
+
+.tele-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tele-live { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.62rem; color: var(--dim); }
+.tele-live i { width: 5px; height: 5px; border-radius: 50% !important; background: var(--ok); box-shadow: none; }
+
+.tele-main {
+  margin-top: 0.2rem;
+  color: var(--ink);
+  font-size: 1.15rem;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.tele-unit { margin-left: 0.15rem; color: var(--muted); font-size: 0.7rem; }
+.tele-sub { color: var(--dim); font-size: 0.66rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.tele-duo { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+
+.tele-bar { height: 2px; margin-top: 0.4rem; background: var(--line); overflow: hidden; }
+.tele-bar i { display: block; height: 100%; background: var(--ink); transform-origin: left center; transition: none; }
+.tele-half.is-temp .tele-bar i { background: var(--muted); }
+
+.tele-graph {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  z-index: 20;
+  width: min(360px, calc(100vw - 2.5rem));
+  max-height: 0;
+  padding: 0 0.7rem;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--well);
+  border: 1px solid transparent;
+}
+.tele-card.expanded { z-index: 20; }
+.tele-card.expanded .tele-graph {
+  max-height: 170px;
+  padding: 0.6rem 0.7rem 0.5rem;
+  opacity: 1;
+  border-color: var(--line);
+  pointer-events: auto;
+}
+#tele-card-mem .tele-graph { left: 50%; transform: translateX(-50%); }
+#tele-card-pwr .tele-graph { left: auto; right: 0; }
+
+.tele-graph canvas { display: block; width: 100%; height: 110px; cursor: crosshair; }
+
+.tele-tabs { display: flex; gap: 0.6rem; margin-top: 0.35rem; }
+.tele-tab {
+  padding: 0;
+  color: var(--dim);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-size: 0.66rem;
+}
+.tele-tab.active { color: var(--ink); }
+.tele-alerts { margin-top: 0.4rem; font-size: 0.66rem; color: var(--warn); max-height: 72px; overflow-y: auto; }
+
+.pwr-badge {
+  display: none;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0 0.3rem;
+  color: var(--warn);
+  background: transparent;
+  border: 1px dotted var(--warn);
+  font-size: 0.62rem;
+}
+.pwr-badge.show { display: inline-flex; }
+.pwr-badge .pwr-x { color: var(--muted); }
+
+.graph-tip { background: var(--bg); border: 1px solid var(--line); color: var(--text); font-size: 0.66rem; padding: 0.15rem 0.4rem; }
+

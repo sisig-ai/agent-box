@@ -1,0 +1,18 @@
+# Private runtime data — never commit (contains briefs.db with private user notes + WAL/SHM)
+data/
+
+# Python virtualenv (local, not reproducible by commit)
+.venv/
+
+# Python bytecode caches
+__pycache__/
+*.pyc
+
+# macOS Finder metadata
+.DS_Store
+
+# Transient rehearsal state written by deploy tooling
+deploy/rehearsal-pids.json
+
+# Logs
+*.log

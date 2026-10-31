@@ -1,0 +1,252 @@
+/* Weekly schedule panel (right 1/3) */
+.brief-schedule {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border);
+  background: rgba(5,8,20,0.32);
+}
+
+.schedule-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.95rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.schedule-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.schedule-title h2 {
+  font-size: 1.02rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.schedule-title .schedule-week-label {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.schedule-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.schedule-preview {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 62vh;
+  min-height: 220px;
+  font-size: 0.88rem;
+  line-height: 1.65;
+  color: var(--text);
+  padding: 1rem 1.25rem;
+}
+
+.schedule-preview h1, .schedule-preview h2, .schedule-preview h3,
+.schedule-preview h4, .schedule-preview h5, .schedule-preview h6 {
+  margin: 0.9em 0 0.4em;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.schedule-preview h1 { font-size: 1.25rem; }
+.schedule-preview h2 { font-size: 1.1rem; }
+.schedule-preview h3 { font-size: 1rem; }
+.schedule-preview h1:first-child, .schedule-preview h2:first-child { margin-top: 0; }
+
+.schedule-preview p { margin: 0.5em 0; }
+.schedule-preview ul, .schedule-preview ol { margin: 0.5em 0; padding-left: 1.3em; }
+.schedule-preview li { margin: 0.22em 0; }
+.schedule-preview li.task-list-item { list-style: none; }
+.schedule-preview input[type="checkbox"] { margin-right: 0.4em; accent-color: var(--blue); }
+
+.schedule-preview code {
+  font-family: var(--mono);
+  font-size: 0.82em;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 0.1em 0.35em;
+}
+
+.schedule-preview a { color: var(--blue); text-decoration: none; }
+.schedule-preview a:hover { text-decoration: underline; }
+.schedule-preview hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0.9em 0;
+}
+
+.schedule-empty {
+  text-align: center;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  padding: 1.2rem 0.5rem;
+}
+
+@media (max-width: 900px) {
+  .brief {
+    grid-template-columns: 1fr;
+  }
+  .brief-schedule {
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+}
+
+.brief-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.95rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.brief-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.brief-title h2 {
+  font-size: 1.02rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.brief-title .brief-date-label {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.brief-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.brief-nav input[type="date"] {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--text);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.34rem 0.55rem;
+  outline: none;
+  color-scheme: dark;
+}
+
+.brief-nav input[type="date"]:focus {
+  border-color: rgba(114,167,255, 0.55);
+}
+
+.brief-btn {
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  color: var(--muted);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.34rem 0.6rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.brief-btn:hover {
+  color: var(--text);
+  border-color: rgba(114,167,255, 0.5);
+  box-shadow: 0 0 14px -4px rgba(114,167,255, 0.5);
+}
+
+.brief-btn:active { transform: scale(0.96); }
+
+.brief-btn.toggled {
+  color: var(--text);
+  border-color: rgba(114,167,255,0.55);
+  background: rgba(114,167,255,0.12);
+}
+
+/* ================= Calendar agenda (appended) ================= */
+
+.schedule-calendar {
+  display: flex;
+  flex-direction: column;
+}
+
+.cal-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  padding: 0.5rem 0 0.5rem 0.6rem;
+  border-left: 2px solid transparent;
+}
+
+.cal-row + .cal-row {
+  border-top: 1px solid var(--border);
+}
+
+.cal-rowhead {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.cal-row.cal-today {
+  border-left-color: var(--blue);
+}
+
+.cal-row.cal-today .cal-rowhead {
+  color: var(--blue);
+}
+
+.cal-event {
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.cal-event.done {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.cal-event.cal-event-empty {
+  color: var(--muted);
+}
+
+.schedule-extra {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--border);
+}

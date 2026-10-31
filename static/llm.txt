@@ -1,0 +1,184 @@
+# Agent Box Control Surface
+
+Base URL: http://agent-box:5555 (also http://HOST:5555 over the tailnet)
+
+**MCP endpoint: `POST http://agent-box:5555/mcp`** — use this for the Ops Board
+(kanban), the Daily Sitrep / weekly schedule, and the Progress Bars. The HTTP API
+documented at the bottom still exists for scripts, but new work should use MCP.
+
+Local home-server landing page + agent surface for the operator's "quick-arr-stack".
+No authentication. Exposed only over the LAN / tailnet — treat it as private.
+
+## Host context
+
+- Machine: agent-box (Apple M2 Pro, 32 GB unified memory, macOS)
+- Timezone: Asia/Manila (UTC+8). All dates are YYYY-MM-DD in Manila time; omitting a date defaults to today (Manila).
+- Services on the landing page: Example Agent (:7777), Runtime Agent (:9119), Opencode (:4096).
+
+## MCP server (primary interface)
+
+Transport: **Streamable HTTP, stateless**. One JSON-RPC 2.0 message per POST
+(batches are also accepted). No session id and no server-initiated stream, so
+`GET /mcp` and `DELETE /mcp` answer 405 — that is expected, not a fault.
+Protocol version `2025-06-18` (also accepts `2025-03-26` and `2024-11-05`).
+
+Register it once:
+
+    # Claude Code / Claude Desktop
+    claude mcp add --transport http agent-box http://HOST:5555/mcp
+
+    # Cursor / any client that takes mcp.json
+    {"mcpServers": {"agent-box": {"url": "http://HOST:5555/mcp"}}}
+
+Smoke test with curl (handshake, then call):
+
+    curl -s -X POST http://agent-box:5555/mcp -H 'Content-Type: application/json' \
+      -d '{"jsonrpc":"2.0","id":1,"method":"initialize",
+           "params":{"protocolVersion":"2025-06-18","capabilities":{},
+                     "clientInfo":{"name":"curl","version":"0"}}}'
+
+    curl -s -X POST http://agent-box:5555/mcp -H 'Content-Type: application/json' \
+      -d '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+
+    curl -s -X POST http://agent-box:5555/mcp -H 'Content-Type: application/json' \
+      -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+
+    curl -s -X POST http://agent-box:5555/mcp -H 'Content-Type: application/json' \
+      -d '{"jsonrpc":"2.0","id":3,"method":"tools/call",
+           "params":{"name":"create_card",
+                     "arguments":{"title":"Renew the domain","owner":"runtime"}}}'
+
+Every successful call returns `content[0].text` (pretty-printed JSON) and, when
+the payload is an object, the same data in `structuredContent`. A failed call
+returns `result.isError: true` with a human-readable message, so read the text
+instead of assuming success. Protocol problems come back as JSON-RPC errors:
+`-32602` unknown tool or bad params, `-32601` unknown method, `-32700` body was
+not JSON (HTTP 400).
+
+### Tool catalogue
+
+**Board (kanban)**
+
+| Tool | What it does |
+|------|--------------|
+| `board_overview` | Lanes plus cards. Filters: `status`, `owner` (alias `author`), `opname`, `archived` (`exclude`/`include`/`only`), `include_body`. |
+| `list_cards` | Cards only, same filters. Bodies are omitted unless `include_body` is true. |
+| `list_archived` | Archived cards, most recently archived first. |
+| `get_card` | One card with its full markdown `body` and its `comments` thread. |
+| `search_cards` | `q` (required) + optional `status`, `owner` (alias `author`), `opname`, `archived`, `limit` (default 50, max 200). Full-text (FTS5) over titles, bodies, comments, opnames and owners: words are ANDed and match prefixes, `"a phrase"` is exact, `-word` excludes. Results are best-match first; each has `matched` (`title`/`body`/`comment`/`meta`) and a `snippet` whose hits are wrapped in `\x01…\x02`. Search before creating a card that may already exist. |
+| `list_opnames` | Existing operation names with card counts — reuse a spelling instead of inventing one. |
+| `create_card` | `title` (required), `owner`, `status` (lane, default first lane), `position`, `body`, `opname`. |
+| `update_card` | `id` (required) plus any of `title`, `owner`, `body`, `opname`, `status`, `position`, `archived`. |
+| `delete_card` | Delete a card and its comments. Prefer moving finished work to Done. |
+| `archive_done` | Archive every live card in Done. Sweeps everyone's cards — only when asked. |
+
+**Card comments** — `list_comments(card_id)`, `add_comment(card_id, author, body)`,
+`delete_comment(card_id, comment_id)`. Comments are the easy way to log progress
+without rewriting a body; `add_comment` bumps the card's `updated_at`.
+
+**Lanes (columns)** — `list_lanes`, `create_lane(name, position?)`,
+`update_lane(lane, name?, position?)`, `delete_lane(lane, target?, force?)`.
+A lane is referenced by name (case-insensitive) or numeric id. Deleting a lane
+with cards needs `target` (move them) or `force` (delete them). Don't rename or
+delete lanes unless asked.
+
+**Daily Sitrep (one markdown entry per day)**
+
+| Tool | What it does |
+|------|--------------|
+| `get_sitrep(date?)` | That day's markdown; empty `content` when no entry exists. |
+| `list_sitreps(limit?)` | Recent days, newest first (default 30, max 365). |
+| `put_sitrep(content, date?)` | Create or replace a day's entry. |
+| `delete_sitrep(date?)` | Remove a day's entry. |
+
+**Weekly schedule (keyed by that week's Monday)**
+
+| Tool | What it does |
+|------|--------------|
+| `get_schedule(week?)` | The week's markdown; any date in the week is accepted and coerced to the Monday. |
+| `list_schedules(limit?)` | Recent weeks, newest first (default 20, max 104). |
+| `put_schedule(content, week?)` | Create or replace that week's entry. |
+| `delete_schedule(week?)` | Remove that week's entry. |
+
+**Progress Bars (shared visual tracking for humans and agents)**
+
+A bar is a title, a `percent` (0–100, fractions allowed), optional `owner`, and
+any number of flat `fields` shown as k-v pairs on the card. Bars nest through
+`parent_id`; children render under their parent (a batch's completion bar can
+have a budget child). Everyone shares one set — no per-agent namespaces.
+
+| Tool | What it does |
+|------|--------------|
+| `list_progress_bars(flat?)` | Roots with nested `children` (default), or every bar in one list with `flat=true`. `count` is the total. |
+| `get_progress_bar(id)` | One bar with its nested children and fields. |
+| `create_progress_bar(title, percent?, parent_id?, fields?, owner?, position?)` | Create a bar. `parent_id` nests it; `position` orders siblings. |
+| `update_progress_bar(id, …)` | Change `title`, `percent`, `owner`, `parent_id`, `position`; `fields` replaces the map, `add_fields` merges, `remove_fields` deletes keys. Call this as work progresses. |
+| `delete_progress_bar(id, cascade?)` | Delete a bar. Refused with a child count when it has children unless `cascade=true`. |
+
+Use `fields` for the numbers that matter and keep them updated alongside
+`percent` (e.g. `{"done": 374, "total": 1000, "cost": "$18.00"}`). Percentages
+are independent: a parent does not auto-compute from its children.
+
+### Conventions
+
+- Dates are Manila time. Omit them for "today"/"this week" rather than guessing a UTC date.
+- Set `owner` (cards) and `author` (comments) to your agent name so work is attributable.
+- Keep a card's body in the handoff shape: `## Goal` (one-line outcome), `## Context`, `## Agent` (host, provider/model, worktree/branch), `## Status / progress log` (append timestamped lines), `## Findings`, `## Next steps` (`- [ ]` items), `## Links`.
+- Read the card before replacing its body (`get_card`), then append — never rewrite history, and keep items Operator already ticked as `- [x]`.
+- Sitrep items Operator should act on go in as `- [ ] ` task lines on their own line; his ticks persist as `- [x]`, so don't reset them when updating an entry.
+- Move finished cards to Done; archive a single card instead of deleting it, and only call `archive_done` when asked.
+- Group related cards with `opname` (max 100 chars, e.g. `Operation Valhalla`) instead of inventing a parallel board.
+- Track long-running batches and jobs as Progress Bars instead of burying status in a card comment; nest a budget or per-stage bar under the main one and keep `percent` + fields current.
+- Timestamps: `date '+%Y-%m-%d %H:%M %z'` on the host. Keep secrets out of bodies and comments.
+
+## Other endpoints on this host (not covered by MCP)
+
+- `GET /api/stats`, `GET /api/stats/history?seconds=3600` — live CPU / temperature / memory / power, sampled once per second.
+- Files (host FS rooted at `~`): `GET /api/fs/list|stat|read|download`, `PUT /api/fs/write`, `POST /api/fs/upload|mkdir|touch|rename`, `DELETE /api/fs?path=…`.
+- Shell (tmux-backed tty in `~`): `POST /api/shell/new|input|key|resize|kill`, `GET /api/shell/pane|list`, and the live websocket at `ws://agent-box:5556/ws/shell?id=<sid>`.
+- Page tabs: `#/brief` (Daily Sitrep), `#/` (Stack), `#/files`, `#/shell`, `#/kanban` (Ops Board), `#/progress` (Progress Bars).
+
+## Raw REST API (legacy — same data as the MCP tools)
+
+Kept for existing scripts and routines. Prefer the MCP tools; these routes may
+change independently of them. No auth headers are needed on any of them.
+
+**Daily Sitrep** — `GET|PUT|POST|DELETE /api/sitrep` (`?date=YYYY-MM-DD`), `GET /api/sitrep/list?limit=N`.
+**Deprecated aliases:** `/api/brief` and `/api/brief/list` still work with identical payloads.
+
+**Weekly schedule** — `GET|PUT|POST|DELETE /api/schedule` (`?week=YYYY-MM-DD`), `GET /api/schedule/list?limit=N`.
+
+**Progress Bars** — canonical prefix `/api/progress`; percentages are 0–100, `fields` is a flat JSON object.
+
+| Method | Path |
+|--------|------|
+| GET | `/api/progress` (roots with nested children), `/api/progress/flat` |
+| GET/DELETE | `/api/progress/:id` (`DELETE …?cascade=1` removes the subtree) |
+| POST | `/api/progress` |
+| PATCH | `/api/progress/:id` |
+
+POST/PATCH accept `title`, `percent`, `parent_id`, `fields`, `owner`, `position`;
+PATCH also accepts `add_fields` and `remove_fields`.
+
+**Ops Board** — canonical prefix `/api/opsboard`; `opname` filters every listing.
+
+| Method | Path |
+|--------|------|
+| GET | `/api/opsboard?status=&owner=&opname=&include_archived=&include_body=` |
+| GET | `/api/opsboard/cards`, `/api/opsboard/archived` |
+| GET | `/api/opsboard/search?q=&limit=&archived=&status=&owner=&opname=` |
+| GET | `/api/opsboard/opnames` |
+| POST | `/api/opsboard/cards`, `/api/opsboard/archive-done` |
+| GET/PATCH/DELETE | `/api/opsboard/cards/:id` |
+| GET/POST | `/api/opsboard/cards/:id/comments` |
+| DELETE | `/api/opsboard/cards/:id/comments/:commentId` |
+| GET/POST | `/api/opsboard/lanes` |
+| PATCH/DELETE | `/api/opsboard/lanes/:lane` |
+
+**Deprecated aliases:** `/api/kanban` and every `/api/kanban/...` subpath call
+the same handlers with the same payloads. Swap the prefix for `/api/opsboard` in
+new code. Cards carry `opname`, `body`, `has_body`, `body_preview`,
+`body_tasks`, `comment_count`; pass `?include_body=1` for full bodies in
+listings. Storage: SQLite at
+`/path/to/agent-box/data/briefs.db` (host mount,
+survives rebuilds).

@@ -1,0 +1,84 @@
+/* agent-box — iPhone PWA layer. Native-feel layout on small screens while
+   keeping the phosphor TUI skin: bottom tab bar, safe areas, 44px touch
+   targets, snap-scrolling board lanes, no input zoom. Desktop untouched. */
+:root{ --sat: env(safe-area-inset-top, 0px); --sab: env(safe-area-inset-bottom, 0px); }
+html{ -webkit-text-size-adjust: 100%; overscroll-behavior-y: none; }
+body{ -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+button, a, input, select, textarea{ touch-action: manipulation; }
+@media (max-width: 900px){
+  body{ padding-bottom: calc(64px + var(--sab)); }
+  .container{ width: 100%; padding: calc(.7rem + var(--sat)) .8rem 1rem; gap: 1rem; }
+  /* Header compresses to a native-style title row */
+  header{ flex-wrap: nowrap; align-items: center; gap: .8rem; }
+  header::before{ display: none; }
+  h1{ font-size: 1.05rem; letter-spacing: .14em; }
+  .subtitle{ font-size: .72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .readout{ padding: .25rem .5rem; } .readout-time{ font-size: 1.05rem; }
+  .readout-meta{ font-size: .6rem; }
+  /* Sidebar becomes a fixed bottom tab bar */
+  .side{ position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 90;
+    padding: 0; background: var(--well, #0d130e); border-top: 1px solid var(--line, #24332a); }
+  .side .home, .side .by, .side-foot{ display: none; }
+  .view-tabs{ display: flex; flex-direction: row; flex-wrap: nowrap; gap: 0; margin: 0;
+    padding: 6px 4px calc(6px + var(--sab)); border: 0; outline: none; background: transparent; }
+  .view-tabs::before{ display: none; }
+  .view-btn{ flex: 1 1 0; width: auto; min-height: 48px; display: flex; align-items: center;
+    justify-content: center; text-align: center; padding: .3rem .1rem; font-size: .62rem;
+    letter-spacing: .02em; line-height: 1.25; }
+  .view-btn::before{ display: none; }
+  .view-btn.active{ font-weight: 700; }
+  .tui-bar{ display: none; }
+  /* Panels go edge-to-edge, controls reach thumb size */
+  .brief,.shell,.files,.kanban,.progress{ outline-offset: 0; }
+  .brief-head,.files-head,.kanban-head,.shell-head,.progress-head,.schedule-head{
+    padding: .6rem .7rem; position: sticky; top: 0; z-index: 5; }
+  .brief-btn,.tool-btn,.tab-btn,.key-btn{ min-height: 44px; min-width: 44px;
+    padding: .35rem .55rem; font-size: .8rem; justify-content: center; }
+  .tab-btn{ min-width: 0; padding-left: .4rem; padding-right: .4rem; }
+  input[type="text"],input[type="search"],input[type="date"],input[type="password"],
+  input[type="number"],input[type="email"],select,textarea{ font-size: 16px; min-height: 44px; }
+  textarea.brief-editor{ font-size: 16px; }
+  /* Telemetry: one-column swipe-friendly strip */
+  .telemetry{ grid-template-columns: 1fr; }
+  .tele-card{ border-left: 0; border-top: 1px dotted var(--line, #24332a); padding: .7rem; }
+  .tele-card:first-child{ border-top: 0; }
+  .tele-main{ font-size: 1.5rem; }
+  /* Stack: full-width tap cards */
+  .grid{ grid-template-columns: 1fr; gap: .6rem; }
+  .scanner{ position: sticky; top: 0; z-index: 5; }
+  #search{ min-height: 48px; font-size: 16px; }
+  /* Sitrep: editor fills the screen, schedule stacks below */
+  .brief{ grid-template-columns: minmax(0,1fr); }
+  .brief-schedule{ border-left: 0; border-top: 1px solid var(--line, #24332a); }
+  .brief-editor{ min-height: 52dvh; }
+  .brief-toolbar{ overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+  /* Shell: terminal + key bar pinned above the tab bar */
+  .term{ min-height: 46dvh; font-size: 13px; }
+  .term-keys{ position: sticky; bottom: calc(60px + var(--sab)); z-index: 6;
+    background: var(--well, #0d130e); }
+  .key-btn{ flex: 1; }
+  /* Files: table collapses to tappable rows */
+  .files-body{ grid-template-columns: minmax(0,1fr); }
+  .files-info{ border-left: 0; border-top: 1px solid var(--line, #24332a); }
+  .files-table .col-size,.files-table .col-mode{ display: none; }
+  .files-table td,.files-table th{ padding-top: .65rem; padding-bottom: .65rem; }
+  .files-actions{ overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+  /* Ops board: lanes snap-scroll horizontally, one lane per screen */
+  .kanban-board{ display: flex; overflow-x: auto; scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch; gap: .7rem; padding-bottom: .6rem; }
+  .kb-lane{ flex: 0 0 calc(100vw - 3.2rem); scroll-snap-align: start; max-height: none; }
+  .kb-card{ padding: .7rem; }
+  .kb-card:active{ background: var(--tui-hi, #18251b); }
+  .kanban-actions{ width: 100%; }
+  .kb-search{ flex: 1; } .kb-search input{ width: 100%; }
+  /* Progress: single column, big meters */
+  .progress-grid{ grid-template-columns: 1fr; }
+  .pb-meter{ height: 14px; }
+  /* Dialogs become bottom sheets */
+  .ascii-dialog,.fs-modal{ width: calc(100vw - 1.6rem); max-height: 86dvh; overflow: auto; }
+}
+@media (display-mode: standalone){
+  body{ background: var(--bg, #080b09); }
+  .container{ min-height: 100dvh; }
+}
+@media (prefers-reduced-motion: reduce){ *{ scroll-behavior: auto !important; } }

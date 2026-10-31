@@ -1,0 +1,115 @@
+/* ---------- Header ---------- */
+header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin: clamp(1rem, 4vw, 2.75rem) 0 2rem;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.9rem;
+}
+
+.pulse {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #3ddc97;
+  box-shadow: 0 0 10px #3ddc97;
+  /* No infinite animation: ANY running CSS animation forces the browser
+     to produce a compositor frame on every vsync tick (120/s on ProMotion
+     displays), re-blending the full layer stack each time. The static
+     glow below reads the same on a 7px dot. */
+}
+
+h1 {
+  font-size: clamp(2.4rem, 7vw, 4rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+  text-transform: uppercase;
+  background: linear-gradient(100deg,
+    var(--blue) 0%, var(--violet) 30%, #e0edff 42%,
+    var(--violet) 54%, var(--blue) 85%, var(--blue) 100%);
+  background-size: 260% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  background-position: 50% 50%;   /* the mid-sweep look, at rest */
+  /* Single tight glow: the old 64px second drop-shadow roughly doubled
+     the filtered layer's raster cost, and any repaint under it (canvas,
+     bars, text) re-composited that whole blurred texture. */
+  filter: drop-shadow(0 0 18px rgba(114,167,255, 0.35));
+}
+
+/* shimmer used to run 9s infinite: animating background-position is a
+   paint-only effect, so the gradient-clipped text was repainted every
+   frame — and each repaint re-ran the two drop-shadow blurs above (a 64px
+   blur over title-sized text at 2x scale is a lot). The sweep now only
+   runs while the pointer rests on the title, so it costs GPU on demand. */
+@keyframes shimmer {
+  0%, 100% { background-position: 130% 50%; }
+  50%      { background-position: -30% 50%; }
+}
+
+.brand:hover h1 {
+  animation: shimmer 9s ease-in-out infinite;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 0.95rem;
+  margin-top: 0.75rem;
+}
+
+.brand { min-width: 0; }
+
+/* Clock pill: same shell as the telemetry pills (telemetry.css supplies
+   .tele-label / .tele-main / .tele-sub typography). The extra bottom
+   padding stands in for the stat pills' meter bar so heights match. */
+.readout {
+  --accent: var(--violet);
+  position: relative;
+  flex-shrink: 0;
+  align-self: center;
+  min-width: 7.5rem;
+  padding: 0.5rem 0.6rem calc(0.55rem + 0.35rem + 3px);
+  border-radius: 12px;
+  background: linear-gradient(160deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02)),
+              linear-gradient(rgba(12,18,37,0.78), rgba(8,12,27,0.72));
+  border: 1px solid var(--border);
+  font-family: var(--mono);
+  text-align: left;
+}
+
+.readout::after {
+  content: "";
+  position: absolute;
+  left: 0; top: 22%; bottom: 22%;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0.5;
+  box-shadow: 0 0 12px var(--accent);
+}
+
+.readout-tz { letter-spacing: 0.08em; }
+
+.readout-date { text-transform: uppercase; letter-spacing: 0.1em; }
+
+/* Phones: keep the clock pill on the title row, tucked top-right. */
+@media (max-width: 560px) {
+  header { gap: 0.75rem; }
+  .brand { flex: 1 1 0; }
+  .readout { align-self: flex-start; min-width: 0; }
+}

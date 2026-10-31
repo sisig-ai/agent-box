@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="macmini terminal">
+  <rect width="64" height="64" fill="#131518"/>
+  <rect x="0.5" y="0.5" width="63" height="63" fill="none" stroke="#2b3037" stroke-width="1"/>
+  <path d="M14 14 L34 32 L14 50" fill="none" stroke="#e8ebef" stroke-width="9" stroke-linecap="butt" stroke-linejoin="round"/>
+  <rect x="39" y="41" width="17" height="9" fill="#c6a96a"/>
+</svg>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>~</string>
+		<key>PATH</key>
+		<string>/path/to/agent-box/.venv/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+		<key>PYTHONUNBUFFERED</key>
+		<string>1</string>
+		<key>SHELL_WS_HOST</key>
+		<string>HOST</string>
+		<key>SHELL_WS_PORT</key>
+		<string>5556</string>
+		<key>TZ</key>
+		<string>Asia/Manila</string>
+	</dict>
+	<key>ExitTimeOut</key>
+	<integer>20</integer>
+	<key>GroupName</key>
+	<string>staff</string>
+	<key>KeepAlive</key>
+	<true/>
+	<key>Label</key>
+	<string>dev.agentbox.dashboard.shell</string>
+	<key>ProcessType</key>
+	<string>Interactive</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/path/to/agent-box/.venv/bin/python</string>
+		<string>/path/to/agent-box/shell_ws.py</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>~/Library/Logs/agentbox/shell.err.log</string>
+	<key>StandardOutPath</key>
+	<string>~/Library/Logs/agentbox/shell.out.log</string>
+	<key>ThrottleInterval</key>
+	<integer>5</integer>
+	<key>Umask</key>
+	<integer>63</integer>
+	<key>UserName</key>
+	<string>youruser</string>
+	<key>WorkingDirectory</key>
+	<string>/path/to/agent-box</string>
+</dict>
+</plist>
