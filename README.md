@@ -38,6 +38,18 @@ Use it to run a small team on one machine. A person triages work on the board. A
 
 A live telemetry strip shows CPU, memory, and power on every view. The shell runs on a WebSocket beside the main app.
 
+## Screenshots
+
+Demo data on a throwaway stack. The live board holds real work.
+
+<p align="center"><img src=".github/assets/board.png" width="880" alt="Ops Board: kanban lanes with demo cards, telemetry strip, and the terminal status bar"></p>
+
+<p align="center"><img src=".github/assets/stack.png" width="880" alt="Stack: service scanner with the configured example service"></p>
+
+<p align="center"><img src=".github/assets/sitrep.png" width="880" alt="Daily Sitrep: markdown note with task lines and the weekly schedule"></p>
+
+<p align="center"><img src=".github/assets/progress.png" width="880" alt="Progress: shared progress bars with owners and percents"></p>
+
 ## Customize
 
 Two edits cover most setups.
