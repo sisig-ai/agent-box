@@ -13,7 +13,9 @@
   font-family: var(--mono);
   font-size: 0.9rem;
   pointer-events: none;
-  transition: color 0.2s ease, text-shadow 0.2s ease;
+  transition:
+    color 0.2s ease,
+    text-shadow 0.2s ease;
 }
 
 #search {
@@ -27,20 +29,27 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   outline: none;
-  transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+  transition:
+    border-color 0.25s ease,
+    background 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
-#search::placeholder { color: var(--muted); }
+#search::placeholder {
+  color: var(--muted);
+}
 
 #search:focus {
-  border-color: rgba(114,167,255, 0.55);
+  border-color: rgba(114, 167, 255, 0.55);
   background: rgba(255, 255, 255, 0.06);
-  box-shadow: 0 0 0 4px rgba(114,167,255, 0.1), 0 0 30px -6px rgba(114,167,255, 0.4);
+  box-shadow:
+    0 0 0 4px rgba(114, 167, 255, 0.1),
+    0 0 30px -6px rgba(114, 167, 255, 0.4);
 }
 
 .scanner:focus-within .glyph {
   color: var(--blue);
-  text-shadow: 0 0 12px rgba(114,167,255, 0.7);
+  text-shadow: 0 0 12px rgba(114, 167, 255, 0.7);
 }
 
 .kbd {
@@ -58,4 +67,6 @@
   transition: opacity 0.2s ease;
 }
 
-#search:focus ~ .kbd { opacity: 0; }
+#search:focus ~ .kbd {
+  opacity: 0;
+}

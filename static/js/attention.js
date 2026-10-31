@@ -2,33 +2,43 @@
 // changed since the last visit, and fly cards that moved lanes across the board.
 // Seen state is persisted per browser in localStorage, keyed by card signature,
 // so filtered-out cards stay unseen until they are actually shown.
-const PREFIX = 'agent-box.attention.v1.';
+const PREFIX = "agent-box.attention.v1.";
 const MEMORY = new Map();
 // The latest snapshot each view handed us (id, signature, lane), so Esc can
 // mark exactly what is on screen as read without re-fetching anything.
 const LATEST = new Map();
-const reduceMotion = typeof matchMedia === 'function'
-  ? matchMedia('(prefers-reduced-motion: reduce)')
-  : { matches: false };
+const reduceMotion =
+  typeof matchMedia === "function"
+    ? matchMedia("(prefers-reduced-motion: reduce)")
+    : { matches: false };
 
-const COLORS = ['#e8ebef', '#c6a96a', '#93b8a0', '#8c95a1', '#e8ebef'];
-const DITHER = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='2' shape-rendering='crispEdges'%3E%3Cpath fill='%23e8ebef' fill-opacity='.5' d='M0 0h1v1H0zM1 1h1v1H1z'/%3E%3C/svg%3E\")";
+const COLORS = ["#e8ebef", "#c6a96a", "#93b8a0", "#8c95a1", "#e8ebef"];
+const DITHER =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='2' shape-rendering='crispEdges'%3E%3Cpath fill='%23e8ebef' fill-opacity='.5' d='M0 0h1v1H0zM1 1h1v1H1z'/%3E%3C/svg%3E\")";
 
 function read(key) {
   try {
     const raw = localStorage.getItem(PREFIX + key);
     if (raw) return JSON.parse(raw);
-  } catch { /* storage blocked */ }
+  } catch {
+    /* storage blocked */
+  }
   return MEMORY.get(key) || null;
 }
 
 function write(key, state) {
   MEMORY.set(key, state);
-  try { localStorage.setItem(PREFIX + key, JSON.stringify(state)); } catch { /* storage blocked */ }
+  try {
+    localStorage.setItem(PREFIX + key, JSON.stringify(state));
+  } catch {
+    /* storage blocked */
+  }
 }
 
 function text(value, max = 26) {
-  const s = String(value || '').replace(/\s+/g, ' ').trim();
+  const s = String(value || "")
+    .replace(/\s+/g, " ")
+    .trim();
   return s.length > max ? `${s.slice(0, max - 1)}…` : s;
 }
 
@@ -49,13 +59,13 @@ function rememberOne(key, id, sig, lane) {
 }
 
 function square(rect, colour, size) {
-  const p = document.createElement('i');
-  p.className = 'attention-p';
+  const p = document.createElement("i");
+  p.className = "attention-p";
   p.style.left = `${rect.left + Math.random() * rect.width}px`;
   p.style.top = `${rect.top + Math.random() * rect.height}px`;
   p.style.width = p.style.height = `${size}px`;
   p.style.backgroundColor = colour;
-  p.style.backgroundImage = Math.random() < 0.55 ? DITHER : 'none';
+  p.style.backgroundImage = Math.random() < 0.55 ? DITHER : "none";
   return p;
 }
 
@@ -63,8 +73,8 @@ function square(rect, colour, size) {
 // particles clear of the lane's scroll clipping.
 function burst(rect, count = 16) {
   if (reduceMotion.matches || !rect.width) return;
-  const layer = document.createElement('div');
-  layer.className = 'attention-fx';
+  const layer = document.createElement("div");
+  layer.className = "attention-fx";
   document.body.append(layer);
   for (let i = 0; i < count; i += 1) {
     const angle = Math.random() * Math.PI * 2;
@@ -73,31 +83,37 @@ function burst(rect, count = 16) {
     const dy = Math.sin(angle) * reach - 26;
     const p = square(rect, COLORS[i % COLORS.length], [2, 3, 4, 5][i % 4]);
     layer.append(p);
-    const anim = p.animate([
-      { transform: 'translate(0, 0)', opacity: 1 },
-      { transform: `translate(${dx * 0.55}px, ${dy * 0.6}px)`, opacity: 1, offset: 0.55 },
-      { transform: `translate(${dx}px, ${dy}px)`, opacity: 0 },
-    ], {
-      duration: 620 + Math.random() * 520,
-      delay: Math.random() * 180,
-      easing: `steps(${4 + Math.floor(Math.random() * 4)}, end)`,
-      fill: 'both',
-    });
+    const anim = p.animate(
+      [
+        { transform: "translate(0, 0)", opacity: 1 },
+        { transform: `translate(${dx * 0.55}px, ${dy * 0.6}px)`, opacity: 1, offset: 0.55 },
+        { transform: `translate(${dx}px, ${dy}px)`, opacity: 0 },
+      ],
+      {
+        duration: 620 + Math.random() * 520,
+        delay: Math.random() * 180,
+        easing: `steps(${4 + Math.floor(Math.random() * 4)}, end)`,
+        fill: "both",
+      },
+    );
     anim.onfinish = () => p.remove();
     // Every fourth pixel gets a fainter twin so the burst reads as a tiny trail.
     if (i % 4 === 0) {
       const q = p.cloneNode();
-      q.style.opacity = '0.45';
+      q.style.opacity = "0.45";
       layer.append(q);
-      const twin = q.animate([
-        { transform: 'translate(0, 0)', opacity: 0.45 },
-        { transform: `translate(${dx * 0.72}px, ${dy * 0.72}px)`, opacity: 0 },
-      ], {
-        duration: 720 + Math.random() * 420,
-        delay: 40 + Math.random() * 120,
-        easing: `steps(${4 + Math.floor(Math.random() * 3)}, end)`,
-        fill: 'both',
-      });
+      const twin = q.animate(
+        [
+          { transform: "translate(0, 0)", opacity: 0.45 },
+          { transform: `translate(${dx * 0.72}px, ${dy * 0.72}px)`, opacity: 0 },
+        ],
+        {
+          duration: 720 + Math.random() * 420,
+          delay: 40 + Math.random() * 120,
+          easing: `steps(${4 + Math.floor(Math.random() * 3)}, end)`,
+          fill: "both",
+        },
+      );
       twin.onfinish = () => q.remove();
     }
   }
@@ -105,10 +121,10 @@ function burst(rect, count = 16) {
 }
 
 function sweep(host, cls) {
-  const wrap = document.createElement('span');
-  wrap.className = 'attention-sweep-wrap';
-  const band = document.createElement('i');
-  band.className = `attention-sweep ${cls || ''}`;
+  const wrap = document.createElement("span");
+  wrap.className = "attention-sweep-wrap";
+  const band = document.createElement("i");
+  band.className = `attention-sweep ${cls || ""}`;
   band.style.backgroundImage = DITHER;
   wrap.append(band);
   host.append(wrap);
@@ -118,24 +134,24 @@ function sweep(host, cls) {
 function flash(entry, opts) {
   const el = entry.el;
   if (!el || !el.isConnected) return;
-  el.classList.add('attention-hit');
+  el.classList.add("attention-hit");
   sweep(el);
   const rect = el.getBoundingClientRect();
   burst(rect, 26);
-  setTimeout(() => el.classList.remove('attention-hit'), 1700);
+  setTimeout(() => el.classList.remove("attention-hit"), 1700);
 
   const meter = opts.meter?.(el);
   if (meter) {
-    meter.classList.add('attention-meter');
-    sweep(meter, 'is-meter');
+    meter.classList.add("attention-meter");
+    sweep(meter, "is-meter");
     burst(meter.getBoundingClientRect(), 14);
-    setTimeout(() => meter.classList.remove('attention-meter'), 1700);
+    setTimeout(() => meter.classList.remove("attention-meter"), 1700);
   }
 }
 
 function laneAnchor(laneEl) {
   if (!laneEl) return null;
-  const head = laneEl.querySelector('.kb-lane-head') || laneEl;
+  const head = laneEl.querySelector(".kb-lane-head") || laneEl;
   const r = head.getBoundingClientRect();
   if (!r.width) return null;
   return {
@@ -149,8 +165,8 @@ function laneAnchor(laneEl) {
 // A small dithered pixel tag flies from the old lane header to the card's new
 // home, stepping in 8-bit increments instead of easing smoothly.
 function flyGhost(from, to, label) {
-  const ghost = document.createElement('div');
-  ghost.className = 'attention-ghost';
+  const ghost = document.createElement("div");
+  ghost.className = "attention-ghost";
   ghost.textContent = label;
   ghost.style.left = `${from.left}px`;
   ghost.style.top = `${from.top}px`;
@@ -158,17 +174,25 @@ function flyGhost(from, to, label) {
   const dx = to.left + to.width / 2 - from.left - 24;
   const dy = to.top + Math.min(14, to.height / 2) - from.top;
 
-  const anim = ghost.animate([
-    { transform: 'translate(0, 0)', opacity: 0 },
-    { transform: 'translate(0, 0)', opacity: 1, offset: 0.08 },
-    { transform: `translate(${dx * 0.46}px, ${dy * 0.46 - 38}px)`, opacity: 1, offset: 0.5 },
-    { transform: `translate(${dx * 0.82}px, ${dy * 0.84 - 20}px)`, opacity: 1, offset: 0.82 },
-    { transform: `translate(${dx}px, ${dy}px)`, opacity: 0 },
-  ], { duration: 940, easing: 'steps(8, end)', fill: 'both' });
+  const anim = ghost.animate(
+    [
+      { transform: "translate(0, 0)", opacity: 0 },
+      { transform: "translate(0, 0)", opacity: 1, offset: 0.08 },
+      { transform: `translate(${dx * 0.46}px, ${dy * 0.46 - 38}px)`, opacity: 1, offset: 0.5 },
+      { transform: `translate(${dx * 0.82}px, ${dy * 0.84 - 20}px)`, opacity: 1, offset: 0.82 },
+      { transform: `translate(${dx}px, ${dy}px)`, opacity: 0 },
+    ],
+    { duration: 940, easing: "steps(8, end)", fill: "both" },
+  );
 
-  const timers = [0.28, 0.52, 0.74].map((at, i) => setTimeout(() => {
-    burst(ghost.getBoundingClientRect(), 3);
-  }, 940 * at + i * 30));
+  const timers = [0.28, 0.52, 0.74].map((at, i) =>
+    setTimeout(
+      () => {
+        burst(ghost.getBoundingClientRect(), 3);
+      },
+      940 * at + i * 30,
+    ),
+  );
   anim.onfinish = () => {
     timers.forEach(clearTimeout);
     ghost.remove();
@@ -178,15 +202,15 @@ function flyGhost(from, to, label) {
 
 function pulseLane(laneEl) {
   if (!laneEl) return;
-  laneEl.classList.add('attention-lane');
-  setTimeout(() => laneEl.classList.remove('attention-lane'), 1200);
+  laneEl.classList.add("attention-lane");
+  setTimeout(() => laneEl.classList.remove("attention-lane"), 1200);
 }
 
 function staticFlash(entry) {
   const el = entry.el;
   if (!el) return;
-  el.classList.add('attention-static');
-  setTimeout(() => el.classList.remove('attention-static'), 2600);
+  el.classList.add("attention-static");
+  setTimeout(() => el.classList.remove("attention-static"), 2600);
 }
 
 // Record this visit and animate what is new since the previous one.
@@ -259,13 +283,16 @@ export function visit(key, entries, opts = {}) {
     }
     const fromName = text(opts.laneName?.(from) || `lane ${from}`, 18);
     const toName = text(opts.laneName?.(entry.lane) || `lane ${entry.lane}`, 18);
-    setTimeout(() => {
-      flyGhost(fromRect, toRect, `${fromName} → ${toName}`);
-      setTimeout(() => {
-        flash(entry, opts);
-        pulseLane(opts.laneEl?.(entry.lane));
-      }, 900);
-    }, 220 + i * 150);
+    setTimeout(
+      () => {
+        flyGhost(fromRect, toRect, `${fromName} → ${toName}`);
+        setTimeout(() => {
+          flash(entry, opts);
+          pulseLane(opts.laneEl?.(entry.lane));
+        }, 900);
+      },
+      220 + i * 150,
+    );
   });
 
   return { baseline: false, fresh: fresh.length, moved: moved.length };
@@ -329,14 +356,19 @@ export function newComments(key, cardId, comments) {
 // sweep wraps, pixel bursts, flying ghosts, lane pulses and comment `new`
 // markers. Timers that fire later just re-remove or no-op.
 function clearEffects() {
-  document.querySelectorAll('.attention-unread').forEach((n) => n.classList.remove('attention-unread'));
-  document.querySelectorAll('.attention-sweep-wrap').forEach((n) => n.remove());
-  document.querySelectorAll('.attention-hit, .attention-meter, .attention-static, .attention-lane')
-    .forEach((n) => n.classList.remove('attention-hit', 'attention-meter', 'attention-static', 'attention-lane'));
-  document.querySelectorAll('.attention-fx, .attention-ghost').forEach((n) => n.remove());
-  document.querySelectorAll('.kbc-item.is-new').forEach((n) => {
-    n.classList.remove('is-new');
-    n.querySelector('.kbc-new')?.remove();
+  document
+    .querySelectorAll(".attention-unread")
+    .forEach((n) => n.classList.remove("attention-unread"));
+  document.querySelectorAll(".attention-sweep-wrap").forEach((n) => n.remove());
+  document
+    .querySelectorAll(".attention-hit, .attention-meter, .attention-static, .attention-lane")
+    .forEach((n) =>
+      n.classList.remove("attention-hit", "attention-meter", "attention-static", "attention-lane"),
+    );
+  document.querySelectorAll(".attention-fx, .attention-ghost").forEach((n) => n.remove());
+  document.querySelectorAll(".kbc-item.is-new").forEach((n) => {
+    n.classList.remove("is-new");
+    n.querySelector(".kbc-new")?.remove();
   });
 }
 
@@ -369,21 +401,27 @@ export function markAllRead() {
     write(key, state);
   }
   clearEffects();
-  document.dispatchEvent(new CustomEvent('attention:dismissed', { detail: { count: cleared } }));
+  document.dispatchEvent(new CustomEvent("attention:dismissed", { detail: { count: cleared } }));
   return cleared;
 }
 
 // Esc anywhere in a view dismisses what is glowing there. Dialogs and inline
 // editors keep their own Esc (close / cancel / clear search), so skip those.
 function dismissKey(e) {
-  if (e.key !== 'Escape' || e.ctrlKey || e.metaKey || e.altKey) return false;
-  if (document.querySelector('dialog[open], .kbd-backdrop:not([hidden]), #fs-modal:not([hidden])')) return false;
+  if (e.key !== "Escape" || e.ctrlKey || e.metaKey || e.altKey) return false;
+  if (document.querySelector("dialog[open], .kbd-backdrop:not([hidden]), #fs-modal:not([hidden])"))
+    return false;
   const a = document.activeElement;
-  if (a && a !== document.body && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable)) return false;
+  if (
+    a &&
+    a !== document.body &&
+    (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable)
+  )
+    return false;
   return true;
 }
 
-document.addEventListener('keydown', (e) => {
+document.addEventListener("keydown", (e) => {
   if (!dismissKey(e)) return;
   if (!LATEST.size) return;
   markAllRead();

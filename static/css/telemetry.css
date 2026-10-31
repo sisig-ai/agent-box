@@ -19,26 +19,33 @@
   min-width: 0;
   padding: 0.5rem 0.6rem 0.55rem;
   border-radius: 12px;
-  background: linear-gradient(160deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02)),
-              linear-gradient(rgba(12,18,37,0.78), rgba(8,12,27,0.72));
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02)),
+    linear-gradient(rgba(12, 18, 37, 0.78), rgba(8, 12, 27, 0.72));
   border: 1px solid var(--border);
   overflow: visible; /* the graph panel floats below the pill */
   font-family: var(--mono);
   cursor: pointer;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
-.tele-card:hover, .tele-card:focus-visible {
+.tele-card:hover,
+.tele-card:focus-visible {
   border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 15%, transparent),
-              0 12px 36px -16px color-mix(in srgb, var(--accent) 70%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 15%, transparent),
+    0 12px 36px -16px color-mix(in srgb, var(--accent) 70%, transparent);
   outline: none;
 }
 
 .tele-card::after {
   content: "";
   position: absolute;
-  left: 0; top: 22%; bottom: 22%;
+  left: 0;
+  top: 22%;
+  bottom: 22%;
   width: 2px;
   border-radius: 2px;
   background: var(--accent);
@@ -69,10 +76,13 @@
 
 /* Pill mode: the green dot alone says "live"; the word only returns
    when the pills get their own row. */
-.tele-live { font-size: 0; }
+.tele-live {
+  font-size: 0;
+}
 
 .tele-live i {
-  width: 5px; height: 5px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: #3ddc97;
   box-shadow: 0 0 6px #3ddc97;
@@ -126,7 +136,9 @@
   margin-top: 0.2rem;
 }
 
-.tele-half { min-width: 0; }
+.tele-half {
+  min-width: 0;
+}
 
 .tele-half .tele-main {
   font-size: 1.1rem;
@@ -179,13 +191,17 @@
   pointer-events: none;
   padding: 0 0.7rem;
   border-radius: 12px;
-  background: rgba(8,12,27, 0.94);
+  background: rgba(8, 12, 27, 0.94);
   border: 1px solid transparent;
-  transition: max-height 0.4s cubic-bezier(0.2, 0.9, 0.25, 1),
-              opacity 0.3s ease, padding 0.4s ease;
+  transition:
+    max-height 0.4s cubic-bezier(0.2, 0.9, 0.25, 1),
+    opacity 0.3s ease,
+    padding 0.4s ease;
 }
 
-.tele-card.expanded { z-index: 20; }
+.tele-card.expanded {
+  z-index: 20;
+}
 
 .tele-card.expanded .tele-graph {
   max-height: 150px;
@@ -193,11 +209,17 @@
   pointer-events: auto;
   padding: 0.6rem 0.7rem;
   border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
-  box-shadow: 0 18px 40px -18px rgba(0,0,0, 0.8);
+  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.8);
 }
 
-#tele-card-mem .tele-graph { left: 50%; transform: translateX(-50%); }
-#tele-card-pwr .tele-graph { left: auto; right: 0; }
+#tele-card-mem .tele-graph {
+  left: 50%;
+  transform: translateX(-50%);
+}
+#tele-card-pwr .tele-graph {
+  left: auto;
+  right: 0;
+}
 
 .tele-graph canvas {
   display: block;
@@ -219,25 +241,40 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   color: var(--text);
-  background: rgba(5,8,20, 0.92);
+  background: rgba(5, 8, 20, 0.92);
   border: 1px solid var(--border);
   border-radius: 7px;
   pointer-events: none;
   z-index: 2;
 }
 
-.graph-tip.show { display: block; }
+.graph-tip.show {
+  display: block;
+}
 
 /* Not enough room beside the title: pills drop to their own row
    (still compact), with the clock staying next to the title. */
 @media (max-width: 1100px) {
-  .telemetry { order: 3; flex-basis: 100%; max-width: none; }
-  .tele-live { font-size: 0.5rem; }
+  .telemetry {
+    order: 3;
+    flex-basis: 100%;
+    max-width: none;
+  }
+  .tele-live {
+    font-size: 0.5rem;
+  }
 }
 
 /* Phones: CPU pill spans the row, memory + power share the next. */
 @media (max-width: 560px) {
-  .telemetry { grid-template-columns: 1fr 1fr; }
-  #tele-card-cpu { grid-column: 1 / -1; }
-  #tele-card-mem .tele-graph { left: 0; transform: none; }
+  .telemetry {
+    grid-template-columns: 1fr 1fr;
+  }
+  #tele-card-cpu {
+    grid-column: 1 / -1;
+  }
+  #tele-card-mem .tele-graph {
+    left: 0;
+    transform: none;
+  }
 }

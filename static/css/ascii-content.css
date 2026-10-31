@@ -1,13 +1,31 @@
 /* ---------- Daily Sitrep + schedule ---------- */
 
-.brief { display: grid; grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr); }
-.brief-main { display: flex; flex-direction: column; min-width: 0; }
-.brief-nav, .schedule-nav, .files-actions, .kanban-actions, .shell-actions, .progress-actions {
-  display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;
+.brief {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
+}
+.brief-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.brief-nav,
+.schedule-nav,
+.files-actions,
+.kanban-actions,
+.shell-actions,
+.progress-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
 }
 
-.brief-panes { padding: 0.7rem 0.85rem 0; }
-.brief-editor, .brief-preview {
+.brief-panes {
+  padding: 0.7rem 0.85rem 0;
+}
+.brief-editor,
+.brief-preview {
   width: 100%;
   min-height: 260px;
   max-height: 60vh;
@@ -20,10 +38,19 @@
   line-height: 1.7;
   resize: vertical;
 }
-.brief-preview { overflow-y: auto; display: none; }
-.brief-editor:focus { border-color: var(--muted); }
+.brief-preview {
+  overflow-y: auto;
+  display: none;
+}
+.brief-editor:focus {
+  border-color: var(--muted);
+}
 
-.brief-status, .kanban-status, .files-status, .term-hint, .progress-status {
+.brief-status,
+.kanban-status,
+.files-status,
+.term-hint,
+.progress-status {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
@@ -31,52 +58,108 @@
   color: var(--dim);
   font-size: 0.68rem;
 }
-.brief-status { border-top: 1px dotted var(--line); margin-top: 0.7rem; }
-.brief-save-state { color: var(--muted); }
+.brief-status {
+  border-top: 1px dotted var(--line);
+  margin-top: 0.7rem;
+}
+.brief-save-state {
+  color: var(--muted);
+}
 
-.schedule-head { align-items: flex-start; }
+.schedule-head {
+  align-items: flex-start;
+}
 .schedule-preview {
   padding: 0.7rem 0.85rem;
   overflow-y: auto;
   max-height: 60vh;
   font-size: 0.82rem;
 }
-.brief-schedule { border-left: 1px solid var(--line); min-width: 0; }
+.brief-schedule {
+  border-left: 1px solid var(--line);
+  min-width: 0;
+}
 
 /* ---------- Markdown prose ---------- */
 
-.brief-preview, .schedule-preview, .kbd-md, .files-info {
+.brief-preview,
+.schedule-preview,
+.kbd-md,
+.files-info {
   overflow-wrap: anywhere;
 }
-.brief-preview h1, .brief-preview h2, .brief-preview h3,
-.schedule-preview h1, .schedule-preview h2, .schedule-preview h3,
-.kbd-md h1, .kbd-md h2, .kbd-md h3 {
+.brief-preview h1,
+.brief-preview h2,
+.brief-preview h3,
+.schedule-preview h1,
+.schedule-preview h2,
+.schedule-preview h3,
+.kbd-md h1,
+.kbd-md h2,
+.kbd-md h3 {
   margin: 1.9em 0 0.85em;
   padding-top: 0.2em;
   color: var(--ink);
   text-transform: none;
 }
-.brief-preview h1:first-child, .brief-preview h2:first-child, .brief-preview h3:first-child,
-.schedule-preview h1:first-child, .schedule-preview h2:first-child, .schedule-preview h3:first-child,
-.kbd-md h1:first-child, .kbd-md h2:first-child, .kbd-md h3:first-child { margin-top: 0; padding-top: 0; }
-.brief-preview h2::before, .schedule-preview h2::before, .kbd-md h2::before { content: ""; }
+.brief-preview h1:first-child,
+.brief-preview h2:first-child,
+.brief-preview h3:first-child,
+.schedule-preview h1:first-child,
+.schedule-preview h2:first-child,
+.schedule-preview h3:first-child,
+.kbd-md h1:first-child,
+.kbd-md h2:first-child,
+.kbd-md h3:first-child {
+  margin-top: 0;
+  padding-top: 0;
+}
+.brief-preview h2::before,
+.schedule-preview h2::before,
+.kbd-md h2::before {
+  content: "";
+}
 /* Dotted rule under document-level headings. Sitreps open at ## rather than #,
    so h2 gets it too — the section break reads the same either way. */
-.brief-preview h1, .brief-preview h2,
-.schedule-preview h1, .schedule-preview h2,
-.kbd-md h1 { padding-bottom: 0.5em; border-bottom: 1px dotted var(--line); }
-.brief-preview p, .schedule-preview p, .kbd-md p { margin: 0.55em 0; }
+.brief-preview h1,
+.brief-preview h2,
+.schedule-preview h1,
+.schedule-preview h2,
+.kbd-md h1 {
+  padding-bottom: 0.5em;
+  border-bottom: 1px dotted var(--line);
+}
+.brief-preview p,
+.schedule-preview p,
+.kbd-md p {
+  margin: 0.55em 0;
+}
 /* Lists: real left gutter plus a hanging indent, so bullets, numbers and task
    boxes sit inside the prose column and wrapped text lines up with the text. */
-.brief-preview ul, .schedule-preview ul, .kbd-md ul,
-.brief-preview ol, .schedule-preview ol, .kbd-md ol {
+.brief-preview ul,
+.schedule-preview ul,
+.kbd-md ul,
+.brief-preview ol,
+.schedule-preview ol,
+.kbd-md ol {
   margin: 0.7em 0;
   padding-left: 3.4ch;
 }
-.brief-preview li, .schedule-preview li, .kbd-md li { margin: 0.32em 0; padding-left: 0.5ch; }
-.brief-preview li > ul, .brief-preview li > ol,
-.schedule-preview li > ul, .schedule-preview li > ol,
-.kbd-md li > ul, .kbd-md li > ol { margin: 0.35em 0 0.45em; padding-left: 3ch; }
+.brief-preview li,
+.schedule-preview li,
+.kbd-md li {
+  margin: 0.32em 0;
+  padding-left: 0.5ch;
+}
+.brief-preview li > ul,
+.brief-preview li > ol,
+.schedule-preview li > ul,
+.schedule-preview li > ol,
+.kbd-md li > ul,
+.kbd-md li > ol {
+  margin: 0.35em 0 0.45em;
+  padding-left: 3ch;
+}
 /* Task items: the box hangs in the list gutter like a bullet marker, while the
    item text (and every wrapped line) stays on the prose column. */
 .brief-preview li:has(> input[type="checkbox"]),
@@ -89,19 +172,39 @@
 }
 .brief-preview ul:has(> li > input[type="checkbox"]),
 .schedule-preview ul:has(> li > input[type="checkbox"]),
-.kbd-md ul:has(> li > input[type="checkbox"]) { padding-left: 3.4ch; }
+.kbd-md ul:has(> li > input[type="checkbox"]) {
+  padding-left: 3.4ch;
+}
 .brief-preview li > input[type="checkbox"],
 .schedule-preview li > input[type="checkbox"],
-.kbd-md li > input[type="checkbox"] { margin: 0 1ch 0 0; vertical-align: 0.05em; }
-.brief-preview a, .schedule-preview a, .kbd-md a { text-decoration: underline dotted; text-underline-offset: 0.25em; }
-.brief-preview a:hover, .schedule-preview a:hover, .kbd-md a:hover { background: var(--ink); color: var(--bg); text-decoration: none; }
-.brief-preview code, .schedule-preview code, .kbd-md code {
+.kbd-md li > input[type="checkbox"] {
+  margin: 0 1ch 0 0;
+  vertical-align: 0.05em;
+}
+.brief-preview a,
+.schedule-preview a,
+.kbd-md a {
+  text-decoration: underline dotted;
+  text-underline-offset: 0.25em;
+}
+.brief-preview a:hover,
+.schedule-preview a:hover,
+.kbd-md a:hover {
+  background: var(--ink);
+  color: var(--bg);
+  text-decoration: none;
+}
+.brief-preview code,
+.schedule-preview code,
+.kbd-md code {
   padding: 0.05em 0.35ch;
   color: var(--ink);
   background: #23282e;
   font: inherit;
 }
-.brief-preview pre, .schedule-preview pre, .kbd-md pre {
+.brief-preview pre,
+.schedule-preview pre,
+.kbd-md pre {
   padding: 0.7rem 0.9rem;
   margin: 0.7em 0;
   color: var(--text);
@@ -109,25 +212,71 @@
   border: 1px solid var(--line);
   overflow-x: auto;
 }
-.brief-preview pre code, .schedule-preview pre code, .kbd-md pre code { padding: 0; background: none; }
-.brief-preview blockquote, .schedule-preview blockquote, .kbd-md blockquote {
+.brief-preview pre code,
+.schedule-preview pre code,
+.kbd-md pre code {
+  padding: 0;
+  background: none;
+}
+.brief-preview blockquote,
+.schedule-preview blockquote,
+.kbd-md blockquote {
   margin: 0.7em 0;
   padding-left: 1.2ch;
   border-left: 2px solid var(--line);
   color: var(--muted);
 }
-.brief-preview table, .schedule-preview table, .kbd-md table { border-collapse: collapse; margin: 0.7em 0; }
-.brief-preview th, .brief-preview td, .schedule-preview th, .schedule-preview td,
-.kbd-md th, .kbd-md td { padding: 0.25rem 1.2ch 0.25rem 0; border-bottom: 1px dotted var(--line); text-align: left; }
-.brief-preview th, .schedule-preview th, .kbd-md th { color: var(--ink); font-weight: 500; }
-.brief-preview hr, .schedule-preview hr, .kbd-md hr { border: 0; border-top: 1px dotted var(--line); margin: 1.2em 0; }
-.brief-preview img, .kbd-md img { max-width: 100%; }
+.brief-preview table,
+.schedule-preview table,
+.kbd-md table {
+  border-collapse: collapse;
+  margin: 0.7em 0;
+}
+.brief-preview th,
+.brief-preview td,
+.schedule-preview th,
+.schedule-preview td,
+.kbd-md th,
+.kbd-md td {
+  padding: 0.25rem 1.2ch 0.25rem 0;
+  border-bottom: 1px dotted var(--line);
+  text-align: left;
+}
+.brief-preview th,
+.schedule-preview th,
+.kbd-md th {
+  color: var(--ink);
+  font-weight: 500;
+}
+.brief-preview hr,
+.schedule-preview hr,
+.kbd-md hr {
+  border: 0;
+  border-top: 1px dotted var(--line);
+  margin: 1.2em 0;
+}
+.brief-preview img,
+.kbd-md img {
+  max-width: 100%;
+}
 
 /* ---------- Files ---------- */
 
-.files-body { display: grid; grid-template-columns: minmax(0, 1fr) 26ch; min-height: 420px; }
-.files-list-wrap { position: relative; min-width: 0; overflow-x: auto; }
-.files-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.files-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 26ch;
+  min-height: 420px;
+}
+.files-list-wrap {
+  position: relative;
+  min-width: 0;
+  overflow-x: auto;
+}
+.files-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
 .files-table th {
   padding: 0.35rem 0.6rem;
   color: var(--dim);
@@ -139,34 +288,115 @@
   text-align: left;
   white-space: nowrap;
 }
-.files-table td { padding: 0.32rem 0.6rem; border-bottom: 1px dotted #23272d; }
-.files-row { cursor: pointer; }
-.files-row:hover { background: #1f242a; }
-.files-row.selected { background: #262c33; }
-.files-breadcrumb { padding: 0.4rem 0.85rem; border-bottom: 1px solid var(--line); font-size: 0.75rem; }
-.files-crumb { color: var(--muted); padding: 0 0.2rem; }
-.files-crumb:hover { color: var(--ink); background: none; }
-.files-info { border-left: 1px solid var(--line); padding: 0.7rem 0.85rem; font-size: 0.75rem; color: var(--muted); }
-.files-info h3 { margin-bottom: 0.5rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dim); }
-.files-info-empty { color: var(--dim); }
-.files-status { border-top: 1px solid var(--line); }
-.files-editor { border-bottom: 1px solid var(--line); }
-.files-editor-head { padding: 0.4rem 0.85rem; border-bottom: 1px dotted var(--line); display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
-.files-editor-name { color: var(--ink); font-size: 0.78rem; }
-.files-editor-dirty { color: var(--warn); font-size: 0.68rem; }
-.files-editor-host { background: var(--bg); }
-.files-drop-hint { padding: 0.5rem; color: var(--dim); font-size: 0.7rem; border-top: 1px dotted var(--line); }
-.files-place { display: block; padding: 0.1rem 0; color: var(--muted); font-size: 0.75rem; }
-.files-place:hover, .files-place.active { color: var(--ink); background: none; }
+.files-table td {
+  padding: 0.32rem 0.6rem;
+  border-bottom: 1px dotted #23272d;
+}
+.files-row {
+  cursor: pointer;
+}
+.files-row:hover {
+  background: #1f242a;
+}
+.files-row.selected {
+  background: #262c33;
+}
+.files-breadcrumb {
+  padding: 0.4rem 0.85rem;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.75rem;
+}
+.files-crumb {
+  color: var(--muted);
+  padding: 0 0.2rem;
+}
+.files-crumb:hover {
+  color: var(--ink);
+  background: none;
+}
+.files-info {
+  border-left: 1px solid var(--line);
+  padding: 0.7rem 0.85rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.files-info h3 {
+  margin-bottom: 0.5rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--dim);
+}
+.files-info-empty {
+  color: var(--dim);
+}
+.files-status {
+  border-top: 1px solid var(--line);
+}
+.files-editor {
+  border-bottom: 1px solid var(--line);
+}
+.files-editor-head {
+  padding: 0.4rem 0.85rem;
+  border-bottom: 1px dotted var(--line);
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+.files-editor-name {
+  color: var(--ink);
+  font-size: 0.78rem;
+}
+.files-editor-dirty {
+  color: var(--warn);
+  font-size: 0.68rem;
+}
+.files-editor-host {
+  background: var(--bg);
+}
+.files-drop-hint {
+  padding: 0.5rem;
+  color: var(--dim);
+  font-size: 0.7rem;
+  border-top: 1px dotted var(--line);
+}
+.files-place {
+  display: block;
+  padding: 0.1rem 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.files-place:hover,
+.files-place.active {
+  color: var(--ink);
+  background: none;
+}
 
 /* ---------- Shell ---------- */
 
-.shell-head { align-items: center; }
-.shell-title { font-size: 0.78rem; }
-.shell-dot { width: 6px; height: 6px; border-radius: 50% !important; background: var(--dim); flex: 0 0 auto; }
-.shell-dot.on { background: var(--ok); }
-.shell-dot.off { background: var(--bad); }
-.term-wrap { padding: 0.7rem 0.85rem 0.3rem; }
+.shell-head {
+  align-items: center;
+}
+.shell-title {
+  font-size: 0.78rem;
+}
+.shell-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50% !important;
+  background: var(--dim);
+  flex: 0 0 auto;
+}
+.shell-dot.on {
+  background: var(--ok);
+}
+.shell-dot.off {
+  background: var(--bad);
+}
+.term-wrap {
+  padding: 0.7rem 0.85rem 0.3rem;
+}
 .term {
   min-height: 380px;
   max-height: 60vh;
@@ -177,21 +407,60 @@
   font-size: 13px;
   line-height: 1.45;
 }
-.term:focus, .term:focus-within { border-color: var(--muted); outline: none; }
-.term-screen { margin: 0; color: #c9d1d9; white-space: pre-wrap; word-break: break-all; font-family: "FiraCode Nerd Font Mono", var(--mono); }
-.term-screen .t-cursor { background: var(--ink); color: #0f1114; }
+.term:focus,
+.term:focus-within {
+  border-color: var(--muted);
+  outline: none;
+}
+.term-screen {
+  margin: 0;
+  color: #c9d1d9;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-family: "FiraCode Nerd Font Mono", var(--mono);
+}
+.term-screen .t-cursor {
+  background: var(--ink);
+  color: #0f1114;
+}
 
-.term-keys { display: flex; gap: 0.35rem; flex-wrap: wrap; padding: 0.5rem 0.85rem 0; }
-.key-btn { border: 1px solid var(--line); color: var(--muted); padding: 0.1rem 0.5rem; font-size: 0.72rem; }
-.key-btn:hover { color: var(--ink); border-color: var(--muted); }
-.key-btn.mod[aria-pressed="true"] { color: var(--bg); background: var(--ink); border-color: var(--ink); }
-.term-hint { border-top: 1px dotted var(--line); margin-top: 0.5rem; }
+.term-keys {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0.85rem 0;
+}
+.key-btn {
+  border: 1px solid var(--line);
+  color: var(--muted);
+  padding: 0.1rem 0.5rem;
+  font-size: 0.72rem;
+}
+.key-btn:hover {
+  color: var(--ink);
+  border-color: var(--muted);
+}
+.key-btn.mod[aria-pressed="true"] {
+  color: var(--bg);
+  background: var(--ink);
+  border-color: var(--ink);
+}
+.term-hint {
+  border-top: 1px dotted var(--line);
+  margin-top: 0.5rem;
+}
 
 /* date fields: match the flat, dim controls */
-input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.65); opacity: 0.7; cursor: pointer; }
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.65);
+  opacity: 0.7;
+  cursor: pointer;
+}
 
 /* comment pagination: the "Load More" control under the 5 newest */
-.kbc-more { align-self: flex-start; }
+.kbc-more {
+  align-self: flex-start;
+}
 
 /* comment composer: markdown preview like the card body editor */
 .kbc-preview {
@@ -202,4 +471,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.65); op
   background: var(--bg);
   border: 1px solid var(--line);
 }
-.kbc-preview[hidden], .kbc-text[hidden] { display: none; }
+.kbc-preview[hidden],
+.kbc-text[hidden] {
+  display: none;
+}

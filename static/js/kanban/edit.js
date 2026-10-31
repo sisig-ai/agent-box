@@ -4,13 +4,13 @@
 // state.busy is held while editing so the poll never re-renders under you.
 export function inlineEdit(node, value, state, commit) {
   if (node.dataset.editing) return;
-  node.dataset.editing = '1';
-  const input = document.createElement('input');
-  input.className = 'kb-inline';
+  node.dataset.editing = "1";
+  const input = document.createElement("input");
+  input.className = "kb-inline";
   input.value = value;
-  input.maxLength = node.classList.contains('kb-card-title') ? 500 : 100;
+  input.maxLength = node.classList.contains("kb-card-title") ? 500 : 100;
   const original = node.textContent;
-  node.textContent = '';
+  node.textContent = "";
   node.append(input);
   state.busy++;
   input.focus();
@@ -26,32 +26,35 @@ export function inlineEdit(node, value, state, commit) {
     node.textContent = save && v ? v : original;
     if (save) commit(v);
   };
-  input.addEventListener('click', (e) => e.stopPropagation());
-  input.addEventListener('mousedown', (e) => e.stopPropagation());
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); finish(true); }
-    if (e.key === 'Escape') finish(false);
+  input.addEventListener("click", (e) => e.stopPropagation());
+  input.addEventListener("mousedown", (e) => e.stopPropagation());
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      finish(true);
+    }
+    if (e.key === "Escape") finish(false);
   });
-  input.addEventListener('blur', () => finish(true));
+  input.addEventListener("blur", () => finish(true));
 }
 
 // Two-step confirm: first click arms the button for 3s, second click fires.
-export function armDelete(btn, action, armedLabel = 'delete?') {
+export function armDelete(btn, action, armedLabel = "delete?") {
   let timer = null;
-  btn.addEventListener('click', (e) => {
+  btn.addEventListener("click", (e) => {
     e.stopPropagation();
     if (btn.disabled) return;
-    if (btn.classList.contains('armed')) {
+    if (btn.classList.contains("armed")) {
       clearTimeout(timer);
-      btn.classList.remove('armed');
+      btn.classList.remove("armed");
       action();
       return;
     }
-    btn.classList.add('armed');
+    btn.classList.add("armed");
     btn.dataset.label = btn.textContent;
-    btn.textContent = typeof armedLabel === 'function' ? armedLabel() : armedLabel;
+    btn.textContent = typeof armedLabel === "function" ? armedLabel() : armedLabel;
     timer = setTimeout(() => {
-      btn.classList.remove('armed');
+      btn.classList.remove("armed");
       btn.textContent = btn.dataset.label;
     }, 3000);
   });

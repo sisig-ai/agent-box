@@ -1,17 +1,17 @@
 // Weekly schedule side panel: markdown for the selected week.
-import { $ } from '../dom.js';
-import { renderMarkdown } from './markdown.js';
+import { $ } from "../dom.js";
+import { renderMarkdown } from "./markdown.js";
 
 /* ================= Weekly Schedule ================= */
 (() => {
-  const preview = $('schedule-preview');
-  const weekLabel = $('schedule-week-label');
+  const preview = $("schedule-preview");
+  const weekLabel = $("schedule-week-label");
 
   if (!preview) return; // schedule section missing — bail silently
 
   let currentWeek = null; // Monday (YYYY-MM-DD)
 
-  const pad = (n) => String(n).padStart(2, '0');
+  const pad = (n) => String(n).padStart(2, "0");
 
   function todayStr() {
     const d = new Date();
@@ -20,7 +20,7 @@ import { renderMarkdown } from './markdown.js';
 
   // Monday of the week containing dateStr
   function weekStart(dateStr) {
-    const [y, m, d] = dateStr.split('-').map(Number);
+    const [y, m, d] = dateStr.split("-").map(Number);
     const dt = new Date(Date.UTC(y, m - 1, d));
     const day = dt.getUTCDay() || 7; // Mon=1..Sun=7
     dt.setUTCDate(dt.getUTCDate() - (day - 1));
@@ -28,25 +28,35 @@ import { renderMarkdown } from './markdown.js';
   }
 
   function shiftWeek(weekStr, weeks) {
-    const [y, m, d] = weekStr.split('-').map(Number);
+    const [y, m, d] = weekStr.split("-").map(Number);
     const dt = new Date(Date.UTC(y, m - 1, d + 7 * weeks));
     return dt.toISOString().slice(0, 10);
   }
 
   function fmtWeek(weekStr) {
-    const [y, m, d] = weekStr.split('-').map(Number);
+    const [y, m, d] = weekStr.split("-").map(Number);
     const start = new Date(y, m - 1, d);
     const end = new Date(y, m - 1, d + 6);
     const sameMonth = start.getMonth() === end.getMonth();
-    const fmt = (dt) => dt.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    const fmt = (dt) => dt.toLocaleDateString([], { month: "short", day: "numeric" });
     return sameMonth
       ? `${fmt(start)} – ${fmt(end)}, ${end.getFullYear()}`
       : `${fmt(start)} – ${fmt(end)}, ${end.getFullYear()}`;
   }
 
   const MONTHS = {
-    jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
-    jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+    jan: 0,
+    feb: 1,
+    mar: 2,
+    apr: 3,
+    may: 4,
+    jun: 5,
+    jul: 6,
+    aug: 7,
+    sep: 8,
+    oct: 9,
+    nov: 10,
+    dec: 11,
   };
   const DOW = { su: 0, mo: 1, tu: 2, we: 3, th: 4, fr: 5, sa: 6 };
   const EMPTY_HTML = '<p class="schedule-empty">// no schedule for this week yet</p>';
@@ -54,7 +64,7 @@ import { renderMarkdown } from './markdown.js';
   // Split markdown into heading blocks. `mapped[i]` records that a block lands
   // in column i, so a week of headings with no items still renders the grid.
   function parse(content, weekStr) {
-    const [wy, wm, wd] = weekStr.split('-').map(Number);
+    const [wy, wm, wd] = weekStr.split("-").map(Number);
     const mondayUTC = Date.UTC(wy, wm - 1, wd);
     const cells = [[], [], [], [], [], [], []];
     const mapped = [false, false, false, false, false, false, false];
@@ -69,7 +79,7 @@ import { renderMarkdown } from './markdown.js';
         let done = false;
         const cb = text.match(/^\[([ xX])\]\s*(.*)$/);
         if (cb) {
-          done = cb[1].toLowerCase() === 'x';
+          done = cb[1].toLowerCase() === "x";
           text = cb[2].trim();
         }
         out.push({ text, done });
@@ -122,7 +132,7 @@ import { renderMarkdown } from './markdown.js';
       }
       const col = columnFor(block.heading);
       const items = itemsOf(block.lines);
-      const isEmpty = items.length === 0 || items.every((it) => it.text.toLowerCase() === 'none');
+      const isEmpty = items.length === 0 || items.every((it) => it.text.toLowerCase() === "none");
       // Non-item lines (day paragraphs, wrapped continuation, nested bullets)
       // stay visible in the sanitized markdown block.
       const residual = block.lines.filter((l) => l.trim() && !isItemLine(l));
@@ -139,7 +149,7 @@ import { renderMarkdown } from './markdown.js';
       }
     }
 
-    return { cells, mapped, extra: extraLines.join('\n').trim() };
+    return { cells, mapped, extra: extraLines.join("\n").trim() };
   }
 
   function render(content) {
@@ -147,7 +157,7 @@ import { renderMarkdown } from './markdown.js';
       preview.innerHTML = EMPTY_HTML;
       return;
     }
-    if (typeof marked === 'undefined') {
+    if (typeof marked === "undefined") {
       preview.innerHTML = '<p class="schedule-empty">// marked.js failed to load</p>';
       return;
     }
@@ -157,37 +167,40 @@ import { renderMarkdown } from './markdown.js';
       return;
     }
 
-    const [wy, wm, wd] = currentWeek.split('-').map(Number);
-    const [ty, tm, td] = todayStr().split('-').map(Number);
+    const [wy, wm, wd] = currentWeek.split("-").map(Number);
+    const [ty, tm, td] = todayStr().split("-").map(Number);
     const todayOff = Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(wy, wm - 1, wd)) / 86400000);
 
-    preview.textContent = '';
+    preview.textContent = "";
 
     if (parsed.mapped.some(Boolean)) {
-      const list = document.createElement('div');
-      list.className = 'schedule-calendar';
+      const list = document.createElement("div");
+      list.className = "schedule-calendar";
 
       for (let i = 0; i < 7; i++) {
-        const row = document.createElement('div');
-        row.className = 'cal-row';
-        if (i === todayOff) row.classList.add('cal-today');
+        const row = document.createElement("div");
+        row.className = "cal-row";
+        if (i === todayOff) row.classList.add("cal-today");
 
-        const head = document.createElement('div');
-        head.className = 'cal-rowhead';
-        head.textContent = new Date(wy, wm - 1, wd + i)
-          .toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+        const head = document.createElement("div");
+        head.className = "cal-rowhead";
+        head.textContent = new Date(wy, wm - 1, wd + i).toLocaleDateString([], {
+          weekday: "long",
+          month: "long",
+          day: "numeric",
+        });
         row.appendChild(head);
 
         const dayItems = parsed.cells[i];
         if (!dayItems.length) {
-          const none = document.createElement('div');
-          none.className = 'cal-event cal-event-empty';
-          none.textContent = '—';
+          const none = document.createElement("div");
+          none.className = "cal-event cal-event-empty";
+          none.textContent = "—";
           row.appendChild(none);
         } else {
           for (const item of dayItems) {
-            const ev = document.createElement('div');
-            ev.className = item.done ? 'cal-event done' : 'cal-event';
+            const ev = document.createElement("div");
+            ev.className = item.done ? "cal-event done" : "cal-event";
             ev.textContent = item.text;
             row.appendChild(ev);
           }
@@ -198,8 +211,8 @@ import { renderMarkdown } from './markdown.js';
     }
 
     if (parsed.extra) {
-      const extra = document.createElement('div');
-      extra.className = 'schedule-extra';
+      const extra = document.createElement("div");
+      extra.className = "schedule-extra";
       preview.appendChild(extra);
       renderMarkdown(extra, parsed.extra);
     }
@@ -211,15 +224,15 @@ import { renderMarkdown } from './markdown.js';
     try {
       const res = await fetch(`/api/schedule?week=${currentWeek}`);
       const data = await res.json();
-      render(data.content || '');
+      render(data.content || "");
     } catch (err) {
       preview.innerHTML = '<p class="schedule-empty">// failed to load schedule</p>';
     }
   }
 
-  $('sched-prev').addEventListener('click', () => loadSchedule(shiftWeek(currentWeek, -1)));
-  $('sched-next').addEventListener('click', () => loadSchedule(shiftWeek(currentWeek, 1)));
-  $('sched-now').addEventListener('click', () => loadSchedule(todayStr()));
+  $("sched-prev").addEventListener("click", () => loadSchedule(shiftWeek(currentWeek, -1)));
+  $("sched-next").addEventListener("click", () => loadSchedule(shiftWeek(currentWeek, 1)));
+  $("sched-now").addEventListener("click", () => loadSchedule(todayStr()));
 
   loadSchedule(todayStr());
 })();

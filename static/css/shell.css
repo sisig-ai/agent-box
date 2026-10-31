@@ -21,12 +21,15 @@
   text-decoration: none;
 }
 
-.view-btn:hover { color: var(--text); border-color: rgba(114,167,255, 0.5); }
+.view-btn:hover {
+  color: var(--text);
+  border-color: rgba(114, 167, 255, 0.5);
+}
 .view-btn.active {
   color: var(--text);
-  background: rgba(114,167,255, 0.12);
-  border-color: rgba(114,167,255, 0.55);
-  box-shadow: 0 0 18px -6px rgba(114,167,255, 0.6);
+  background: rgba(114, 167, 255, 0.12);
+  border-color: rgba(114, 167, 255, 0.55);
+  box-shadow: 0 0 18px -6px rgba(114, 167, 255, 0.6);
 }
 
 /* One panel visible at a time; telemetry stays mounted above them all. */
@@ -35,15 +38,18 @@ body[data-view="stack"] [data-tabpanel]:not([data-tabpanel="stack"]),
 body[data-view="shell"] [data-tabpanel]:not([data-tabpanel="shell"]),
 body[data-view="files"] [data-tabpanel]:not([data-tabpanel="files"]),
 body[data-view="kanban"] [data-tabpanel]:not([data-tabpanel="kanban"]),
-body[data-view="progress"] [data-tabpanel]:not([data-tabpanel="progress"]) { display: none; }
+body[data-view="progress"] [data-tabpanel]:not([data-tabpanel="progress"]) {
+  display: none;
+}
 
 /* ---------- Shell (host tty in ~) ---------- */
 .shell {
   position: relative;
   border: 1px solid var(--border);
   border-radius: 16px;
-  background: linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0.018)),
-              linear-gradient(rgba(12,18,37,0.78), rgba(8,12,27,0.72));
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.018)),
+    linear-gradient(rgba(12, 18, 37, 0.78), rgba(8, 12, 27, 0.72));
   overflow: hidden;
   margin-bottom: 1.75rem;
 }
@@ -70,14 +76,21 @@ body[data-view="progress"] [data-tabpanel]:not([data-tabpanel="progress"]) { dis
 }
 
 .shell-dot {
-  width: 8px; height: 8px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--muted);
   flex-shrink: 0;
 }
 
-.shell-dot.on { background: #3ddc97; box-shadow: 0 0 10px #3ddc97; }
-.shell-dot.off { background: var(--blue); box-shadow: 0 0 10px var(--blue); }
+.shell-dot.on {
+  background: #3ddc97;
+  box-shadow: 0 0 10px #3ddc97;
+}
+.shell-dot.off {
+  background: var(--blue);
+  box-shadow: 0 0 10px var(--blue);
+}
 
 .shell-title .shell-sess {
   color: var(--muted);
@@ -89,12 +102,19 @@ body[data-view="progress"] [data-tabpanel]:not([data-tabpanel="progress"]) { dis
   text-overflow: ellipsis;
 }
 
-.shell-actions { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+.shell-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
 
-.term-wrap { padding: 0.9rem 1.15rem 0.4rem; }
+.term-wrap {
+  padding: 0.9rem 1.15rem 0.4rem;
+}
 
 .term {
-  background: rgba(5,8,20, 0.62);
+  background: rgba(5, 8, 20, 0.62);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 0.85rem 1rem;
@@ -102,17 +122,22 @@ body[data-view="progress"] [data-tabpanel]:not([data-tabpanel="progress"]) { dis
   max-height: 62vh;
   overflow-y: auto;
   font-family: "FiraCode Nerd Font Mono", var(--mono);
-  font-feature-settings: "calt" 1, "liga" 1; /* Fira Code ligatures (->, =>, !=, …) */
+  font-feature-settings:
+    "calt" 1,
+    "liga" 1; /* Fira Code ligatures (->, =>, !=, …) */
   font-size: 0.82rem;
   line-height: 1.5;
   cursor: text;
   outline: none;
-  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
-.term:focus-within, .term:focus {
-  border-color: rgba(114,167,255, 0.45);
-  box-shadow: 0 0 0 3px rgba(114,167,255, 0.08);
+.term:focus-within,
+.term:focus {
+  border-color: rgba(114, 167, 255, 0.45);
+  box-shadow: 0 0 0 3px rgba(114, 167, 255, 0.08);
 }
 
 /* NOTE: .term sets the face, but UA sheets pin `pre { font-family:
@@ -120,20 +145,46 @@ body[data-view="progress"] [data-tabpanel]:not([data-tabpanel="progress"]) { dis
    here, or the shell silently falls back to a system mono with no
    Nerd glyphs. */
 .term-screen {
-  white-space: pre-wrap; word-break: break-all; margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
   font-family: "FiraCode Nerd Font Mono", var(--mono);
 }
 
 /* ANSI SGR palette for the shell snapshot renderer */
 .term {
-  --term0: #6b6b7d; --term1: #72a7ff; --term2: #3ddc97; --term3: #aa87ff;
-  --term4: #6aa8ff; --term5: #c792ea; --term6: #4fd6d6; --term7: #e8e8f0;
-  --term0b: #8b8b9e; --term1b: #a8c6ff; --term2b: #7dedb5; --term3b: #cdb8ff;
-  --term4b: #9cc4ff; --term5b: #dab8ff; --term6b: #8feced; --term7b: #ffffff;
-  --termbg0: #3a3a48; --termbg1: #5c1f2b; --termbg2: #14402e; --termbg3: #57431a;
-  --termbg4: #1e3a5f; --termbg5: #3f2a52; --termbg6: #174545; --termbg7: #4a4a58;
-  --termbg0b: #4a4a58; --termbg1b: #7a2b3a; --termbg2b: #1d5c42; --termbg3b: #75612a;
-  --termbg4b: #2c5385; --termbg5b: #583d73; --termbg6b: #206060; --termbg7b: #66667a;
+  --term0: #6b6b7d;
+  --term1: #72a7ff;
+  --term2: #3ddc97;
+  --term3: #aa87ff;
+  --term4: #6aa8ff;
+  --term5: #c792ea;
+  --term6: #4fd6d6;
+  --term7: #e8e8f0;
+  --term0b: #8b8b9e;
+  --term1b: #a8c6ff;
+  --term2b: #7dedb5;
+  --term3b: #cdb8ff;
+  --term4b: #9cc4ff;
+  --term5b: #dab8ff;
+  --term6b: #8feced;
+  --term7b: #ffffff;
+  --termbg0: #3a3a48;
+  --termbg1: #5c1f2b;
+  --termbg2: #14402e;
+  --termbg3: #57431a;
+  --termbg4: #1e3a5f;
+  --termbg5: #3f2a52;
+  --termbg6: #174545;
+  --termbg7: #4a4a58;
+  --termbg0b: #4a4a58;
+  --termbg1b: #7a2b3a;
+  --termbg2b: #1d5c42;
+  --termbg3b: #75612a;
+  --termbg4b: #2c5385;
+  --termbg5b: #583d73;
+  --termbg6b: #206060;
+  --termbg7b: #66667a;
 }
 
 .term-screen .t-cursor {
@@ -149,7 +200,11 @@ body[data-view="shell"] .term-screen .t-cursor {
   animation: tblink 1.1s steps(1) infinite;
 }
 
-@keyframes tblink { 50% { opacity: 0; } }
+@keyframes tblink {
+  50% {
+    opacity: 0;
+  }
+}
 
 .term-hint {
   padding: 0.55rem 1.15rem 0.9rem;
@@ -181,11 +236,19 @@ body[data-view="shell"] .term-screen .t-cursor {
   border: 1px solid var(--border);
   border-radius: 8px;
   cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
-.key-btn:hover { color: var(--text); border-color: rgba(114, 167, 255, 0.5); }
-.key-btn:active { transform: translateY(1px); }
+.key-btn:hover {
+  color: var(--text);
+  border-color: rgba(114, 167, 255, 0.5);
+}
+.key-btn:active {
+  transform: translateY(1px);
+}
 
 .key-btn.armed {
   color: var(--text);
@@ -195,5 +258,7 @@ body[data-view="shell"] .term-screen .t-cursor {
 }
 
 @media (pointer: coarse) {
-  .key-btn { padding: 0.55rem 0.75rem; }
+  .key-btn {
+    padding: 0.55rem 0.75rem;
+  }
 }

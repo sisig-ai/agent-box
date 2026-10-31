@@ -5,9 +5,12 @@ export const $ = (id) => document.getElementById(id);
 
 // HTML-escape text before it goes through innerHTML. Superset of what the
 // terminal needs (also quotes) so one helper covers the tty and the files UI.
-export const esc = (s) => String(s)
-  .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-  .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+export const esc = (s) =>
+  String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 
 // Change-gated DOM writes. Chrome invalidates layout+paint even when you
 // assign an identical textContent/transform, and a 0.5 s transition turned
@@ -15,10 +18,16 @@ export const esc = (s) => String(s)
 // Gate every write on an actual change; bars snap (1 Hz data needs no
 // animation) and are quantized to 1% steps so sensor jitter doesn't repaint.
 export function setTxt(el, s) {
-  if (el.__t !== s) { el.__t = s; el.textContent = s; }
+  if (el.__t !== s) {
+    el.__t = s;
+    el.textContent = s;
+  }
 }
 
 export function setBar(el, frac) {
   const t = `scaleX(${frac})`;
-  if (el.__b !== t) { el.__b = t; el.style.transform = t; }
+  if (el.__b !== t) {
+    el.__b = t;
+    el.style.transform = t;
+  }
 }

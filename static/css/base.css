@@ -33,20 +33,31 @@
   --muted: #9098b8;
   --surface: rgba(255, 255, 255, 0.04);
   --border: rgba(255, 255, 255, 0.09);
-  --mono: "FiraCode Nerd Font Mono", "Fira Code", ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --mono:
+    "FiraCode Nerd Font Mono", "Fira Code", ui-monospace, "SF Mono", "JetBrains Mono", Menlo,
+    Consolas, monospace;
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
 body {
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
   background: var(--void);
   min-height: 100vh;
   color: var(--text);
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
 }
-
 
 /* Idle pause (toggled by the starfield JS): infinite CSS animations tick
    at display-refresh rate forever, waking the GPU compositor even on an
@@ -66,7 +77,6 @@ body {
 .bg-idle *::after {
   transition: none !important;
 }
-
 
 .container {
   position: relative;

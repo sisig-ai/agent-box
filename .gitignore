@@ -17,3 +17,4 @@ deploy/rehearsal-pids.json
 # Logs
 *.log
 uv.lock
+node_modules/
