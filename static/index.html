@@ -38,6 +38,7 @@
   <link rel="stylesheet" href="/static/css/ascii-board.css?v=ascii13">
   <link rel="stylesheet" href="/static/css/ascii-progress.css?v=progress1">
   <link rel="stylesheet" href="/static/css/docs.css?v=tree1">
+  <link rel="stylesheet" href="/static/css/logs.css?v=logs1">
   <link rel="stylesheet" href="/static/css/ascii-attention.css?v=attention8">
   <link rel="stylesheet" href="/static/css/tui.css?v=tui80b">
   <link rel="stylesheet" href="/static/css/pwa.css?v=pwa1">
@@ -55,6 +56,7 @@
         <a class="view-btn" id="view-btn-kanban" href="#/kanban" title="Ops Board (k)">[ops board]</a>
         <a class="view-btn" id="view-btn-progress" href="#/progress" title="Progress Bars (p)">[progress]</a>
         <a class="view-btn" id="view-btn-docs" href="#/docs" title="Docs (d)">[docs]</a>
+        <a class="view-btn" id="view-btn-logs" href="#/logs" title="Access logs (l)">[logs]</a>
       </nav>
       <div class="side-foot">
         <p class="dim">host</p>
@@ -415,6 +417,50 @@
         </div>
       </section>
 
+
+      <!-- ---------- Access logs ---------- -->
+      <section class="logs" data-tabpanel="logs" id="logs-view" aria-label="Access logs">
+        <div class="logs-head">
+          <div class="logs-title">
+            <h2>Access Logs</h2>
+            <span class="logs-sub">every MCP invocation, newest first · <code>/mcp</code></span>
+          </div>
+          <div class="logs-actions">
+            <label class="logs-filter">tool
+              <select id="logs-tool" aria-label="Filter by tool"><option value="">all tools</option></select>
+            </label>
+            <label class="logs-filter">result
+              <select id="logs-ok" aria-label="Filter by outcome">
+                <option value="">all</option>
+                <option value="1">ok</option>
+                <option value="0">error</option>
+              </select>
+            </label>
+            <button class="brief-btn" id="logs-refresh" title="Reload the log">⟳ refresh</button>
+          </div>
+        </div>
+        <div class="logs-body">
+          <table class="logs-table">
+            <thead>
+              <tr>
+                <th class="lg-time">time</th>
+                <th class="lg-action">action</th>
+                <th class="lg-entity">entity</th>
+                <th class="lg-ms">ms</th>
+                <th class="lg-status">result</th>
+                <th class="lg-args">request</th>
+              </tr>
+            </thead>
+            <tbody id="logs-rows"></tbody>
+          </table>
+          <p class="logs-empty" id="logs-empty" hidden>no calls logged yet</p>
+        </div>
+        <div class="logs-status">
+          <span id="logs-status">loading…</span>
+          <span id="logs-count"></span>
+        </div>
+      </section>
+
       <footer class="foot">
         <span class="dim">// edit <code>config.json</code> to add systems</span>
         <span class="dim">? keys · macmini:5555</span>
@@ -471,7 +517,7 @@
  b   sitrep        s   stack
  f   files         t   shell
  k   ops board     p   progress
- d   docs
+ d   docs          l   access logs
  /   search        ?   this panel
  esc close / clear / read</pre>
     <form method="dialog"><button class="brief-btn">close</button></form>
@@ -484,6 +530,6 @@
   </div>
 
   <script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}))}</script>
-  <script type="module" src="/static/js/main.js?v=tree1"></script>
+  <script type="module" src="/static/js/main.js?v=logs1"></script>
 </body>
 </html>

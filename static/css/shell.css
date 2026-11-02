@@ -36,7 +36,8 @@ body[data-view="shell"] [data-tabpanel]:not([data-tabpanel="shell"]),
 body[data-view="files"] [data-tabpanel]:not([data-tabpanel="files"]),
 body[data-view="kanban"] [data-tabpanel]:not([data-tabpanel="kanban"]),
 body[data-view="progress"] [data-tabpanel]:not([data-tabpanel="progress"]),
-body[data-view="docs"] [data-tabpanel]:not([data-tabpanel="docs"]) { display: none; }
+body[data-view="docs"] [data-tabpanel]:not([data-tabpanel="docs"]),
+body[data-view="logs"] [data-tabpanel]:not([data-tabpanel="logs"]) { display: none; }
 
 /* ---------- Shell (host tty in ~) ---------- */
 .shell {

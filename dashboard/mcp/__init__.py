@@ -6,9 +6,11 @@ stream, so GET and DELETE answer 405 as the spec allows for such a server.
 """
 
 import json
+import time
 
 from flask import Blueprint, Response, request
 
+from .. import access_log
 from ..docs import DocsError
 from ..kanban import KanbanError
 from ..progress import ProgressError
@@ -30,7 +32,8 @@ INSTRUCTIONS = (
     "shared Progress Bars (nested 0-100 bars with arbitrary k-v fields) for "
     "tracking batches and jobs visually, and Docs: an S3-ish store of long-form "
     "text keyed by slash-separated prefix with author, tags and full-text search, "
-    "for handoffs, specs and long-horizon notes. Dates are YYYY-MM-DD in Manila time and "
+    "for handoffs, specs and long-horizon notes, plus an access log of every "
+    "tool call (list_access_logs). Dates are YYYY-MM-DD in Manila time and "
     "default to today. Use your agent name as owner/author so work stays "
     "attributable, prefer comments for short progress notes, and keep card bodies "
     "in the Goal / Context / Progress / Next steps shape. Move finished cards to "
@@ -61,6 +64,10 @@ def _initialize(request_id, params):
     )
 
 
+def _elapsed_ms(started):
+    return int((time.monotonic() - started) * 1000)
+
+
 def _tool_result(request_id, data):
     text = json.dumps(data, ensure_ascii=False, indent=2, default=str)
     payload = {"content": [{"type": "text", "text": text}]}
@@ -76,16 +83,25 @@ def _call_tool(request_id, params):
         raise RpcError(INVALID_PARAMS, "tools/call needs a tool name")
     if not isinstance(arguments, dict):
         raise RpcError(INVALID_PARAMS, "arguments must be a JSON object")
+    started = time.monotonic()
     try:
         data = registry.call(name, arguments)
     except ToolError as exc:
+        access_log.record(name, arguments, ok=False, ms=_elapsed_ms(started), error=str(exc))
         return protocol.result(request_id, _error_content(str(exc)))
     except KanbanError as exc:
+        access_log.record(name, arguments, ok=False, ms=_elapsed_ms(started), error=exc.message)
         return protocol.result(request_id, _error_content(exc.message))
     except ProgressError as exc:
+        access_log.record(name, arguments, ok=False, ms=_elapsed_ms(started), error=exc.message)
         return protocol.result(request_id, _error_content(exc.message))
     except DocsError as exc:
+        access_log.record(name, arguments, ok=False, ms=_elapsed_ms(started), error=exc.message)
         return protocol.result(request_id, _error_content(exc.message))
+    except RpcError as exc:
+        access_log.record(name, arguments, ok=False, ms=_elapsed_ms(started), error=exc.message)
+        raise
+    access_log.record(name, arguments, ok=True, ms=_elapsed_ms(started))
     return _tool_result(request_id, data)
 
 

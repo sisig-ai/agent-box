@@ -1,5 +1,5 @@
 // Hash routing for the views (Daily Sitrep / Stack / Files / Shell / Ops Board /
-// Progress Bars / Docs; internal view ids stay brief / kanban so hash routes and
+// Progress Bars / Docs / Access Logs; internal view ids stay brief / kanban so hash routes and
 // element ids are unchanged).
 // Ops Board (kanban) also owns #/kanban/card-<id>[/edit] and the short #card-<id> (card modal).
 // Shell and Files are code-split via dynamic import(): their modules are
@@ -13,6 +13,7 @@ const btns = {
   kanban: document.getElementById('view-btn-kanban'),
   progress: document.getElementById('view-btn-progress'),
   docs: document.getElementById('view-btn-docs'),
+  logs: document.getElementById('view-btn-logs'),
 };
 function current() {
   const h = location.hash;
@@ -21,6 +22,7 @@ function current() {
   if (h === '#/shell') return 'shell';
   if (h === '#/progress') return 'progress';
   if (h === '#/docs') return 'docs';
+  if (h === '#/logs') return 'logs';
   if (h === '#/kanban' || h.startsWith('#/kanban/') || /^#card-\d+/.test(h)) return 'kanban';
   return 'stack'; // default landing tab (also #/ and empty hash)
 }
@@ -28,6 +30,7 @@ const lazy = {};
 const KANBAN = './kanban/board.js?v=kanban29';
 const PROGRESS = './progress/bars.js?v=progress7';
 const DOCS = './docs/docs.js?v=tree1';
+const LOGS = './logs/logs.js?v=logs1';
 let lastView = null;
 function ensure(v) {
   if (v === 'shell') {
@@ -40,6 +43,8 @@ function ensure(v) {
     (lazy.progress ||= import(PROGRESS)).then(m => m.initProgress());
   } else if (v === 'docs') {
     (lazy.docs ||= import(DOCS)).then(m => m.initDocs());
+  } else if (v === 'logs') {
+    (lazy.logs ||= import(LOGS)).then(m => m.initLogs());
   }
 }
 function apply() {
@@ -54,6 +59,7 @@ function apply() {
     if (v === 'kanban') (lazy.kanban ||= import(KANBAN)).then(m => m.enterKanban());
     else if (v === 'progress') (lazy.progress ||= import(PROGRESS)).then(m => m.enterProgress());
     else if (v === 'docs') (lazy.docs ||= import(DOCS)).then(m => m.initDocs());
+    else if (v === 'logs') (lazy.logs ||= import(LOGS)).then(m => m.initLogs());
   }
 }
 window.addEventListener('hashchange', apply);

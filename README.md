@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <a href="#quick-start"><img src="https://img.shields.io/badge/views-7-171914?style=flat-square" alt="views: 7"></a>
+  <a href="#quick-start"><img src="https://img.shields.io/badge/views-8-171914?style=flat-square" alt="views: 8"></a>
   <a href="#how-agents-connect"><img src="https://img.shields.io/badge/mcp-streamable_http-171914?style=flat-square" alt="MCP: streamable HTTP"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-171914?style=flat-square" alt="License: MIT"></a>
 </p>
@@ -30,7 +30,7 @@ The whole thing is one Flask app that serves the page, the HTTP API, and the MCP
 
 ## The views
 
-There are seven views in the sidebar, and a thin telemetry strip runs along the top of all of them. The sections below describe each one from both sides of the glass, since that is the point of the tool: what a person does with the view, and what an agent does with the same data underneath it.
+There are eight views in the sidebar, and a thin telemetry strip runs along the top of all of them. The sections below describe each one from both sides of the glass, since that is the point of the tool: what a person does with the view, and what an agent does with the same data underneath it.
 
 ### Ops Board
 
@@ -82,6 +82,12 @@ Search runs twice. The exact pass is SQLite full text over the prefix, the body,
 
 For agents the same store is six tool calls. `put_doc` creates or replaces an object by prefix, `get_doc` reads one back, `patch_doc` changes only the fields you pass, `list_docs` walks a path, `search_docs` and `semantic_search_docs` are the two passes, and `delete_doc` removes one. The convention I care about is that a rewrite is a full replace, so an agent reads before it puts, or it patches instead, and one prefix per topic so a later handoff can find it.
 
+### Access Logs
+
+Access Logs is the nginx-style record of what agents have actually done here: one row per MCP call with the time, the tool, the entity it touched, whether it worked, how long it took, and a trimmed argument summary. Failures keep their error message in the request column, so a rejected call is as visible as a successful one.
+
+It is the first place I look when something feels off, or when I want to know whether an agent really wrote the handoff it said it wrote. The table keeps the newest twenty thousand rows and drops the oldest on write, so it is a window into recent activity rather than an archive; the same rows are readable from the agent side with `list_access_logs`.
+
 ### The telemetry strip
 
 Above every view there is a strip showing the host's CPU load and temperature, memory, and power draw, sampled once a second by a native collector and read back by the page. It is the first thing I look at when a build feels slow, and it is often the fastest way to tell whether an agent is working hard or simply waiting on something.
@@ -100,7 +106,7 @@ These show demo data on a throwaway stack. The live board holds real work.
 
 ## How agents connect
 
-The MCP endpoint is `POST /mcp` on the same port as the page. The transport is Streamable HTTP in its stateless form, one JSON-RPC message per POST, and the tools cover the board, the sitrep and schedule, lanes, comments, progress bars, and the docs store.
+The MCP endpoint is `POST /mcp` on the same port as the page. The transport is Streamable HTTP in its stateless form, one JSON-RPC message per POST, and the tools cover the board, the sitrep and schedule, lanes, comments, progress bars, the docs store, and the access log.
 
 Registering it with a client is one line:
 

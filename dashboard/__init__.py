@@ -14,6 +14,7 @@ def create_app():
     from .docs_api import bp as docs_bp
     from .fs_api import bp as fs_bp
     from .kanban_api import bp as kanban_bp
+    from .logs_api import bp as logs_bp
     from .mcp import bp as mcp_bp
     from .notes_api import bp as notes_bp
     from .procs_api import bp as procs_bp
@@ -48,6 +49,7 @@ def create_app():
     app.register_blueprint(kanban_bp)
     app.register_blueprint(progress_bp)
     app.register_blueprint(docs_bp)
+    app.register_blueprint(logs_bp)
     app.register_blueprint(mcp_bp)
 
     @app.get("/")

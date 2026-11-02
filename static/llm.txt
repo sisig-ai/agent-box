@@ -154,6 +154,18 @@ Read before you rewrite: `put_doc` is a full replace, so a stale copy silently
 drops whatever changed in between. Use `patch_doc` for appends and small edits,
 and one prefix per topic so handoffs, specs and research stay addressable.
 
+**Access logs (what agents actually did here)**
+
+Every `tools/call` is recorded: timestamp, tool, the entity it touched (doc
+prefix, card id, lane id, bar id, sitrep date, schedule week), whether it
+succeeded, how long it took, and a trimmed argument summary. The table keeps the
+newest 20,000 rows and drops the oldest on write, so it is a recent-activity
+view, not an archive.
+
+| Tool | What it does |
+|------|--------------|
+| `list_access_logs(limit?, tool?, entity?, ok?)` | Recent invocations, newest first. `tool` narrows to one name, `entity` is a substring match, `ok=false` shows only failures. |
+
 ### Conventions
 
 - Dates are Manila time. Omit them for "today"/"this week" rather than guessing a UTC date.
@@ -173,7 +185,8 @@ and one prefix per topic so handoffs, specs and research stay addressable.
 - Files (host FS rooted at `~`): `GET /api/fs/list|stat|read|download`, `PUT /api/fs/write`, `POST /api/fs/upload|mkdir|touch|rename`, `DELETE /api/fs?path=…`.
 - Shell (tmux-backed tty in `~`): `POST /api/shell/new|input|key|resize|kill`, `GET /api/shell/pane|list`, and the live websocket at `ws://macmini:5556/ws/shell?id=<sid>`.
 - Docs REST: `GET /api/docs?prefix=&limit=&offset=&content=1`, `GET|PUT|PATCH|DELETE /api/docs/<path:prefix>`, `POST /api/docs` (body carries `prefix`, 409 if taken), `GET /api/docs/search?q=&prefix=`, `GET /api/docs/semantic?q=&prefix=&limit=`, `GET /api/docs/index`, `POST /api/docs/reindex`, `GET /api/docs/prefixes`.
-- Page tabs: `#/brief` (Daily Sitrep), `#/` (Stack), `#/files`, `#/shell`, `#/kanban` (Ops Board), `#/progress` (Progress Bars), `#/docs` (Docs).
+- MCP access log: `GET /api/logs?limit=&tool=&entity=&ok=1|0` — every `tools/call`, newest first.
+- Page tabs: `#/brief` (Daily Sitrep), `#/` (Stack), `#/files`, `#/shell`, `#/kanban` (Ops Board), `#/progress` (Progress Bars), `#/docs` (Docs), `#/logs` (Access Logs).
 
 ## Raw REST API (legacy — same data as the MCP tools)
 

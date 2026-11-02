@@ -5,10 +5,12 @@ from .tools_board import TOOLS as BOARD_TOOLS
 from .tools_comments import TOOLS as COMMENT_TOOLS
 from .tools_docs import TOOLS as DOC_TOOLS
 from .tools_lanes import TOOLS as LANE_TOOLS
+from .tools_logs import TOOLS as LOG_TOOLS
 from .tools_notes import TOOLS as NOTE_TOOLS
 from .tools_progress import TOOLS as PROGRESS_TOOLS
 
-_GROUPS = (BOARD_TOOLS, LANE_TOOLS, COMMENT_TOOLS, NOTE_TOOLS, PROGRESS_TOOLS, DOC_TOOLS)
+_GROUPS = (BOARD_TOOLS, LANE_TOOLS, COMMENT_TOOLS, NOTE_TOOLS, PROGRESS_TOOLS,
+          DOC_TOOLS, LOG_TOOLS)
 
 _TOOLS = {}
 for _group in _GROUPS:

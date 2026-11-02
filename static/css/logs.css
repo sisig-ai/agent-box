@@ -1,0 +1,136 @@
+/* ---------- Access logs: nginx-style table of MCP invocations ----------
+   Colours come from the skin variables with fallbacks, so the ascii base and
+   the tui sheet both drive this view. */
+.logs {
+  background: var(--well, #0a0f0a);
+  border: 1px solid var(--line, #2b3037);
+  display: flex;
+  flex-direction: column;
+  min-height: 60vh;
+}
+
+.logs-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.55rem 0.85rem;
+  background: var(--tui-head, rgba(255, 255, 255, 0.03));
+  border-bottom: 3px double var(--line, #2b3037);
+}
+
+.logs-title { display: flex; align-items: baseline; gap: 0.7rem; flex-wrap: wrap; }
+.logs-title h2 {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--amber, #ffb000);
+}
+.logs-sub { font-family: var(--mono); font-size: 0.62rem; color: var(--dim, var(--muted)); }
+
+.logs-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.logs-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.logs-filter select {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text, var(--ink));
+  background: rgba(5, 8, 20, 0.6);
+  border: 1px solid var(--border, var(--line));
+  border-radius: 6px;
+  padding: 0.2rem 0.3rem;
+  max-width: 14rem;
+}
+.logs-filter select.active { border-color: var(--amber, #ffb000); color: var(--amber, #ffb000); }
+
+.logs-body { flex: 1 1 auto; min-height: 0; overflow: auto; max-height: 64vh; }
+
+.logs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+.logs-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--well, #080c1b);
+  color: var(--muted);
+  font-size: 0.56rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  padding: 0.28rem 0.5rem;
+  border-bottom: 1px dotted var(--line, #2b3037);
+  white-space: nowrap;
+}
+.logs-table td {
+  padding: 0.22rem 0.5rem;
+  border-bottom: 1px dotted color-mix(in srgb, var(--line, #2b3037) 55%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 0;
+}
+.logs-table tr:hover { background: rgba(255, 255, 255, 0.045); }
+
+.lg-time { width: 7.5rem; color: var(--muted); }
+.lg-clock { color: var(--ink, var(--text)); margin-right: 0.4rem; }
+.lg-day { font-size: 0.58rem; color: var(--dim, var(--muted)); }
+.lg-action { width: 12rem; color: var(--phos, var(--ink)); }
+.lg-entity { width: 18rem; color: var(--ink, var(--text)); }
+.lg-ms { width: 4rem; text-align: right; color: var(--dim, var(--muted)); }
+.lg-status { width: 5rem; }
+.lg-args { color: var(--muted); }
+
+.lg-pill {
+  display: inline-block;
+  padding: 0 0.35rem;
+  border: 1px solid currentColor;
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.lg-pill.ok { color: var(--phos, #4ce08a); }
+.lg-pill.err { color: var(--bad, #ff6b5e); }
+.logs-table tr.lg-err .lg-entity { color: var(--bad, #ff6b5e); }
+
+.logs-empty {
+  padding: 1rem 0.85rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--dim, var(--muted));
+}
+
+.logs-status {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.35rem 0.85rem;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim, var(--muted));
+  background: #040604;
+  border-top: 1px solid var(--line, #2b3037);
+}
+.logs-status .err { color: var(--bad, #ff6b5e); }
+
+@media (max-width: 900px) {
+  .lg-args { display: none; }
+  .lg-entity { width: auto; }
+}
