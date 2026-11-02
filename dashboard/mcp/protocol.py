@@ -39,6 +39,10 @@ def negotiate_version(requested):
     return requested if requested in SUPPORTED_VERSIONS else PROTOCOL_VERSION
 
 
+# Search tools return 15 rows unless the caller asks for another size.
+SEARCH_DEFAULT_LIMIT = 15
+
+
 def tool_spec(
     name,
     title,

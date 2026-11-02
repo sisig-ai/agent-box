@@ -9,7 +9,7 @@ from ..kanban_api import (
     clean_status,
     clean_title,
 )
-from .protocol import ToolError, tool_spec
+from .protocol import SEARCH_DEFAULT_LIMIT, ToolError, tool_spec
 
 CARD_ID = {
     "type": "integer",
@@ -125,7 +125,7 @@ def search_cards(args):
     archived = args.get("archived") or "exclude"
     if archived not in ("exclude", "include", "only"):
         raise ToolError("archived must be one of: exclude, include, only")
-    limit = args.get("limit", kanban_search.DEFAULT_LIMIT)
+    limit = args.get("limit", SEARCH_DEFAULT_LIMIT)
     if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 200:
         raise ToolError("limit must be an integer from 1 to 200")
     status = args.get("status")
@@ -263,8 +263,8 @@ TOOLS = {
                     "type": "integer",
                     "minimum": 1,
                     "maximum": 200,
-                    "default": 50,
-                    "description": "Maximum cards to return.",
+                    "default": SEARCH_DEFAULT_LIMIT,
+                    "description": (f"Maximum cards to return (default {SEARCH_DEFAULT_LIMIT})."),
                 },
             },
             ["q"],

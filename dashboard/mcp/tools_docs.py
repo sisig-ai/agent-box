@@ -3,7 +3,7 @@
 from .. import config, docs, docs_embed
 from ..docs import DocsError
 from ..docs_embed import EmbedError
-from .protocol import ToolError, tool_spec
+from .protocol import SEARCH_DEFAULT_LIMIT, ToolError, tool_spec
 
 PREFIX = {
     "type": "string",
@@ -40,7 +40,10 @@ LIMIT = {
     "minimum": 1,
     "maximum": 200,
     "default": 50,
-    "description": "Maximum rows to return.",
+    "description": (
+        f"Maximum rows to return (search tools default {SEARCH_DEFAULT_LIMIT}; "
+        "list_docs defaults to 50)."
+    ),
 }
 OFFSET = {
     "type": "integer",
@@ -113,7 +116,7 @@ def search_docs(args):
             query,
             prefix=args.get("prefix") or None,
             prefix_q=prefix_q,
-            limit=docs.clean_limit(args.get("limit")),
+            limit=docs.clean_limit(args.get("limit"), default=SEARCH_DEFAULT_LIMIT),
         )
     except DocsError as exc:
         raise ToolError(exc.message) from None
@@ -134,7 +137,7 @@ def semantic_search_docs(args):
             query,
             prefix=prefix,
             prefix_q=docs.clean_prefix_query(args.get("prefix_q")),
-            limit=docs.clean_limit(args.get("limit"), default=10),
+            limit=docs.clean_limit(args.get("limit"), default=SEARCH_DEFAULT_LIMIT),
         )
     except EmbedError as exc:
         raise ToolError(str(exc)) from None
@@ -216,7 +219,7 @@ TOOLS = {
                     "description": "Optional path filter (that doc and its descendants).",
                 },
                 "prefix_q": PREFIX_Q,
-                "limit": LIMIT,
+                "limit": {**LIMIT, "default": SEARCH_DEFAULT_LIMIT},
             },
             [],
             read_only=True,
@@ -238,7 +241,7 @@ TOOLS = {
                     "description": "Optional path filter (that doc and its descendants).",
                 },
                 "prefix_q": PREFIX_Q,
-                "limit": {**LIMIT, "default": 10},
+                "limit": {**LIMIT, "default": SEARCH_DEFAULT_LIMIT},
             },
             ["q"],
             read_only=True,
