@@ -10,8 +10,13 @@ const SEARCH_MIN = 2;
 const LIST_LIMIT = 200;
 const HIT = '\x01';
 
+const SCOPE_KEY = 'docs.prefix';
+const TREE_KEY = 'docs.collapsed';
+
 const state = {
   started: false,
+  all: [], // every doc, for the tree
+  collapsed: new Set(),
   docs: [],
   hits: new Map(),
   semantic: new Map(),
@@ -68,6 +73,98 @@ function marked(text) {
     }
   });
   return frag;
+}
+
+// Prefixes are paths: a/b/c.md nests a > b > c.md. Folders first, then leaves.
+function buildTree(docs) {
+  const root = { folders: new Map(), docs: [] };
+  for (const doc of docs) {
+    const parts = doc.prefix.split('/');
+    const name = parts.pop();
+    let node = root;
+    for (const part of parts) {
+      if (!node.folders.has(part)) node.folders.set(part, { folders: new Map(), docs: [] });
+      node = node.folders.get(part);
+    }
+    node.docs.push({ ...doc, name });
+  }
+  return root;
+}
+
+function treeCount(node) {
+  let total = node.docs.length;
+  for (const child of node.folders.values()) total += treeCount(child);
+  return total;
+}
+
+function renderTree() {
+  const host = $('docs-tree');
+  const root = buildTree(state.all);
+  const build = (node, path, depth) => {
+    const list = el('ul', 'docs-tree-list');
+    const folders = [...node.folders.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    for (const [name, child] of folders) {
+      const full = path ? `${path}/${name}` : name;
+      const open = !state.collapsed.has(full);
+      const item = el('li', 'docs-tree-folder');
+      const row = el('div', 'docs-tree-row');
+      row.style.paddingLeft = `${depth * 0.8}rem`;
+      const twist = el('button', 'docs-tree-twist', open ? '▾' : '▸');
+      twist.title = open ? 'Collapse' : 'Expand';
+      twist.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (open) state.collapsed.add(full); else state.collapsed.delete(full);
+        saveCollapsed();
+        renderTree();
+      });
+      const label = el('button', 'docs-tree-name', name);
+      label.title = `Scope to ${full}/`;
+      if (state.prefix === full) label.classList.add('scoped');
+      label.addEventListener('click', () => setScope(state.prefix === full ? '' : full));
+      row.append(twist, label, el('span', 'docs-tree-count', String(treeCount(child))));
+      item.append(row);
+      if (open) item.append(build(child, full, depth + 1));
+      list.append(item);
+    }
+    const leaves = node.docs.slice().sort((a, b) => a.name.localeCompare(b.name));
+    for (const doc of leaves) {
+      const item = el('li', 'docs-tree-doc');
+      const row = el('div', 'docs-tree-row');
+      row.style.paddingLeft = `${depth * 0.8 + 1.1}rem`;
+      const leaf = el('button', 'docs-tree-name is-doc', doc.name);
+      leaf.title = doc.prefix;
+      if (state.current && state.current.prefix === doc.prefix) leaf.classList.add('open');
+      leaf.addEventListener('click', () => selectDoc(doc.prefix));
+      row.append(el('span', 'docs-tree-twist', '·'), leaf);
+      item.append(row);
+      list.append(item);
+    }
+    return list;
+  };
+  host.replaceChildren(build(root, '', 0));
+  $('docs-tree-empty').hidden = state.all.length > 0;
+}
+
+function saveCollapsed() {
+  try { localStorage.setItem(TREE_KEY, JSON.stringify([...state.collapsed])); } catch { /* storage blocked */ }
+}
+
+function setScope(prefix) {
+  state.prefix = prefix || '';
+  try {
+    if (state.prefix) localStorage.setItem(SCOPE_KEY, state.prefix);
+    else localStorage.removeItem(SCOPE_KEY);
+  } catch { /* storage blocked */ }
+  applyScope();
+  renderTree();
+  if (state.q) runSearch();
+}
+
+function applyScope() {
+  state.docs = state.prefix
+    ? state.all.filter((doc) => doc.prefix === state.prefix || doc.prefix.startsWith(`${state.prefix}/`))
+    : state.all;
+  renderList();
 }
 
 function docRow(doc, kind) {
@@ -135,7 +232,11 @@ function renderList() {
     nodes.push(...semantic.map((doc) => docRow(doc, 'semantic')));
   }
   list.replaceChildren(...nodes);
-  $('docs-empty-list').hidden = rows.length + semantic.length > 0;
+  // The tree already shows every doc, so the flat list only appears when it
+  // adds something: a scoped folder or search results.
+  const listVisible = searching || !!state.prefix;
+  $('docs-list').hidden = !listVisible;
+  $('docs-empty-list').hidden = !listVisible || rows.length + semantic.length > 0;
   const docs = state.docs.length;
   $('docs-count').textContent = searching
     ? `${rows.length} exact${semantic.length ? ` · ${semantic.length} semantic` : ''}`
@@ -147,34 +248,17 @@ function renderList() {
     : 'no docs yet';
 }
 
-function renderPrefixes(prefixes) {
-  const sel = $('docs-prefix');
-  const opts = [['', 'all prefixes'], ...prefixes.map((p) => [p.prefix, `${p.prefix} (${p.total})`])];
-  sel.replaceChildren(...opts.map(([value, label]) => {
-    const option = el('option', '', label);
-    option.value = value;
-    option.selected = value === state.prefix;
-    return option;
-  }));
-  sel.classList.toggle('active', !!state.prefix);
-}
-
 async function loadList() {
-  const params = new URLSearchParams({ limit: String(LIST_LIMIT) });
-  if (state.prefix) params.set('prefix', state.prefix);
-  const data = await api(`/api/docs?${params}`);
-  state.docs = data.docs;
-  renderList();
-}
-
-async function loadPrefixes() {
-  const data = await api('/api/docs/prefixes');
-  renderPrefixes(data.prefixes);
+  // The tree needs every doc, so fetch once and scope client-side.
+  const data = await api(`/api/docs?${new URLSearchParams({ limit: String(LIST_LIMIT) })}`);
+  state.all = data.docs;
+  applyScope();
+  renderTree();
 }
 
 async function refresh() {
   try {
-    await Promise.all([loadList(), loadPrefixes()]);
+    await loadList();
     setStatus(`synced ${new Date().toLocaleTimeString([], { hour12: false })}`);
   } catch (err) {
     setStatus(`load failed: ${err.message}`, true);
@@ -262,6 +346,7 @@ async function selectDoc(prefix) {
     fillEditor(doc);
     setEditorVisible(true);
     renderList();
+    renderTree();
     $('doc-content').focus();
   } catch (err) {
     setStatus(`open failed: ${err.message}`, true);
@@ -273,6 +358,7 @@ function startNew() {
   state.current = null;
   fillEditor(null);
   setEditorVisible(true);
+  renderTree();
   $('doc-prefix').focus();
 }
 
@@ -339,10 +425,6 @@ function bind() {
     renderList();
     $('docs-search').focus();
   });
-  $('docs-prefix').addEventListener('change', (e) => {
-    state.prefix = e.target.value;
-    refresh().then(() => { if (state.q) runSearch(); });
-  });
   $('docs-new').addEventListener('click', startNew);
   $('docs-refresh').addEventListener('click', () => refresh());
   $('doc-save').addEventListener('click', save);
@@ -371,6 +453,11 @@ function bind() {
 export function initDocs() {
   if (state.started) { refresh(); return; }
   state.started = true;
+  try { state.prefix = localStorage.getItem(SCOPE_KEY) || ''; } catch { /* storage blocked */ }
+  try {
+    const saved = JSON.parse(localStorage.getItem(TREE_KEY) || '[]');
+    if (Array.isArray(saved)) state.collapsed = new Set(saved.map(String));
+  } catch { /* storage blocked */ }
   bind();
   setEditorVisible(false);
   refresh();

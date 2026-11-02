@@ -27,7 +27,7 @@ function current() {
 const lazy = {};
 const KANBAN = './kanban/board.js?v=kanban29';
 const PROGRESS = './progress/bars.js?v=progress7';
-const DOCS = './docs/docs.js?v=docs1';
+const DOCS = './docs/docs.js?v=tree1';
 let lastView = null;
 function ensure(v) {
   if (v === 'shell') {

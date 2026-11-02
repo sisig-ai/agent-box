@@ -26,7 +26,7 @@ def fake_vectors(texts):
 @pytest.fixture(autouse=True)
 def offline_embeddings(monkeypatch):
     monkeypatch.setattr(docs_embed, "embed_texts", fake_vectors)
-    monkeypatch.setattr(docs_embed, "enqueue", lambda doc_id: None)  # no worker in tests
+    monkeypatch.setattr(docs_embed, "_AUTO_INDEX", False)  # no worker in tests
 
 
 def index(client):

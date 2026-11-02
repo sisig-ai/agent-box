@@ -37,7 +37,7 @@
   <link rel="stylesheet" href="/static/css/ascii-content.css?v=ascii13">
   <link rel="stylesheet" href="/static/css/ascii-board.css?v=ascii13">
   <link rel="stylesheet" href="/static/css/ascii-progress.css?v=progress1">
-  <link rel="stylesheet" href="/static/css/docs.css?v=docs1">
+  <link rel="stylesheet" href="/static/css/docs.css?v=tree1">
   <link rel="stylesheet" href="/static/css/ascii-attention.css?v=attention8">
   <link rel="stylesheet" href="/static/css/tui.css?v=tui80b">
   <link rel="stylesheet" href="/static/css/pwa.css?v=pwa1">
@@ -384,9 +384,8 @@
         </div>
         <div class="docs-body">
           <div class="docs-list-wrap">
-            <div class="docs-filter">
-              <select id="docs-prefix" aria-label="Filter by prefix"><option value="">all prefixes</option></select>
-            </div>
+            <div class="docs-tree" id="docs-tree" aria-label="Prefix tree"></div>
+            <p class="docs-tree-empty" id="docs-tree-empty" hidden>no docs yet</p>
             <ul class="docs-list" id="docs-list"></ul>
             <p class="docs-empty-list" id="docs-empty-list" hidden></p>
           </div>
@@ -485,6 +484,6 @@
   </div>
 
   <script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}))}</script>
-  <script type="module" src="/static/js/main.js?v=docs1"></script>
+  <script type="module" src="/static/js/main.js?v=tree1"></script>
 </body>
 </html>

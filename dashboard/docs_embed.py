@@ -30,6 +30,9 @@ CHUNK_OVERLAP = 200
 EXCERPT_CHARS = 280
 MAX_CHUNKS = 60
 
+# Tests (and any caller that wants manual control) can turn off the background
+# worker: enqueue then becomes a no-op and index_doc is called explicitly.
+_AUTO_INDEX = True
 _QUEUE = queue.Queue()
 _WORKER = None
 _WORKER_LOCK = threading.Lock()
@@ -239,6 +242,8 @@ def reindex_all(limit=None):
 
 def enqueue(doc_id):
     """Mark one doc for (re)indexing; the worker does the network call."""
+    if not _AUTO_INDEX:
+        return
     _start_worker()
     _QUEUE.put(int(doc_id))
 

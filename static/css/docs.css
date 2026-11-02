@@ -67,18 +67,59 @@
   min-height: 0;
 }
 
-.docs-filter { padding: 0.5rem 0.6rem; border-bottom: 1px dotted var(--line, #2b3037); }
-.docs-filter select {
-  width: 100%;
+/* Prefix tree: folders toggle, folder names scope the list, leaves open the doc. */
+.docs-tree {
+  max-height: 46vh;
+  overflow: auto;
+  padding: 0.35rem 0.2rem;
+  border-bottom: 1px dotted var(--line, #2b3037);
+}
+.docs-tree-list { list-style: none; margin: 0; padding: 0; }
+.docs-tree-row { display: flex; align-items: center; gap: 0.1rem; min-width: 0; }
+.docs-tree-twist {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--dim, var(--muted));
+  background: none;
+  border: 0;
+  padding: 0 0.2rem;
+  cursor: pointer;
+  flex: none;
+}
+.docs-tree-twist:hover { color: var(--amber, #ffb000); }
+.docs-tree-name {
   font-family: var(--mono);
   font-size: 0.7rem;
-  color: var(--text, var(--ink));
-  background: rgba(5, 8, 20, 0.6);
-  border: 1px solid var(--border, var(--line));
-  border-radius: 6px;
-  padding: 0.24rem 0.3rem;
+  color: var(--phos, var(--ink));
+  background: none;
+  border: 0;
+  padding: 0.1rem 0.2rem;
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
 }
-.docs-filter select.active { border-color: var(--amber, #ffb000); color: var(--amber, #ffb000); }
+.docs-tree-name:hover { color: var(--amber, #ffb000); text-decoration: underline dotted; }
+.docs-tree-name.scoped { color: var(--amber, #ffb000); }
+.docs-tree-name.is-doc { color: var(--ink, var(--text)); }
+.docs-tree-name.is-doc.open { color: var(--amber, #ffb000); }
+.docs-tree-count {
+  font-family: var(--mono);
+  font-size: 0.56rem;
+  color: var(--dim, var(--muted));
+  padding-right: 0.45rem;
+  flex: none;
+}
+.docs-tree-empty {
+  padding: 0.5rem 0.6rem;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  color: var(--dim, var(--muted));
+  border-bottom: 1px dotted var(--line, #2b3037);
+}
 
 .docs-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; max-height: 62vh; }
 .docs-item {
