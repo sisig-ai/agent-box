@@ -145,3 +145,12 @@ def test_mcp_semantic_and_reindex(client):
     hits = call("semantic_search_docs", {"q": "tuya"})["structuredContent"]["hits"]
     assert hits[0]["prefix"] == "mcp/one.md"
     assert call("reindex_docs", {})["structuredContent"]["model"]
+
+
+def test_semantic_respects_prefix_query(client):
+    docs.put("handoffs/card-1.md", content="tuya devices")
+    docs.put("specs/card-1-spec.md", content="tuya devices")
+    docs.put("notes/other.md", content="tuya devices")
+    index(client)
+    hits = client.get("/api/docs/semantic?q=tuya&prefix_q=card-1").get_json()["hits"]
+    assert {hit["prefix"] for hit in hits} == {"handoffs/card-1.md", "specs/card-1-spec.md"}

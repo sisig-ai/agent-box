@@ -50,6 +50,7 @@ def docs_search():
         docs.search(
             request.args.get("q", ""),
             prefix=request.args.get("prefix") or None,
+            prefix_q=docs.clean_prefix_query(request.args.get("prefix_q")),
             limit=docs.clean_limit(request.args.get("limit")),
         )
     )
@@ -64,6 +65,7 @@ def docs_semantic():
             prefix=(
                 docs.clean_prefix(request.args["prefix"]) if request.args.get("prefix") else None
             ),
+            prefix_q=docs.clean_prefix_query(request.args.get("prefix_q")),
             limit=docs.clean_limit(request.args.get("limit"), default=10),
         )
     except EmbedError as exc:

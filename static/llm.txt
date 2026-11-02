@@ -135,8 +135,8 @@ author.
 | `get_doc(prefix)` | One doc in full. |
 | `patch_doc(prefix, content?, author?, tags?)` | Update only the fields you pass; keeps the rest. |
 | `list_docs(prefix?, limit?, offset?)` | Metadata only (no content), newest update first; `prefix` narrows to a path and its descendants. |
-| `search_docs(q, prefix?, limit?)` | Full-text search; terms are prefix-matched, `-word` excludes, `"two words"` is a phrase. Hits carry a snippet with `\\u0001`/`\\u0002` around the match. |
-| `semantic_search_docs(q, prefix?, limit?)` | Meaning-based search: embeds the query with the local Ollama model and ranks stored chunk vectors by cosine. A hit does not need to share words with the query. |
+| `search_docs(q?, prefix?, prefix_q?, limit?)` | Full-text search; terms are prefix-matched, `-word` excludes, `"two words"` is a phrase. `prefix` scopes to a path and its descendants; `prefix_q` matches any part of the key (`card-389`, `handoffs/`). With `q` empty and `prefix_q` set it is a prefix listing, newest first. Hits carry a snippet with `\\u0001`/`\\u0002` around the match. |
+| `semantic_search_docs(q, prefix?, prefix_q?, limit?)` | Meaning-based search: embeds the query with the local Ollama model and ranks stored chunk vectors by cosine. A hit does not need to share words with the query. `prefix_q` narrows to a substring of the key (a vector search always needs `q`). |
 | `reindex_docs()` | Queue every doc whose vectors are stale, missing or from another model. Indexing already happens on each write; this is for backfill. |
 | `delete_doc(prefix)` | Remove one doc. Irreversible; only when asked. |
 
@@ -188,7 +188,7 @@ view, not an archive.
 - `GET /api/procs?sort=rss|cpu|pid|name&order=desc|asc&limit=40` — host processes with `rss_bytes`, `cpu_percent` (one 0.12s sample), `user`, `status`, `cmdline`, and `protected` (init or the dashboard's own ancestry). `POST /api/procs/:pid/signal` with `{"signal":"TERM"|"KILL"}` sends a signal; other users' processes return 403.
 - Files (host FS rooted at `~`): `GET /api/fs/list|stat|read|download`, `PUT /api/fs/write`, `POST /api/fs/upload|mkdir|touch|rename`, `DELETE /api/fs?path=…`.
 - Shell (tmux-backed tty in `~`): `POST /api/shell/new|input|key|resize|kill`, `GET /api/shell/pane|list`, and the live websocket at `ws://macmini:5556/ws/shell?id=<sid>`.
-- Docs REST: `GET /api/docs?prefix=&limit=&offset=&content=1`, `GET|PUT|PATCH|DELETE /api/docs/<path:prefix>`, `POST /api/docs` (body carries `prefix`, 409 if taken), `GET /api/docs/search?q=&prefix=`, `GET /api/docs/semantic?q=&prefix=&limit=`, `GET /api/docs/index`, `POST /api/docs/reindex`, `GET /api/docs/prefixes`.
+- Docs REST: `GET /api/docs?prefix=&limit=&offset=&content=1`, `GET|PUT|PATCH|DELETE /api/docs/<path:prefix>`, `POST /api/docs` (body carries `prefix`, 409 if taken), `GET /api/docs/search?q=&prefix=&prefix_q=`, `GET /api/docs/semantic?q=&prefix=&prefix_q=&limit=`, `GET /api/docs/index`, `POST /api/docs/reindex`, `GET /api/docs/prefixes`.
 - MCP access log: `GET /api/logs?limit=&tool=&entity=&ok=1|0` — every `tools/call`, newest first, plus `retention_days` and the retained daily files; `POST /api/logs/rotate` forces a new day file and sweeps the window. Files live in `data/logs/access-YYYY-MM-DD.log`, one JSON object per line, 7-day retention.
 - Page tabs: `#/brief` (Daily Sitrep), `#/` (Stack), `#/files`, `#/shell`, `#/kanban` (Ops Board), `#/progress` (Progress Bars), `#/docs` (Docs), `#/logs` (Access Logs).
 

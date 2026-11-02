@@ -26,6 +26,15 @@ TAGS = {
     "items": {"type": "string"},
     "description": "Up to 24 tags, each 60 characters or fewer (e.g. ['handoff', 'doctrine']).",
 }
+PREFIX_Q = {
+    "type": "string",
+    "description": (
+        "Substring of the doc prefix, case-insensitive (e.g. 'card-389' or "
+        "'handoffs/'). Narrower than prefix: prefix scopes a whole path, prefix_q "
+        "matches any part of the key. With q empty the call becomes a prefix "
+        "listing, newest update first."
+    ),
+}
 LIMIT = {
     "type": "integer",
     "minimum": 1,
@@ -96,12 +105,14 @@ def list_docs(args):
 
 def search_docs(args):
     query = (args.get("q") or "").strip()
-    if not query:
-        raise ToolError("q is required")
+    prefix_q = args.get("prefix_q") or None
+    if not query and not prefix_q:
+        raise ToolError("q is required (or pass prefix_q for a prefix search)")
     try:
         return docs.search(
             query,
             prefix=args.get("prefix") or None,
+            prefix_q=prefix_q,
             limit=docs.clean_limit(args.get("limit")),
         )
     except DocsError as exc:
@@ -122,6 +133,7 @@ def semantic_search_docs(args):
         return docs_embed.search(
             query,
             prefix=prefix,
+            prefix_q=docs.clean_prefix_query(args.get("prefix_q")),
             limit=docs.clean_limit(args.get("limit"), default=10),
         )
     except EmbedError as exc:
@@ -203,9 +215,10 @@ TOOLS = {
                     **PREFIX,
                     "description": "Optional path filter (that doc and its descendants).",
                 },
+                "prefix_q": PREFIX_Q,
                 "limit": LIMIT,
             },
-            ["q"],
+            [],
             read_only=True,
         ),
         "handler": search_docs,
@@ -224,6 +237,7 @@ TOOLS = {
                     **PREFIX,
                     "description": "Optional path filter (that doc and its descendants).",
                 },
+                "prefix_q": PREFIX_Q,
                 "limit": {**LIMIT, "default": 10},
             },
             ["q"],

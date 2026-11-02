@@ -172,3 +172,35 @@ def test_json_body_round_trip(client):
     assert client.get("/api/docs/u/utf8.md").get_json()["content"] == text
     row = json.loads(client.get("/api/docs?prefix=u&content=1").data)["docs"][0]
     assert row["content"] == text
+
+
+def test_prefix_search_matches_any_part_of_the_key(client):
+    put(client, "handoffs/card-389.md", content="alpha beta")
+    put(client, "handoffs/card-390.md", content="alpha beta")
+    put(client, "specs/card-389-spec.md", content="alpha beta")
+    put(client, "notes/unrelated.md", content="alpha beta")
+
+    hit = client.get("/api/docs/search?q=alpha&prefix_q=card-389").get_json()
+    assert {row["prefix"] for row in hit["hits"]} == {
+        "handoffs/card-389.md",
+        "specs/card-389-spec.md",
+    }
+
+    scoped = client.get("/api/docs/search?q=alpha&prefix=handoffs&prefix_q=card-389").get_json()
+    assert [row["prefix"] for row in scoped["hits"]] == ["handoffs/card-389.md"]
+
+
+def test_prefix_only_search_lists_newest_first(client):
+    put(client, "handoffs/old-card.md", content="x")
+    put(client, "handoffs/new-card.md", content="y")
+    listing = client.get("/api/docs/search?prefix_q=card").get_json()
+    assert listing["total"] == 2
+    assert [row["prefix"] for row in listing["hits"]][0] == "handoffs/new-card.md"
+    assert listing["hits"][0]["snippet"] == ""
+
+    empty = client.get("/api/docs/search").get_json()
+    assert "error" in empty
+
+
+def test_prefix_query_is_validated(client):
+    assert client.get("/api/docs/search?prefix_q=" + "a" * 500).status_code == 400

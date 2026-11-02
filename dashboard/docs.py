@@ -11,21 +11,23 @@ exclude, ``"two words"`` for a phrase) so both surfaces behave the same.
 """
 
 import json
-import re
 import threading
 
 from . import db, docs_embed
 from .dates import now_iso
+from .docs_keys import (
+    DEFAULT_LIMIT,
+    DocsError,
+    clean_author,
+    clean_content,
+    clean_limit,
+    clean_prefix,
+    clean_prefix_query,
+    clean_tags,
+    prefix_filters,
+)
 from .kanban_search import MARK_CLOSE, MARK_OPEN, match_expr
 
-PREFIX_MAX = 400
-CONTENT_MAX = 2_000_000
-AUTHOR_MAX = 120
-TAG_MAX = 60
-TAGS_MAX = 24
-DEFAULT_LIMIT = 50
-MAX_LIMIT = 200
-_SEGMENT_BAD = re.compile(r"[\x00-\x1f\x7f]")
 _WRITE_LOCK = threading.Lock()
 
 _SCHEMA = (
@@ -79,15 +81,6 @@ _TRIGGERS = (
 )
 
 
-class DocsError(Exception):
-    """A request the store refuses; ``status`` is the HTTP code to return."""
-
-    def __init__(self, message, status=400):
-        super().__init__(message)
-        self.message = message
-        self.status = status
-
-
 def init_schema(conn):
     for statement in _SCHEMA:
         conn.execute(statement)
@@ -106,81 +99,6 @@ def rebuild(conn):
         "INSERT INTO doc_fts (doc_id, prefix, content, tags, author)"
         " SELECT id, prefix, content, tags, coalesce(author, '') FROM doc"
     )
-
-
-# ---------------------------------------------------------------- validation
-
-
-def clean_prefix(raw):
-    """Normalise a doc key: no leading/trailing slash, no empty or dot segments."""
-    if not isinstance(raw, str):
-        raise DocsError("prefix must be a string")
-    prefix = raw.strip().strip("/")
-    if not prefix:
-        raise DocsError("prefix is required")
-    if len(prefix) > PREFIX_MAX:
-        raise DocsError(f"prefix must be {PREFIX_MAX} characters or fewer")
-    for segment in prefix.split("/"):
-        if segment in ("", ".", ".."):
-            raise DocsError("prefix segments must be non-empty and not '.' or '..'")
-        if _SEGMENT_BAD.search(segment):
-            raise DocsError("prefix must not contain control characters")
-    return prefix
-
-
-def clean_content(raw):
-    if raw is None:
-        return ""
-    if not isinstance(raw, str):
-        raise DocsError("content must be a string")
-    if len(raw) > CONTENT_MAX:
-        raise DocsError(f"content must be {CONTENT_MAX} characters or fewer")
-    return raw
-
-
-def clean_author(raw):
-    if raw is None:
-        return None
-    if not isinstance(raw, str):
-        raise DocsError("author must be a string")
-    author = raw.strip()
-    if len(author) > AUTHOR_MAX:
-        raise DocsError(f"author must be {AUTHOR_MAX} characters or fewer")
-    return author or None
-
-
-def clean_tags(raw):
-    """Accept a list, or a comma/space separated string; keep order, drop dupes."""
-    if raw is None:
-        return []
-    if isinstance(raw, str):
-        raw = [part for part in re.split(r"[,\n]", raw)]
-    if not isinstance(raw, list):
-        raise DocsError("tags must be a list of strings")
-    tags, seen = [], set()
-    for item in raw:
-        if not isinstance(item, str):
-            raise DocsError("tags must be strings")
-        tag = item.strip()
-        if not tag:
-            continue
-        if len(tag) > TAG_MAX:
-            raise DocsError(f"each tag must be {TAG_MAX} characters or fewer")
-        if tag.lower() in seen:
-            continue
-        seen.add(tag.lower())
-        tags.append(tag)
-    if len(tags) > TAGS_MAX:
-        raise DocsError(f"at most {TAGS_MAX} tags")
-    return tags
-
-
-def clean_limit(raw, default=DEFAULT_LIMIT, maximum=MAX_LIMIT):
-    try:
-        value = int(raw)
-    except (TypeError, ValueError):
-        return default
-    return max(1, min(value, maximum))
 
 
 # ---------------------------------------------------------------- serialising
@@ -337,23 +255,42 @@ _SELECT = (
 )
 
 
-def search(query, prefix=None, limit=DEFAULT_LIMIT):
-    """Full-text search over prefix, content, tags and author."""
+def search(query, prefix=None, prefix_q=None, limit=DEFAULT_LIMIT):
+    """Full-text search over prefix, content, tags and author.
+
+    ``prefix`` scopes to a path and its descendants, ``prefix_q`` matches a
+    substring of the prefix. With ``q`` empty and ``prefix_q`` set the result is
+    a plain prefix listing, newest update first, so agents can browse a naming
+    convention without inventing a keyword.
+    """
+    prefix_q = clean_prefix_query(prefix_q)
     expr = match_expr((query or "").strip())
-    if expr is None:
-        raise DocsError("q needs at least one searchable word")
+    if expr is None and not prefix_q:
+        raise DocsError("q needs at least one searchable word (or pass prefix_q)")
     limit = clean_limit(limit)
-    clauses, args = ["doc_fts MATCH ?"], []
-    if prefix:
-        clean = clean_prefix(prefix)
-        clauses.append("(d.prefix = ? OR d.prefix LIKE ? ESCAPE '\\')")
-        args.extend([clean, f"{clean.replace('%', chr(92) + '%').replace('_', chr(92) + '_')}/%"])
+    clauses, args = [], []
+    if expr is not None:
+        clauses.append("doc_fts MATCH ?")
+        args.append(expr)
+    path_clauses, path_args = prefix_filters(prefix, prefix_q)
+    clauses.extend(path_clauses)
+    args.extend(path_args)
     where = " WHERE " + " AND ".join(clauses)
     conn = db.get_db()
-    rows = conn.execute(_SELECT + where + " ORDER BY rank LIMIT ?", (expr, *args, limit)).fetchall()
-    total = conn.execute(
-        "SELECT count(*) FROM doc_fts JOIN doc d ON d.id = doc_fts.doc_id" + where, (expr, *args)
-    ).fetchone()[0]
+    if expr is None:
+        # Prefix-only search: no rank to order by, so list the newest first.
+        rows = conn.execute(
+            "SELECT d.id, d.prefix, d.author, d.tags, d.revision, d.created_at, d.updated_at,"
+            " length(d.content) AS size, d.prefix AS prefix_snip, '' AS content_snip"
+            " FROM doc d" + where + " ORDER BY d.updated_at DESC, d.id DESC LIMIT ?",
+            (*args, limit),
+        ).fetchall()
+        total = conn.execute("SELECT count(*) FROM doc d" + where, args).fetchone()[0]
+    else:
+        rows = conn.execute(_SELECT + where + " ORDER BY rank LIMIT ?", (*args, limit)).fetchall()
+        total = conn.execute(
+            "SELECT count(*) FROM doc_fts JOIN doc d ON d.id = doc_fts.doc_id" + where, args
+        ).fetchone()[0]
     hits = []
     for row in rows:
         hits.append(

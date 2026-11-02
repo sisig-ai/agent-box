@@ -22,6 +22,8 @@ const state = {
   sort: { key: 'updated', dir: -1 },
   docs: [],
   hits: new Map(),
+  prefixQ: '',
+  searching: false,
   semantic: new Map(),
   semanticNote: '',
   q: '',
@@ -290,7 +292,7 @@ function docRow(doc, kind) {
 
 function renderList() {
   const list = $('docs-list');
-  const searching = state.hits.size > 0 || (state.q.length >= SEARCH_MIN && state.q);
+  const searching = state.searching;
   const flat = state.view === 'flat';
   // Flat mode always lists every doc (sorted); search results take over both views.
   const base = flat ? sortedDocs(state.all) : state.docs;
@@ -324,7 +326,7 @@ function renderList() {
       : `${docs} doc${docs === 1 ? '' : 's'}`
         + (state.prefix ? ` under ${state.prefix}` : '');
   $('docs-empty-list').textContent = searching
-    ? `no exact matches for “${state.q}”`
+    ? (state.q ? `no exact matches for “${state.q}”` : `no docs under prefix “${state.prefixQ}”`)
     : 'no docs yet';
 }
 
@@ -347,9 +349,14 @@ async function refresh() {
 
 async function runSearch() {
   const q = $('docs-search').value.trim();
-  $('docs-search-clear').hidden = !q;
+  const prefixQ = $('docs-prefix-q').value.trim();
+  $('docs-search-clear').hidden = !q && !prefixQ;
   state.q = q;
-  if (q.length < SEARCH_MIN) {
+  state.prefixQ = prefixQ;
+  // Either box can drive a search: text, a prefix, or both.
+  const active = q.length >= SEARCH_MIN || prefixQ.length > 0;
+  state.searching = active;
+  if (!active) {
     state.hits = new Map();
     state.semantic = new Map();
     state.semanticNote = '';
@@ -362,11 +369,12 @@ async function runSearch() {
   try {
     const params = new URLSearchParams({ q, limit: String(LIST_LIMIT) });
     if (state.prefix) params.set('prefix', state.prefix);
+    if (prefixQ) params.set('prefix_q', prefixQ);
     const data = await api(`/api/docs/search?${params}`);
     if (seq !== state.seq) return;
     state.hits = new Map(data.hits.map((hit) => [hit.prefix, hit]));
     renderList();
-    setStatus(`${data.count} of ${data.total} exact match`);
+    setStatus(`${data.count} of ${data.total} exact match${prefixQ ? ` · prefix ${prefixQ}` : ''}`);
     loadSemantic(q, seq);
   } catch (err) {
     if (seq !== state.seq) return;
@@ -378,9 +386,11 @@ async function runSearch() {
 
 // Vector hits arrive after the exact ones and are appended below them.
 async function loadSemantic(q, seq) {
+  if (!q) return; // vectors need a query; a prefix-only search stays exact
   try {
     const params = new URLSearchParams({ q, limit: '10' });
     if (state.prefix) params.set('prefix', state.prefix);
+    if (state.prefixQ) params.set('prefix_q', state.prefixQ);
     const data = await api(`/api/docs/semantic?${params}`);
     if (seq !== state.seq) return;
     state.semantic = new Map(data.hits.map((hit) => [hit.prefix, hit]));
@@ -493,16 +503,23 @@ function markDirty() {
 }
 
 function bind() {
-  $('docs-search').addEventListener('input', () => {
-    clearTimeout(state.timer);
-    state.timer = setTimeout(runSearch, DEBOUNCE_MS);
-  });
+  for (const id of ['docs-search', 'docs-prefix-q']) {
+    $(id).addEventListener('input', () => {
+      clearTimeout(state.timer);
+      state.timer = setTimeout(runSearch, DEBOUNCE_MS);
+    });
+  }
   $('docs-search-clear').addEventListener('click', () => {
     $('docs-search').value = '';
+    $('docs-prefix-q').value = '';
     state.q = '';
+    state.prefixQ = '';
+    state.searching = false;
     state.hits = new Map();
+    state.semantic = new Map();
     $('docs-search-clear').hidden = true;
     renderList();
+    setStatus(`cleared · ${state.all.length} docs`);
     $('docs-search').focus();
   });
   $('docs-view-tree').addEventListener('click', () => setView('tree'));
@@ -522,8 +539,8 @@ function bind() {
   });
   document.addEventListener('keydown', (e) => {
     if (document.body.dataset.view !== 'docs') return;
-    if (e.key === 'Escape' && document.activeElement === $('docs-search')) {
-      $('docs-search').value = '';
+    if (e.key === 'Escape'
+      && (document.activeElement === $('docs-search') || document.activeElement === $('docs-prefix-q'))) {
       $('docs-search-clear').click();
     }
   });

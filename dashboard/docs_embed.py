@@ -287,7 +287,7 @@ def wait_idle(timeout=30):
 # ---------------------------------------------------------------- search
 
 
-def search(query, prefix=None, limit=50, conn=None):
+def search(query, prefix=None, prefix_q=None, limit=50, conn=None):
     """Cosine-rank chunks of the active model; best chunk per doc wins."""
     query = (query or "").strip()
     if not query:
@@ -302,6 +302,10 @@ def search(query, prefix=None, limit=50, conn=None):
             clauses.append("(d.prefix = ? OR d.prefix LIKE ? ESCAPE '\\')")
             escaped = prefix.replace("%", chr(92) + "%").replace("_", chr(92) + "_")
             args.extend([prefix, f"{escaped}/%"])
+        if prefix_q:
+            escaped = prefix_q.replace("%", chr(92) + "%").replace("_", chr(92) + "_")
+            clauses.append("d.prefix LIKE ? ESCAPE '\\'")
+            args.append(f"%{escaped}%")
         rows = conn.execute(
             "SELECT e.doc_id, e.vector, e.text, d.prefix, d.author, d.tags, d.updated_at,"
             " length(d.content) AS size"

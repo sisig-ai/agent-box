@@ -82,3 +82,30 @@ def test_mcp_tool_reads_the_log(client):
         for entry in result["entries"]
     )
     assert result["tools"]
+
+
+def test_mcp_prefix_search(client):
+    def rpc_tool(name, arguments):
+        payload = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {"name": name, "arguments": arguments},
+        }
+        return client.post("/mcp", json=payload).get_json()["result"]
+
+    for prefix in ("handoffs/card-1.md", "specs/card-1-spec.md", "notes/other.md"):
+        client.put(f"/api/docs/{prefix}", json={"content": "alpha beta"})
+
+    only_prefix = rpc_tool("search_docs", {"prefix_q": "card-1"})["structuredContent"]
+    assert {hit["prefix"] for hit in only_prefix["hits"]} == {
+        "handoffs/card-1.md",
+        "specs/card-1-spec.md",
+    }
+
+    both = rpc_tool("search_docs", {"q": "alpha", "prefix_q": "specs/"})["structuredContent"]
+    assert [hit["prefix"] for hit in both["hits"]] == ["specs/card-1-spec.md"]
+
+    missing = rpc_tool("search_docs", {})
+    assert missing["isError"] is True
+    assert "prefix_q" in missing["content"][0]["text"]

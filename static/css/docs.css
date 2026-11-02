@@ -45,6 +45,8 @@
   width: 15rem;
   max-width: 45vw;
 }
+.docs-searchbox input#docs-prefix-q { width: 10rem; max-width: 32vw; }
+.docs-searchbox input#docs-prefix-q:not(:placeholder-shown) { border-color: var(--amber, #ffb000); }
 .docs-searchbox input:focus { outline: none; border-color: var(--amber, #ffb000); }
 .docs-searchbox input.active { border-color: var(--amber, #ffb000); }
 #docs-search-clear {
