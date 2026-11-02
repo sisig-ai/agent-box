@@ -28,6 +28,19 @@ _LATEST_STATS_CACHE = {"sig": None, "snapshot": None}
 _HISTORY_CACHE = {"key": None, "payload": None}
 
 
+POWER_MAX_W = 500  # anything above this is a unit error, never a real reading
+
+
+def _sane_power(value):
+    if value is None:
+        return None
+    try:
+        amount = float(value)
+    except (TypeError, ValueError):
+        return None
+    return amount if 0 <= amount <= POWER_MAX_W else None
+
+
 def record_telemetry_snapshot(cpu_util, temp_c, mem, cpu_w, gpu_w, total_w):
     """Append one per-second row to the telemetry ring buffer (shared sqlite).
 
@@ -52,9 +65,9 @@ def record_telemetry_snapshot(cpu_util, temp_c, mem, cpu_w, gpu_w, total_w):
                     temp_c,
                     mem["used_bytes"] if mem else None,
                     mem["total_bytes"] if mem else None,
-                    cpu_w,
-                    gpu_w,
-                    total_w,
+                    _sane_power(cpu_w),
+                    _sane_power(gpu_w),
+                    _sane_power(total_w),
                 ),
             )
             conn.execute("DELETE FROM telemetry WHERE ts < ?", (ts - config.TELEMETRY_RETENTION_S,))

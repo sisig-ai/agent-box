@@ -88,3 +88,49 @@ def test_mem_math(monkeypatch):
 def test_cpu_util_is_rounded(monkeypatch):
     _patch(monkeypatch, cpu=12.34)
     assert snapshot({})["cpu"]["util_percent"] == 12.3
+
+
+def test_ioreport_milliwatt_spike_is_scaled(monkeypatch):
+    """macmon sometimes reports IOReport channels in mW: 20654 -> 20.65 W."""
+    _patch(monkeypatch)
+    out = snapshot({"cpu_power": 20654.14, "gpu_power": 0.77, "all_power": 21006.79, "temp": {}})
+    assert out["power"]["total_w"] == 21.01
+    assert out["power"]["cpu_w"] == 20.65
+    assert out["power"]["source"] == "Apple IOReport"
+
+
+def test_absurd_power_is_dropped_not_shown(monkeypatch):
+    _patch(monkeypatch)
+    out = snapshot({"sys_power": 900000, "cpu_power": 750000, "temp": {}})
+    assert out["power"]["total_w"] is None
+    assert out["power"]["cpu_w"] is None
+
+
+def test_store_boundary_drops_out_of_range_power(monkeypatch):
+    from dashboard import telemetry_store
+
+    written = {}
+
+    class FakeConn:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def execute(self, sql, params=None):
+            if sql.strip().startswith("INSERT"):
+                written["row"] = params
+            return None
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(telemetry_store.db, "connect", lambda: FakeConn())
+    monkeypatch.setattr(telemetry_store, "_TELE_LAST_WRITE", {"t": 0.0})
+    telemetry_store.record_telemetry_snapshot(
+        10.0, 40.0, {"used_bytes": 1, "total_bytes": 2}, 18000.0, 0.5, 18843.66
+    )
+    row = written["row"]
+    assert row[5] is None and row[7] is None  # cpu_w, total_w
+    assert row[6] == 0.5                      # gpu stays

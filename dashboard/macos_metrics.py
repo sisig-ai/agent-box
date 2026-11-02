@@ -5,6 +5,25 @@ from datetime import datetime
 
 import psutil
 
+# A Mac mini cannot draw anything close to this. Values above it are unit
+# errors: macmon's IOReport channels occasionally report milliwatts, which
+# turned a 20.6 W sample into a 20654 W spike (and a bogus 18.8 kW alert).
+POWER_MAX_W = 500
+
+
+def watts(value, *, minimum=0.01):
+    """Plausible watts from a macmon field, or None.
+
+    > POWER_MAX_W is treated as milliwatts and scaled down; anything still above
+    the cap is dropped rather than shown.
+    """
+    amount = finite(value, minimum=minimum)
+    if amount is None:
+        return None
+    if amount > POWER_MAX_W:
+        amount /= 1000
+    return amount if amount <= POWER_MAX_W else None
+
 
 def finite(value, *, minimum=0):
     if isinstance(value, (int, float)) and math.isfinite(value) and value >= minimum:
@@ -17,11 +36,11 @@ def snapshot(sample):
     temp = finite(sample.get("temp", {}).get("cpu_temp_avg"), minimum=1)
     # SMC system power covers the Mac itself. Some macOS releases do not expose
     # CPU energy channels through IOReport; do not turn that absence into 0 W.
-    system = finite(sample.get("sys_power"), minimum=0.01)
-    cpu = finite(sample.get("cpu_power"), minimum=0.001)
-    gpu = finite(sample.get("gpu_power")) if cpu is not None else None
-    ane = finite(sample.get("ane_power")) if cpu is not None else None
-    soc = finite(sample.get("all_power"), minimum=0.01)
+    system = watts(sample.get("sys_power"))
+    cpu = watts(sample.get("cpu_power"), minimum=0.001)
+    gpu = watts(sample.get("gpu_power")) if cpu is not None else None
+    ane = watts(sample.get("ane_power")) if cpu is not None else None
+    soc = watts(sample.get("all_power"))
     total = system if system is not None else soc
     source = "Apple SMC" if system is not None else "Apple IOReport"
     note = (
