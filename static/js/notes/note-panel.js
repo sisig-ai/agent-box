@@ -133,7 +133,7 @@ export function makeNotePanel(cfg) {
     scheduleSave();
   }
 
-  function linePrefix(prefix, placeholder = '') {
+  function linePrefix(prefix) {
     const start = editor.selectionStart;
     const lineStart = editor.value.lastIndexOf('\n', start - 1) + 1;
     editor.setRangeText(prefix, lineStart, lineStart, 'end');

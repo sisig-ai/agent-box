@@ -38,4 +38,3 @@ def test_entry_points_are_no_cache(client):
 
 def test_unknown_api_is_404(client):
     assert client.get("/api/does-not-exist").status_code == 404
-

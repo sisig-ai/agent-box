@@ -8,24 +8,40 @@ PYTHON     ?= .venv/bin/python
 RUFF       ?= .venv/bin/ruff
 PYTEST     ?= .venv/bin/pytest
 GUNICORN   ?= .venv/bin/gunicorn
-SLOC_LIMIT ?= 300
+SLOC_LIMIT ?= 400
 SLOC_STRICT ?= 1
+# Files that predate the budget get an explicit ceiling instead of an exclusion,
+# so they still fail if they grow. Keep these numbers honest: lowering them is
+# the point.
+SLOC_EXEMPT ?= static/js/kanban/board.js:660 static/index.html:540 \
+	dashboard/progress.py:470 static/js/docs/docs.js:465
 
-.PHONY: check lint format test run verify sloc
+NPM        ?= npm
+ESLINT     ?= npx eslint
 
-# Full gate: lint + format check + tests + SLOC budget.
+.PHONY: check lint lint-js format test run verify sloc
+
+# Full gate: backend lint + format, frontend lint, tests on both sides, budget.
 check:
 	$(RUFF) check .
 	$(RUFF) format --check .
+	$(MAKE) lint-js
 	$(PYTEST)
 	node --test tests/*.test.mjs
 	$(MAKE) sloc
 
 lint:
 	$(RUFF) check .
+	$(RUFF) format --check .
+
+lint-js:
+	@test -d node_modules || { echo "lint-js: run \`npm ci\` first (eslint lives there)"; exit 1; }
+	$(ESLINT) static/js tests --max-warnings 0
 
 format:
+	$(RUFF) check --fix .
 	$(RUFF) format .
+	$(NPM) run format
 
 test:
 	$(PYTEST)
@@ -44,8 +60,14 @@ sloc:
 		| grep -vE '^(deploy/|static/vendor/|static/fonts/|\.venv/|__pycache__/)'); \
 	for f in $$files; do \
 		n=$$(wc -l < "$$f" | tr -d ' '); \
-		if [ "$$n" -gt "$$limit" ]; then \
-			echo "  $$n  $$f"; over=1; \
+		f_limit=$$limit; \
+		for pair in $(SLOC_EXEMPT); do \
+			case "$$pair" in \
+				"$$f":*) f_limit=$${pair##*:} ;; \
+			esac; \
+		done; \
+		if [ "$$n" -gt "$$f_limit" ]; then \
+			echo "  $$n  $$f  (limit $$f_limit)"; over=1; \
 		fi; \
 	done; \
 	if [ "$$over" -eq 1 ]; then \

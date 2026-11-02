@@ -59,7 +59,7 @@ export function paint(screen, term, alive, text, cx, cy) {
     if (cy >= 0 && cy < lines.length) {
       const rawLines = text.split('\n');
       const raw = rawLines[cy] || '';
-      let cells = 0, idx = 0, inEsc = false;
+      let cells = 0, idx = 0;
       while (idx < raw.length && cells < cx) {
         if (raw[idx] === '\x1b') {
           const m = raw.slice(idx).match(/^\x1b\[[0-9;?]*[A-Za-z]/) ||

@@ -8,7 +8,6 @@ const $ = (id) => document.getElementById(id);
 const DEBOUNCE_MS = 180;
 const SEARCH_MIN = 2;
 const LIST_LIMIT = 200;
-const HIT = '\x01';
 
 const SCOPE_KEY = 'docs.prefix';
 const TREE_KEY = 'docs.collapsed';

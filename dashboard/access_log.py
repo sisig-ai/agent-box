@@ -176,8 +176,7 @@ def _append_line(entry):
 def _prune_db(conn):
     """Drop table rows older than the retention window."""
     conn.execute(
-        "DELETE FROM mcp_access_log"
-        " WHERE julianday(ts) < julianday('now', ?)",
+        "DELETE FROM mcp_access_log WHERE julianday(ts) < julianday('now', ?)",
         (f"-{config.MCP_LOG_RETENTION_DAYS} days",),
     )
 

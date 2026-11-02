@@ -4,9 +4,12 @@ data/
 # Python virtualenv (local, not reproducible by commit)
 .venv/
 
-# Python bytecode caches
+# Python bytecode and tool caches
 __pycache__/
 *.pyc
+.pytest_cache/
+.ruff_cache/
+
 
 # macOS Finder metadata
 .DS_Store
@@ -19,3 +22,6 @@ deploy/rehearsal-pids.json
 
 # Rollback copies of the tui skin kept on-host by the design pass
 static/css/*.bak-*
+
+# Node tooling (eslint/prettier) installed per checkout
+node_modules/

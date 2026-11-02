@@ -6,8 +6,12 @@ from dashboard import access_log, config
 
 
 def rpc(client, name, arguments):
-    payload = {"jsonrpc": "2.0", "id": 1, "method": "tools/call",
-               "params": {"name": name, "arguments": arguments}}
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {"name": name, "arguments": arguments},
+    }
     return client.post("/mcp", json=payload).get_json()["result"]
 
 

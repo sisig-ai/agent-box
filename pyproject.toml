@@ -9,7 +9,7 @@ target-version = "py311"
 line-length = 100
 # deploy/*.py is untouched ops tooling (install + rehearsal scripts), so it is
 # excluded from lint/format. Provisional decision for tracker open-question #1.
-exclude = ["deploy"]
+exclude = ["deploy", "node_modules", ".venv"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]

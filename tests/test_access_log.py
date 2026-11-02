@@ -4,8 +4,12 @@ from dashboard import access_log
 
 
 def rpc(client, name, arguments):
-    payload = {"jsonrpc": "2.0", "id": 1, "method": "tools/call",
-               "params": {"name": name, "arguments": arguments}}
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {"name": name, "arguments": arguments},
+    }
     return client.post("/mcp", json=payload).get_json()["result"]
 
 
@@ -73,6 +77,8 @@ def test_table_is_capped(client, monkeypatch):
 def test_mcp_tool_reads_the_log(client):
     rpc(client, "put_doc", {"prefix": "mcp-log.md", "content": "x"})
     result = rpc(client, "list_access_logs", {"limit": 5})["structuredContent"]
-    assert any(entry["tool"] == "put_doc" and entry["entity"] == "mcp-log.md"
-               for entry in result["entries"])
+    assert any(
+        entry["tool"] == "put_doc" and entry["entity"] == "mcp-log.md"
+        for entry in result["entries"]
+    )
     assert result["tools"]

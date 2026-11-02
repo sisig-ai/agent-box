@@ -2,10 +2,11 @@
   "name": "agent-box",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "All-in-one dashboard for agents and humans to collaborate on work.",
   "scripts": {
-    "lint": "eslint static/js tests --ext .js,.mjs && prettier --check \"static/**/*.{css,html}\" \"static/js/**/*.js\"",
-    "format": "prettier --write \"static/**/*.{css,html}\" \"static/js/**/*.js\"",
+    "lint": "eslint static/js tests --max-warnings 0",
+    "format": "eslint static/js tests --fix && prettier --write \"static/**/*.{css,html}\" \"static/js/**/*.js\"",
     "test:js": "node --test tests/*.test.mjs"
   },
   "devDependencies": {

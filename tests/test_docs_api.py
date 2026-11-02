@@ -128,8 +128,12 @@ def test_index_follows_updates_and_deletes(client):
 
 def test_mcp_docs_round_trip(client):
     def call(name, arguments, id=1):
-        payload = {"jsonrpc": "2.0", "id": id, "method": "tools/call",
-                   "params": {"name": name, "arguments": arguments}}
+        payload = {
+            "jsonrpc": "2.0",
+            "id": id,
+            "method": "tools/call",
+            "params": {"name": name, "arguments": arguments},
+        }
         return client.post("/mcp", json=payload).get_json()["result"]
 
     created = call(
@@ -144,9 +148,9 @@ def test_mcp_docs_round_trip(client):
     hits = call("search_docs", {"q": "gamma"})["structuredContent"]["hits"]
     assert hits[0]["prefix"] == "mcp/handoff.md"
 
-    patched = call(
-        "patch_doc", {"prefix": "mcp/handoff.md", "tags": ["y", "z"]}
-    )["structuredContent"]
+    patched = call("patch_doc", {"prefix": "mcp/handoff.md", "tags": ["y", "z"]})[
+        "structuredContent"
+    ]
     assert patched["tags"] == ["y", "z"]
     assert patched["revision"] == 2
 

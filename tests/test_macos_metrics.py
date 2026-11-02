@@ -133,4 +133,4 @@ def test_store_boundary_drops_out_of_range_power(monkeypatch):
     )
     row = written["row"]
     assert row[5] is None and row[7] is None  # cpu_w, total_w
-    assert row[6] == 0.5                      # gpu stays
+    assert row[6] == 0.5  # gpu stays

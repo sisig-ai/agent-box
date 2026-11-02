@@ -14,12 +14,14 @@ def fake_vectors(texts):
     out = []
     for text in texts:
         low = text.lower()
-        out.append([
-            1.0 if "tuya" in low else 0.0,
-            1.0 if "tapo" in low else 0.0,
-            1.0 if "handoff" in low else 0.0,
-            0.5 if "camera" in low else 0.0,
-        ])
+        out.append(
+            [
+                1.0 if "tuya" in low else 0.0,
+                1.0 if "tapo" in low else 0.0,
+                1.0 if "handoff" in low else 0.0,
+                0.5 if "camera" in low else 0.0,
+            ]
+        )
     return out
 
 
@@ -130,8 +132,12 @@ def test_index_status(client):
 
 def test_mcp_semantic_and_reindex(client):
     def call(name, arguments):
-        payload = {"jsonrpc": "2.0", "id": 1, "method": "tools/call",
-                   "params": {"name": name, "arguments": arguments}}
+        payload = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {"name": name, "arguments": arguments},
+        }
         return client.post("/mcp", json=payload).get_json()["result"]
 
     docs.put("mcp/one.md", content="tuya devices on the lan")

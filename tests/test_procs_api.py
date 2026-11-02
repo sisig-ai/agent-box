@@ -17,8 +17,17 @@ def test_list_shape_and_sort(client):
     keys = [p["rss_bytes"] for p in data["procs"]]
     assert keys == sorted(keys, reverse=True)
     row = data["procs"][0]
-    assert {"pid", "name", "cmdline", "rss_bytes", "cpu_percent", "mem_percent",
-            "user", "status", "protected"} <= set(row)
+    assert {
+        "pid",
+        "name",
+        "cmdline",
+        "rss_bytes",
+        "cpu_percent",
+        "mem_percent",
+        "user",
+        "status",
+        "protected",
+    } <= set(row)
 
 
 def test_cpu_sort_and_own_pid(client):

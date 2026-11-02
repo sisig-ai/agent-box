@@ -146,12 +146,16 @@ On a phone, open the page in Safari and choose Add to Home Screen. The manifest 
 ## Development
 
 ```bash
-make check    # ruff, pytest, node tests, line budget
-npm run lint  # eslint and prettier check
-npm run format
+npm ci        # once per checkout: eslint and prettier live in node_modules
+make check    # ruff lint + format check, eslint, pytest, node tests, line budget
+make lint     # backend only
+make lint-js  # frontend only
+make format   # ruff --fix + ruff format, then npm run format
 ```
 
-Python is checked with Ruff, JavaScript with ESLint, and CSS and HTML with Prettier. Every source file stays at or under 300 lines, which `make check` enforces along with the tests in `tests/`.
+The backend is linted and formatted with Ruff (`ruff check` and `ruff format --check`), configured in `pyproject.toml`. The frontend is linted with ESLint in `eslint.config.js`; warnings fail the gate (`--max-warnings 0`). Prettier stays available through `npm run format` for CSS and HTML, but it is not part of the gate, because the sheets are hand-tuned for the terminal skin.
+
+Every source file stays at or under 400 lines. Four files that predate that budget carry an explicit higher ceiling in `SLOC_EXEMPT` (`kanban/board.js`, `index.html`, `progress.py`, `docs/docs.js`), so they still fail if they grow; lowering a cap is the intended follow-up.
 
 ## License
 

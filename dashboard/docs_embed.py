@@ -84,7 +84,7 @@ def chunk(text):
     chunks, current = [], ""
     for paragraph in paragraphs:
         while len(paragraph) > CHUNK_CHARS:
-            head, paragraph = paragraph[:CHUNK_CHARS], paragraph[CHUNK_CHARS - CHUNK_OVERLAP:]
+            head, paragraph = paragraph[:CHUNK_CHARS], paragraph[CHUNK_CHARS - CHUNK_OVERLAP :]
             if current:
                 chunks.append(current)
                 current = ""

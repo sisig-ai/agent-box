@@ -103,17 +103,21 @@ def procs_list():
 
     rows, _protected_pids = process_rows()
     field = SORTS[sort_key]
-    rows.sort(key=lambda row: row["name"].lower() if field == "name" else row[field],
-              reverse=order == "desc")
-    return jsonify({
-        "t": datetime.now().astimezone().isoformat(timespec="seconds"),
-        "sort": sort_key,
-        "order": order,
-        "total": len(rows),
-        "count": min(len(rows), limit),
-        "cpu_sample_s": CPU_SAMPLE_S,
-        "procs": rows[:limit],
-    })
+    rows.sort(
+        key=lambda row: row["name"].lower() if field == "name" else row[field],
+        reverse=order == "desc",
+    )
+    return jsonify(
+        {
+            "t": datetime.now().astimezone().isoformat(timespec="seconds"),
+            "sort": sort_key,
+            "order": order,
+            "total": len(rows),
+            "count": min(len(rows), limit),
+            "cpu_sample_s": CPU_SAMPLE_S,
+            "procs": rows[:limit],
+        }
+    )
 
 
 @bp.post("/api/procs/<int:pid>/signal")
@@ -125,9 +129,11 @@ def procs_signal(pid):
     if sig_name not in SIGNALS:
         return jsonify({"error": "signal must be TERM or KILL"}), 400
     if pid in _protected():
-        return jsonify({
-            "error": f"refusing to signal pid {pid}: init or part of the dashboard",
-        }), 403
+        return jsonify(
+            {
+                "error": f"refusing to signal pid {pid}: init or part of the dashboard",
+            }
+        ), 403
     try:
         proc = psutil.Process(pid)
     except psutil.NoSuchProcess:
@@ -141,7 +147,9 @@ def procs_signal(pid):
     except psutil.NoSuchProcess:
         return jsonify({"error": f"no process with pid {pid}"}), 404
     except psutil.AccessDenied:
-        return jsonify({
-            "error": f"permission denied for pid {pid} ({name}); it runs as another user",
-        }), 403
+        return jsonify(
+            {
+                "error": f"permission denied for pid {pid} ({name}); it runs as another user",
+            }
+        ), 403
     return jsonify({"pid": pid, "name": name, "signal": sig_name, "sent": True})

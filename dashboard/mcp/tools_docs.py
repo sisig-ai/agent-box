@@ -195,7 +195,7 @@ TOOLS = {
             "search_docs",
             "Search Docs",
             "Full-text search across prefix, content, tags and author. Terms are "
-            "prefix-matched, -word excludes, \"two words\" is an exact phrase. Hits "
+            'prefix-matched, -word excludes, "two words" is an exact phrase. Hits '
             "carry a snippet with \\u0001…\\u0002 around the match.",
             {
                 "q": {"type": "string", "description": "Search terms."},
