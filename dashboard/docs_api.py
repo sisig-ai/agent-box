@@ -10,8 +10,9 @@ No auth: local stack, exposed only over the tailnet.
 
 from flask import Blueprint, jsonify, request
 
-from . import docs
+from . import docs, docs_embed
 from .docs import DocsError
+from .docs_embed import EmbedError
 
 bp = Blueprint("docs", __name__)
 
@@ -52,6 +53,44 @@ def docs_search():
             limit=docs.clean_limit(request.args.get("limit")),
         )
     )
+
+
+@bp.get("/api/docs/semantic")
+def docs_semantic():
+    """GET /api/docs/semantic?q=...&prefix=...&limit=N — cosine over local vectors."""
+    try:
+        result = docs_embed.search(
+            request.args.get("q", ""),
+            prefix=(
+                docs.clean_prefix(request.args["prefix"]) if request.args.get("prefix") else None
+            ),
+            limit=docs.clean_limit(request.args.get("limit"), default=10),
+        )
+    except EmbedError as exc:
+        return jsonify({"error": str(exc), "available": False}), 503
+    return jsonify(result)
+
+
+@bp.get("/api/docs/index")
+def docs_index_status():
+    """How much of the corpus carries vectors for the configured model."""
+    total = docs.listing(limit=1)["total"]
+    return jsonify(
+        {
+            "model": docs_embed.config.EMBED_MODEL,
+            "ollama": docs_embed.config.OLLAMA_URL,
+            "pending": docs_embed.pending_count(),
+            "total": total,
+            "available": True,
+        }
+    )
+
+
+@bp.post("/api/docs/reindex")
+def docs_reindex():
+    """Queue every doc whose vectors are missing, stale, or from another model."""
+    queued = docs_embed.reindex_all()
+    return jsonify({"queued": queued, "model": docs_embed.config.EMBED_MODEL})
 
 
 @bp.get("/api/docs/<path:prefix>")

@@ -99,6 +99,8 @@ def test_tools_list_covers_board_comments_lanes_and_notes(client):
         "list_docs",
         "search_docs",
         "delete_doc",
+        "semantic_search_docs",
+        "reindex_docs",
     }
     for tool in tools:
         assert tool["description"]

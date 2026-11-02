@@ -14,6 +14,8 @@ const state = {
   started: false,
   docs: [],
   hits: new Map(),
+  semantic: new Map(),
+  semanticNote: '',
   q: '',
   prefix: '',
   current: null, // {prefix, author, tags, content, created_at, updated_at, revision} or null (new)
@@ -68,11 +70,42 @@ function marked(text) {
   return frag;
 }
 
+function docRow(doc, kind) {
+  const item = el('li', `docs-item${kind === 'semantic' ? ' is-semantic' : ''}`);
+  item.dataset.prefix = doc.prefix;
+  if (state.current && state.current.prefix === doc.prefix) item.classList.add('selected');
+  const head = el('div', 'docs-item-head');
+  const name = el('span', 'docs-item-name');
+  name.append(marked(doc.prefix_snip || doc.prefix));
+  head.append(name);
+  if (kind === 'semantic' && typeof doc.score === 'number') {
+    head.append(el('span', 'docs-score', doc.score.toFixed(2)));
+  }
+  item.append(head);
+  const snippet = doc.snippet || doc.excerpt;
+  if (snippet) {
+    const snip = el('p', 'docs-item-snip');
+    snip.append(marked(snippet));
+    item.append(snip);
+  }
+  const meta = el('div', 'docs-item-meta');
+  meta.append(el('span', '', doc.author ? `@${doc.author}` : '—'));
+  meta.append(el('span', '', fmtTime(doc.updated_at)));
+  if (doc.tags && doc.tags.length) meta.append(el('span', 'docs-item-tags', tagLabel(doc.tags)));
+  else if (doc.size) meta.append(el('span', '', `${doc.size}b`));
+  item.append(meta);
+  item.addEventListener('click', () => selectDoc(doc.prefix));
+  return item;
+}
+
 function renderList() {
   const list = $('docs-list');
   const searching = state.hits.size > 0 || (state.q.length >= SEARCH_MIN && state.q);
   const rows = searching ? [...state.hits.values()] : state.docs;
-  list.replaceChildren(...rows.map((doc) => {
+  const semantic = searching
+    ? [...state.semantic.values()].filter((hit) => !state.hits.has(hit.prefix))
+    : [];
+  const nodes = rows.map((doc) => {
     const item = el('li', 'docs-item');
     item.dataset.prefix = doc.prefix;
     if (state.current && state.current.prefix === doc.prefix) item.classList.add('selected');
@@ -92,16 +125,26 @@ function renderList() {
     if (doc.tags && doc.tags.length) meta.append(el('span', 'docs-item-tags', tagLabel(doc.tags)));
     else if (doc.size) meta.append(el('span', '', `${doc.size}b`));
     item.append(meta);
-    item.addEventListener('click', () => selectDoc(doc.prefix));
-    return item;
-  }));
-  $('docs-empty-list').hidden = rows.length > 0;
+    return docRow(doc, 'fts');
+  });
+  if (searching && (semantic.length || state.semanticNote)) {
+    nodes.push(el('li', 'docs-divider', `semantic${semantic.length ? ` · ${semantic.length}` : ''}`));
+    if (state.semanticNote) {
+      nodes.push(el('li', 'docs-divider-note', state.semanticNote));
+    }
+    nodes.push(...semantic.map((doc) => docRow(doc, 'semantic')));
+  }
+  list.replaceChildren(...nodes);
+  $('docs-empty-list').hidden = rows.length + semantic.length > 0;
   const docs = state.docs.length;
   $('docs-count').textContent = searching
-    ? `${rows.length} match${rows.length === 1 ? '' : 'es'} · ${docs} doc${docs === 1 ? '' : 's'}`
+    ? `${rows.length} exact${semantic.length ? ` · ${semantic.length} semantic` : ''}`
+      + ` · ${docs} doc${docs === 1 ? '' : 's'}`
     : `${docs} doc${docs === 1 ? '' : 's'}`
       + (state.prefix ? ` under ${state.prefix}` : '');
-  $('docs-empty-list').textContent = searching ? `no docs match “${state.q}”` : 'no docs yet';
+  $('docs-empty-list').textContent = searching
+    ? `no exact matches for “${state.q}”`
+    : 'no docs yet';
 }
 
 function renderPrefixes(prefixes) {
@@ -144,9 +187,13 @@ async function runSearch() {
   state.q = q;
   if (q.length < SEARCH_MIN) {
     state.hits = new Map();
+    state.semantic = new Map();
+    state.semanticNote = '';
     renderList();
     return;
   }
+  state.semantic = new Map();
+  state.semanticNote = '';
   const seq = ++state.seq;
   try {
     const params = new URLSearchParams({ q, limit: String(LIST_LIMIT) });
@@ -155,12 +202,36 @@ async function runSearch() {
     if (seq !== state.seq) return;
     state.hits = new Map(data.hits.map((hit) => [hit.prefix, hit]));
     renderList();
-    setStatus(`${data.count} of ${data.total} match`);
+    setStatus(`${data.count} of ${data.total} exact match`);
+    loadSemantic(q, seq);
   } catch (err) {
     if (seq !== state.seq) return;
     state.hits = new Map();
     renderList();
     setStatus(`search failed: ${err.message}`, true);
+  }
+}
+
+// Vector hits arrive after the exact ones and are appended below them.
+async function loadSemantic(q, seq) {
+  try {
+    const params = new URLSearchParams({ q, limit: '10' });
+    if (state.prefix) params.set('prefix', state.prefix);
+    const data = await api(`/api/docs/semantic?${params}`);
+    if (seq !== state.seq) return;
+    state.semantic = new Map(data.hits.map((hit) => [hit.prefix, hit]));
+    state.semanticNote = '';
+    renderList();
+    setStatus(
+      `${state.hits.size} exact · ${data.hits.length} semantic · ${data.took_ms}ms`
+      + (data.pending ? ` · ${data.pending} unindexed` : ''),
+    );
+  } catch (err) {
+    if (seq !== state.seq) return;
+    state.semantic = new Map();
+    state.semanticNote = `semantic unavailable · ${err.message}`;
+    renderList();
+    setStatus(`exact only · ${err.message}`, true);
   }
 }
 

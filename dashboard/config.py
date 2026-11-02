@@ -34,5 +34,11 @@ FS_HOME = env_path("DASH_FS_HOME", Path.home())
 # Env-tunable in MB; an over-limit body surfaces as a clean 413 JSON error.
 MAX_UPLOAD_MB = env_int("DASH_MAX_UPLOAD_MB", 1024)
 
+# Local embeddings for Docs semantic search: an Ollama instance on this box.
+# The model is small (nomic-embed-text is 274 MB, 768-d) and runs offline.
+OLLAMA_URL = os.environ.get("DASH_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
+EMBED_MODEL = os.environ.get("DASH_EMBED_MODEL", "nomic-embed-text")
+EMBED_TIMEOUT_S = env_int("DASH_EMBED_TIMEOUT_S", 60)
+
 # Telemetry ring-buffer window (seconds); /api/stats/history caps here too.
 TELEMETRY_RETENTION_S = 3900

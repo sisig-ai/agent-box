@@ -1,7 +1,8 @@
 """MCP tools: Docs (S3-ish text store keyed by prefix)."""
 
-from .. import docs
+from .. import config, docs, docs_embed
 from ..docs import DocsError
+from ..docs_embed import EmbedError
 from .protocol import ToolError, tool_spec
 
 PREFIX = {
@@ -107,6 +108,30 @@ def search_docs(args):
         raise ToolError(exc.message) from None
 
 
+def semantic_search_docs(args):
+    query = (args.get("q") or "").strip()
+    if not query:
+        raise ToolError("q is required")
+    prefix = args.get("prefix") or None
+    if prefix:
+        try:
+            prefix = docs.clean_prefix(prefix)
+        except DocsError as exc:
+            raise ToolError(exc.message) from None
+    try:
+        return docs_embed.search(
+            query,
+            prefix=prefix,
+            limit=docs.clean_limit(args.get("limit"), default=10),
+        )
+    except EmbedError as exc:
+        raise ToolError(str(exc)) from None
+
+
+def reindex_docs(_args):
+    return {"queued": docs_embed.reindex_all(), "model": config.EMBED_MODEL}
+
+
 def delete_doc(args):
     prefix = args.get("prefix")
     if not prefix:
@@ -184,6 +209,39 @@ TOOLS = {
             read_only=True,
         ),
         "handler": search_docs,
+    },
+    "semantic_search_docs": {
+        "spec": tool_spec(
+            "semantic_search_docs",
+            "Semantic Search Docs",
+            "Meaning-based search over Docs: embeds the query with the local "
+            "Ollama model and cosine-ranks stored chunk vectors, so a hit does not "
+            "need to share words with the query. Best chunk per doc wins, score "
+            "0-1. Use it when exact terms fail; combine with search_docs.",
+            {
+                "q": {"type": "string", "description": "What you are looking for, in plain words."},
+                "prefix": {
+                    **PREFIX,
+                    "description": "Optional path filter (that doc and its descendants).",
+                },
+                "limit": {**LIMIT, "default": 10},
+            },
+            ["q"],
+            read_only=True,
+        ),
+        "handler": semantic_search_docs,
+    },
+    "reindex_docs": {
+        "spec": tool_spec(
+            "reindex_docs",
+            "Reindex Docs",
+            "Queue every doc whose vectors are missing, stale or from another "
+            "embedding model. Runs in the background; indexing happens on each "
+            "write anyway, so this is for backfill and model changes.",
+            {},
+            [],
+        ),
+        "handler": reindex_docs,
     },
     "delete_doc": {
         "spec": tool_spec(

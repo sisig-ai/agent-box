@@ -14,7 +14,7 @@ import json
 import re
 import threading
 
-from . import db
+from . import db, docs_embed
 from .dates import now_iso
 from .kanban_search import MARK_CLOSE, MARK_OPEN, match_expr
 
@@ -230,18 +230,23 @@ def put(prefix, content=None, author=None, tags=None, create_only=False):
                     " VALUES (?, ?, ?, ?, 1, ?, ?)",
                     (prefix, content, author, json.dumps(tags), stamp, stamp),
                 )
-            row = conn.execute("SELECT * FROM doc WHERE id = ?", (cursor.lastrowid,)).fetchone()
-            return _row(row), True
-        if create_only:
-            raise DocsError(f"doc already exists at prefix {prefix}", 409)
-        with conn:
-            conn.execute(
-                "UPDATE doc SET content = ?, author = ?, tags = ?, revision = revision + 1,"
-                " updated_at = ? WHERE id = ?",
-                (content, author, json.dumps(tags), stamp, existing["id"]),
-            )
-        row = conn.execute("SELECT * FROM doc WHERE id = ?", (existing["id"],)).fetchone()
-        return _row(row), False
+            doc_id = cursor.lastrowid
+            created = True
+        else:
+            if create_only:
+                raise DocsError(f"doc already exists at prefix {prefix}", 409)
+            doc_id = existing["id"]
+            with conn:
+                conn.execute(
+                    "UPDATE doc SET content = ?, author = ?, tags = ?,"
+                    " revision = revision + 1, updated_at = ? WHERE id = ?",
+                    (content, author, json.dumps(tags), stamp, doc_id),
+                )
+            created = False
+        row = conn.execute("SELECT * FROM doc WHERE id = ?", (doc_id,)).fetchone()
+    if created or docs_embed.should_index(content, row["embed_hash"], row["embed_model"]):
+        docs_embed.enqueue(doc_id)
+    return _row(row), created
 
 
 def patch(prefix, changes):
@@ -266,6 +271,7 @@ def delete(prefix):
             raise DocsError(f"no doc at prefix {prefix}", 404)
         with conn:
             conn.execute("DELETE FROM doc WHERE id = ?", (row["id"],))
+        docs_embed.drop(row["id"], conn)
     return prefix
 
 

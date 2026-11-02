@@ -191,3 +191,32 @@
   .docs-list { max-height: 34vh; }
   .docs-meta { grid-template-columns: 1fr; }
 }
+
+.docs-item.is-semantic { border-left: 2px solid var(--amber, #ffb000); }
+.docs-score {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  color: var(--amber, #ffb000);
+  margin-left: auto;
+}
+.docs-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--amber, #ffb000);
+  background: var(--tui-head, rgba(255, 255, 255, 0.03));
+  border-top: 1px dotted var(--line, #2b3037);
+  border-bottom: 1px dotted var(--line, #2b3037);
+}
+.docs-divider::after { content: ""; flex: 1; border-top: 1px dotted var(--line, #2b3037); }
+.docs-divider-note {
+  padding: 0.3rem 0.6rem;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--bad, #ff6b5e);
+}
