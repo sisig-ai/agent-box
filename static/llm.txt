@@ -158,8 +158,12 @@ and one prefix per topic so handoffs, specs and research stay addressable.
 
 Every `tools/call` is recorded: timestamp, tool, the entity it touched (doc
 prefix, card id, lane id, bar id, sitrep date, schedule week), whether it
-succeeded, how long it took, and a trimmed argument summary. The table keeps the
-newest 20,000 rows and drops the oldest on write, so it is a recent-activity
+succeeded, how long it took, and a trimmed argument summary.
+
+The log rotates daily: one JSON-lines file per day under `data/logs/`
+(`access-YYYY-MM-DD.log`), and anything older than 7 days is deleted from both
+the files and the `mcp_access_log` table on the next write or read. The table
+also keeps a 20,000-row hard cap as a burst guard, so it is a recent-activity
 view, not an archive.
 
 | Tool | What it does |
@@ -185,7 +189,7 @@ view, not an archive.
 - Files (host FS rooted at `~`): `GET /api/fs/list|stat|read|download`, `PUT /api/fs/write`, `POST /api/fs/upload|mkdir|touch|rename`, `DELETE /api/fs?path=…`.
 - Shell (tmux-backed tty in `~`): `POST /api/shell/new|input|key|resize|kill`, `GET /api/shell/pane|list`, and the live websocket at `ws://macmini:5556/ws/shell?id=<sid>`.
 - Docs REST: `GET /api/docs?prefix=&limit=&offset=&content=1`, `GET|PUT|PATCH|DELETE /api/docs/<path:prefix>`, `POST /api/docs` (body carries `prefix`, 409 if taken), `GET /api/docs/search?q=&prefix=`, `GET /api/docs/semantic?q=&prefix=&limit=`, `GET /api/docs/index`, `POST /api/docs/reindex`, `GET /api/docs/prefixes`.
-- MCP access log: `GET /api/logs?limit=&tool=&entity=&ok=1|0` — every `tools/call`, newest first.
+- MCP access log: `GET /api/logs?limit=&tool=&entity=&ok=1|0` — every `tools/call`, newest first, plus `retention_days` and the retained daily files; `POST /api/logs/rotate` forces a new day file and sweeps the window. Files live in `data/logs/access-YYYY-MM-DD.log`, one JSON object per line, 7-day retention.
 - Page tabs: `#/brief` (Daily Sitrep), `#/` (Stack), `#/files`, `#/shell`, `#/kanban` (Ops Board), `#/progress` (Progress Bars), `#/docs` (Docs), `#/logs` (Access Logs).
 
 ## Raw REST API (legacy — same data as the MCP tools)

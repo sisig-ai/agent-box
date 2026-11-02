@@ -2,22 +2,43 @@
 
 Every invocation is recorded with its timestamp, tool name, the entity it
 touched (doc prefix, card id, lane, bar, date, week), whether it succeeded, how
-long it took, and a trimmed argument summary. The table is capped: the oldest
-rows fall off once it passes ``MAX_ROWS`` so the log cannot grow without bound.
+long it took, and a trimmed argument summary.
+
+Storage is two copies of the same data: a rotated daily file
+(``data/logs/access-YYYY-MM-DD.log``, one JSON object per line) and the
+``mcp_access_log`` table that the page reads. Both keep
+``config.MCP_LOG_RETENTION_DAYS`` days (7 by default): the writer starts a new
+file at midnight and deletes whole files past the window, and the table is
+pruned by timestamp on the same schedule. ``MAX_ROWS`` stays as a hard cap so
+an extreme burst cannot fill the disk between sweeps.
 """
 
+import contextlib
+import json
 import threading
+from datetime import datetime, timedelta
 
-from . import db
-from .dates import now_iso
+from . import config, db
+from .dates import now_iso, today_str
 
 MAX_ROWS = 20_000
 SUMMARY_MAX = 240
 VALUE_MAX = 80
 _DELETE_EVERY = 250
+_PRUNE_EVERY = 50
 
 _LOCK = threading.Lock()
 _WRITES = {"n": 0}
+_FILE = {"day": None, "handle": None}
+
+
+def _today():
+    """Indirection so tests can move the clock without freezing the process."""
+    return today_str()
+
+
+def log_path(day):
+    return config.MCP_LOG_DIR / f"access-{day}.log"
 
 
 class LogError(Exception):
@@ -115,8 +136,85 @@ def summarise(arguments):
     return text[:SUMMARY_MAX]
 
 
+def _close_file():
+    handle = _FILE.get("handle")
+    _FILE["handle"] = None
+    _FILE["day"] = None
+    if handle is not None:
+        with contextlib.suppress(OSError):
+            handle.close()
+
+
+def _rotate_files(day):
+    """Start a new daily file and delete whole files outside the retention window."""
+    cutoff = datetime.strptime(day, "%Y-%m-%d") - timedelta(days=config.MCP_LOG_RETENTION_DAYS)
+    config.MCP_LOG_DIR.mkdir(parents=True, exist_ok=True)
+    for path in config.MCP_LOG_DIR.glob("access-*.log"):
+        stamp = path.stem.removeprefix("access-")
+        try:
+            too_old = datetime.strptime(stamp, "%Y-%m-%d") < cutoff
+        except ValueError:
+            continue
+        if too_old:
+            with contextlib.suppress(OSError):
+                path.unlink()
+    _close_file()
+    # Long-lived handle: opened once per day and closed on the next rotation.
+    _FILE["handle"] = open(log_path(day), "a", encoding="utf-8")  # noqa: SIM115
+    _FILE["day"] = day
+
+
+def _append_line(entry):
+    """Append one JSON line to today's file, rotating when the day changes."""
+    day = _today()
+    if _FILE["day"] != day or _FILE["handle"] is None:
+        _rotate_files(day)
+    _FILE["handle"].write(json.dumps(entry, ensure_ascii=False) + "\n")
+    _FILE["handle"].flush()
+
+
+def _prune_db(conn):
+    """Drop table rows older than the retention window."""
+    conn.execute(
+        "DELETE FROM mcp_access_log"
+        " WHERE julianday(ts) < julianday('now', ?)",
+        (f"-{config.MCP_LOG_RETENTION_DAYS} days",),
+    )
+
+
+def rotate():
+    """Force a new daily file and sweep the old ones (called at day change and by the API)."""
+    day = _today()
+    with _LOCK:
+        _rotate_files(day)
+    return {"day": day, "retention_days": config.MCP_LOG_RETENTION_DAYS}
+
+
+def files():
+    """The retained daily files, newest first, with their line counts."""
+    out = []
+    for path in sorted(config.MCP_LOG_DIR.glob("access-*.log"), reverse=True):
+        try:
+            size = path.stat().st_size
+        except OSError:
+            continue
+        out.append({"name": path.name, "day": path.stem.removeprefix("access-"), "bytes": size})
+    return out
+
+
 def record(tool, arguments=None, ok=True, ms=0, error=None):
     """Append one access-log row. Never raises: logging must not fail a tool call."""
+    entry = {
+        "ts": now_iso(),
+        "tool": str(tool)[:120],
+        "entity": entity_for(tool, arguments),
+        "ok": 1 if ok else 0,
+        "ms": max(0, int(ms)),
+        "args": summarise(arguments),
+        "error": (str(error)[:300] if error else None),
+    }
+    with contextlib.suppress(OSError), _LOCK:
+        _append_line(entry)
     try:
         conn = db.get_db()
         with _LOCK:
@@ -125,18 +223,21 @@ def record(tool, arguments=None, ok=True, ms=0, error=None):
                     "INSERT INTO mcp_access_log (ts, tool, entity, ok, ms, args, error)"
                     " VALUES (?, ?, ?, ?, ?, ?, ?)",
                     (
-                        now_iso(),
-                        str(tool)[:120],
-                        entity_for(tool, arguments),
-                        1 if ok else 0,
-                        max(0, int(ms)),
-                        summarise(arguments),
-                        (str(error)[:300] if error else None),
+                        entry["ts"],
+                        entry["tool"],
+                        entry["entity"],
+                        entry["ok"],
+                        entry["ms"],
+                        entry["args"],
+                        entry["error"],
                     ),
                 )
             _WRITES["n"] += 1
-            if _WRITES["n"] % _DELETE_EVERY == 0:
+            should_prune = _WRITES["n"] % _PRUNE_EVERY == 0
+            if _WRITES["n"] % _DELETE_EVERY == 0 or should_prune:
                 with conn:
+                    if should_prune:
+                        _prune_db(conn)
                     conn.execute(
                         "DELETE FROM mcp_access_log WHERE id <="
                         " (SELECT max(id) FROM mcp_access_log) - ?",
@@ -161,6 +262,10 @@ def list_entries(limit=200, tool=None, entity=None, ok=None):
         args.append(1 if ok else 0)
     where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
     conn = db.get_db()
+    # A read is a cheap moment to sweep: retention applies even when no call
+    # has been written since the last visit.
+    with conn:
+        _prune_db(conn)
     rows = conn.execute(
         "SELECT id, ts, tool, entity, ok, ms, args, error FROM mcp_access_log"
         + where
@@ -191,4 +296,6 @@ def list_entries(limit=200, tool=None, entity=None, ok=None):
         "count": len(rows),
         "total": total,
         "tools": tools,
+        "retention_days": config.MCP_LOG_RETENTION_DAYS,
+        "files": files(),
     }

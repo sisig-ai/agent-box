@@ -85,10 +85,13 @@ async function refresh() {
     body.replaceChildren(...data.entries.map(row));
     paintTools(data.tools);
     $('logs-empty').hidden = data.entries.length > 0;
+    const files = (data.files || []).length;
     $('logs-count').textContent =
       `${data.count} row${data.count === 1 ? '' : 's'} · ${data.total} total`
       + (state.tool ? ` · tool ${state.tool}` : '')
-      + (state.ok ? ` · ${state.ok === '1' ? 'ok' : 'errors'}` : '');
+      + (state.ok ? ` · ${state.ok === '1' ? 'ok' : 'errors'}` : '')
+      + ` · ${data.retention_days || 7}d`
+      + (files ? ` · ${files} file${files === 1 ? '' : 's'}` : '');
     setStatus(`synced ${new Date().toLocaleTimeString([], { hour12: false })}`);
     if (atBottom) body.scrollTop = 0;
   } catch (err) {

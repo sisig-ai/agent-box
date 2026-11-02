@@ -42,3 +42,8 @@ EMBED_TIMEOUT_S = env_int("DASH_EMBED_TIMEOUT_S", 60)
 
 # Telemetry ring-buffer window (seconds); /api/stats/history caps here too.
 TELEMETRY_RETENTION_S = 3900
+
+# MCP access log: one file per day under DATA_DIR/logs, and the same window in
+# SQLite for the page. Anything older than this is deleted from both.
+MCP_LOG_DIR = env_path("DASH_MCP_LOG_DIR", DATA_DIR / "logs")
+MCP_LOG_RETENTION_DAYS = env_int("DASH_MCP_LOG_RETENTION_DAYS", 7)

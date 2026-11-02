@@ -36,3 +36,9 @@ def logs_list():
             ok=ok,
         )
     )
+
+
+@bp.post("/api/logs/rotate")
+def logs_rotate():
+    """Force a new daily file and sweep anything past the retention window."""
+    return jsonify(access_log.rotate())

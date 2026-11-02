@@ -13,7 +13,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from dashboard import config, docs_embed, fs_paths, telemetry_store
+from dashboard import access_log, config, docs_embed, fs_paths, telemetry_store
 from dashboard import fs as fs_module
 
 
@@ -32,6 +32,8 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "DATA_DIR", data)
     monkeypatch.setattr(config, "DB_PATH", data / "briefs.db")
     monkeypatch.setattr(config, "FS_HOME", home)
+    monkeypatch.setattr(config, "MCP_LOG_DIR", data / "logs")
+    access_log._close_file()  # the writer handle is process-global
     monkeypatch.setattr(fs_paths, "FS_HOME", home)
     monkeypatch.setattr(fs_module, "FS_HOME", home)
     # Docs embeddings call a local Ollama; tests drive them explicitly instead.
