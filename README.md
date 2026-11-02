@@ -76,7 +76,9 @@ The pattern is that an agent creates a bar when a long job starts and then keeps
 
 ### Docs
 
-Docs is an object store for text, and I use it for the things that outlive a card: handoffs between agents, specs, research notes, and the record of a decision. Every entry is keyed by a slash-separated prefix, which works like a path, so the left column is a file tree rather than a flat list. A doc carries its body, a free-text author, tags, and the usual timestamps, and every write bumps a revision number.
+Docs is an object store for text, and I use it for the things that outlive a card: handoffs between agents, specs, research notes, and the record of a decision. Every entry is keyed by a slash-separated prefix, which works like a path. A doc carries its body, a free-text author, tags, and the usual timestamps, and every write bumps a revision number.
+
+The explorer has two modes. The default is a file tree: folders collapse, and clicking one scopes the list to that path. The flat mode is a single sortable listing, one line per doc, ordered by prefix, last updated or author, with the direction toggled by clicking the column. Both choices persist in the browser.
 
 Search runs twice. The exact pass is SQLite full text over the prefix, the body, the tags and the author, and it renders the moment the query settles, with the matched words highlighted in the snippets. The second pass is semantic: the local Ollama model embeds the query and compares it against stored chunk vectors, and those hits slide in underneath a divider after the exact ones have already landed. A wiring note about relay boards comes back for "smart light switch" that way, even though it shares no words with the question.
 

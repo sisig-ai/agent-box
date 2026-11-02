@@ -11,11 +11,15 @@ const LIST_LIMIT = 200;
 
 const SCOPE_KEY = 'docs.prefix';
 const TREE_KEY = 'docs.collapsed';
+const VIEW_KEY = 'docs.view';
+const SORT_KEY = 'docs.sort';
 
 const state = {
   started: false,
   all: [], // every doc, for the tree
   collapsed: new Set(),
+  view: 'tree', // 'tree' (default) or 'flat'
+  sort: { key: 'updated', dir: -1 },
   docs: [],
   hits: new Map(),
   semantic: new Map(),
@@ -166,6 +170,96 @@ function applyScope() {
   renderList();
 }
 
+function restoreView() {
+  try {
+    const saved = localStorage.getItem(VIEW_KEY);
+    if (saved === 'flat' || saved === 'tree') state.view = saved;
+    const sort = JSON.parse(localStorage.getItem(SORT_KEY) || 'null');
+    if (sort && ['prefix', 'updated', 'author'].includes(sort.key)) {
+      state.sort = { key: sort.key, dir: sort.dir === 1 ? 1 : -1 };
+    }
+  } catch { /* storage blocked */ }
+}
+
+function setView(view) {
+  state.view = view === 'flat' ? 'flat' : 'tree';
+  try { localStorage.setItem(VIEW_KEY, state.view); } catch { /* storage blocked */ }
+  paintView();
+  renderTree();
+  renderList();
+}
+
+function paintView() {
+  const tree = $('docs-view-tree');
+  const flat = $('docs-view-flat');
+  if (!tree || !flat) return;
+  tree.classList.toggle('active', state.view === 'tree');
+  flat.classList.toggle('active', state.view === 'flat');
+  tree.setAttribute('aria-pressed', String(state.view === 'tree'));
+  flat.setAttribute('aria-pressed', String(state.view === 'flat'));
+  $('docs-tree').hidden = state.view !== 'tree';
+  $('docs-tree-empty').hidden = state.view !== 'tree' || state.all.length > 0;
+  // Flat rows need more width than the tree does.
+  $('docs-view').classList.toggle('is-flat', state.view === 'flat');
+}
+
+function setSort(key) {
+  if (state.sort.key === key) state.sort.dir = -state.sort.dir;
+  else state.sort = { key, dir: key === 'updated' ? -1 : 1 };
+  try { localStorage.setItem(SORT_KEY, JSON.stringify(state.sort)); } catch { /* storage blocked */ }
+  renderList();
+}
+
+function sortedDocs(docs) {
+  const { key, dir } = state.sort;
+  const value = (doc) => {
+    if (key === 'prefix') return doc.prefix.toLowerCase();
+    if (key === 'author') return (doc.author || '').toLowerCase();
+    return new Date(doc.updated_at).getTime() || 0;
+  };
+  return docs.slice().sort((a, b) => {
+    const left = value(a);
+    const right = value(b);
+    if (left === right) return a.prefix.localeCompare(b.prefix);
+    return (left < right ? -1 : 1) * dir;
+  });
+}
+
+function sortHeader() {
+  const head = el('li', 'docs-flat-row docs-flat-head');
+  for (const [key, label] of [['prefix', 'prefix'], ['updated', 'updated'], ['author', 'author']]) {
+    const btn = el('button', 'docs-sort', label);
+    btn.classList.toggle('active', state.sort.key === key);
+    if (state.sort.key === key) {
+      btn.append(el('span', 'docs-sort-arrow', state.sort.dir === 1 ? '▲' : '▼'));
+    }
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setSort(key);
+    });
+    const cell = el('span', `docs-flat-cell is-${key}`);
+    cell.append(btn);
+    head.append(cell);
+  }
+  return head;
+}
+
+// One line per doc in flat mode; the columns line up with sortHeader().
+function flatRow(doc) {
+  const row = el('li', 'docs-flat-row');
+  row.dataset.prefix = doc.prefix;
+  if (state.current && state.current.prefix === doc.prefix) row.classList.add('selected');
+  const prefixCell = el('span', 'docs-flat-cell is-prefix');
+  prefixCell.append(el('span', 'docs-flat-prefix', doc.prefix));
+  if (doc.tags && doc.tags.length) prefixCell.append(el('span', 'docs-flat-tags', tagLabel(doc.tags)));
+  row.append(prefixCell);
+  row.append(el('span', 'docs-flat-cell is-updated', fmtTime(doc.updated_at)));
+  row.append(el('span', 'docs-flat-cell is-author', doc.author ? `@${doc.author}` : '—'));
+  row.title = `${doc.prefix}\n${doc.author || 'no author'} · ${fmtTime(doc.updated_at)}`;
+  row.addEventListener('click', () => selectDoc(doc.prefix));
+  return row;
+}
+
 function docRow(doc, kind) {
   const item = el('li', `docs-item${kind === 'semantic' ? ' is-semantic' : ''}`);
   item.dataset.prefix = doc.prefix;
@@ -197,32 +291,17 @@ function docRow(doc, kind) {
 function renderList() {
   const list = $('docs-list');
   const searching = state.hits.size > 0 || (state.q.length >= SEARCH_MIN && state.q);
-  const rows = searching ? [...state.hits.values()] : state.docs;
+  const flat = state.view === 'flat';
+  // Flat mode always lists every doc (sorted); search results take over both views.
+  const base = flat ? sortedDocs(state.all) : state.docs;
+  const rows = searching ? [...state.hits.values()] : base;
   const semantic = searching
     ? [...state.semantic.values()].filter((hit) => !state.hits.has(hit.prefix))
     : [];
-  const nodes = rows.map((doc) => {
-    const item = el('li', 'docs-item');
-    item.dataset.prefix = doc.prefix;
-    if (state.current && state.current.prefix === doc.prefix) item.classList.add('selected');
-    const head = el('div', 'docs-item-head');
-    const name = el('span', 'docs-item-name');
-    name.append(marked(doc.prefix_snip || doc.prefix));
-    head.append(name);
-    item.append(head);
-    if (doc.snippet) {
-      const snip = el('p', 'docs-item-snip');
-      snip.append(marked(doc.snippet));
-      item.append(snip);
-    }
-    const meta = el('div', 'docs-item-meta');
-    meta.append(el('span', '', doc.author ? `@${doc.author}` : '—'));
-    meta.append(el('span', '', fmtTime(doc.updated_at)));
-    if (doc.tags && doc.tags.length) meta.append(el('span', 'docs-item-tags', tagLabel(doc.tags)));
-    else if (doc.size) meta.append(el('span', '', `${doc.size}b`));
-    item.append(meta);
-    return docRow(doc, 'fts');
-  });
+  // Flat mode is a one-line-per-doc listing; search results stay as cards.
+  const nodes = flat && !searching
+    ? [sortHeader(), ...rows.map(flatRow)]
+    : rows.map((doc) => docRow(doc, 'fts'));
   if (searching && (semantic.length || state.semanticNote)) {
     nodes.push(el('li', 'docs-divider', `semantic${semantic.length ? ` · ${semantic.length}` : ''}`));
     if (state.semanticNote) {
@@ -231,17 +310,19 @@ function renderList() {
     nodes.push(...semantic.map((doc) => docRow(doc, 'semantic')));
   }
   list.replaceChildren(...nodes);
-  // The tree already shows every doc, so the flat list only appears when it
-  // adds something: a scoped folder or search results.
-  const listVisible = searching || !!state.prefix;
+  // Tree mode hides the list until it adds something (a scope or search
+  // results); flat mode is the list.
+  const listVisible = flat || searching || !!state.prefix;
   $('docs-list').hidden = !listVisible;
   $('docs-empty-list').hidden = !listVisible || rows.length + semantic.length > 0;
   const docs = state.docs.length;
   $('docs-count').textContent = searching
     ? `${rows.length} exact${semantic.length ? ` · ${semantic.length} semantic` : ''}`
       + ` · ${docs} doc${docs === 1 ? '' : 's'}`
-    : `${docs} doc${docs === 1 ? '' : 's'}`
-      + (state.prefix ? ` under ${state.prefix}` : '');
+    : flat
+      ? `${state.all.length} doc${state.all.length === 1 ? '' : 's'} · sorted by ${state.sort.key}`
+      : `${docs} doc${docs === 1 ? '' : 's'}`
+        + (state.prefix ? ` under ${state.prefix}` : '');
   $('docs-empty-list').textContent = searching
     ? `no exact matches for “${state.q}”`
     : 'no docs yet';
@@ -424,6 +505,8 @@ function bind() {
     renderList();
     $('docs-search').focus();
   });
+  $('docs-view-tree').addEventListener('click', () => setView('tree'));
+  $('docs-view-flat').addEventListener('click', () => setView('flat'));
   $('docs-new').addEventListener('click', startNew);
   $('docs-refresh').addEventListener('click', () => refresh());
   $('doc-save').addEventListener('click', save);
@@ -457,7 +540,9 @@ export function initDocs() {
     const saved = JSON.parse(localStorage.getItem(TREE_KEY) || '[]');
     if (Array.isArray(saved)) state.collapsed = new Set(saved.map(String));
   } catch { /* storage blocked */ }
+  restoreView();
   bind();
+  paintView();
   setEditorVisible(false);
   refresh();
 }

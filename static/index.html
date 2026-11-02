@@ -37,7 +37,7 @@
   <link rel="stylesheet" href="/static/css/ascii-content.css?v=ascii13">
   <link rel="stylesheet" href="/static/css/ascii-board.css?v=ascii13">
   <link rel="stylesheet" href="/static/css/ascii-progress.css?v=progress1">
-  <link rel="stylesheet" href="/static/css/docs.css?v=tree1">
+  <link rel="stylesheet" href="/static/css/docs.css?v=tree2">
   <link rel="stylesheet" href="/static/css/logs.css?v=logs1">
   <link rel="stylesheet" href="/static/css/ascii-attention.css?v=attention8">
   <link rel="stylesheet" href="/static/css/tui.css?v=tui80b">
@@ -386,6 +386,10 @@
         </div>
         <div class="docs-body">
           <div class="docs-list-wrap">
+            <div class="docs-toolbar" role="group" aria-label="Explorer mode">
+              <button class="docs-toggle" id="docs-view-tree" aria-pressed="true" title="Browse by prefix path">[tree]</button>
+              <button class="docs-toggle" id="docs-view-flat" aria-pressed="false" title="One list, sortable by prefix, updated or author">[flat]</button>
+            </div>
             <div class="docs-tree" id="docs-tree" aria-label="Prefix tree"></div>
             <p class="docs-tree-empty" id="docs-tree-empty" hidden>no docs yet</p>
             <ul class="docs-list" id="docs-list"></ul>
@@ -530,6 +534,6 @@
   </div>
 
   <script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}))}</script>
-  <script type="module" src="/static/js/main.js?v=logs1"></script>
+  <script type="module" src="/static/js/main.js?v=tree4"></script>
 </body>
 </html>
