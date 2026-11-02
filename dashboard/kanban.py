@@ -59,8 +59,10 @@ def init_schema(conn):
     )
     migrate(conn)
     from .kanban_comments import init_schema as init_comments
+    from .kanban_search import init_schema as init_search
 
     init_comments(conn)
+    init_search(conn)
     conn.execute("CREATE INDEX IF NOT EXISTS kanban_card_lane ON kanban_card (lane_id, position)")
     if not existed:
         stamp = now_iso()

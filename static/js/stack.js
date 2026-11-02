@@ -1,20 +1,11 @@
     /* ================= Icons ================= */
-    const iconEmojis = {
-      plex: '▶', sonarr: '📺', radarr: '🎬', prowlarr: '🔍', deluge: '💧',
-      bazarr: '💬', lidarr: '🎵', readarr: '📚', jellyfin: '🎪', emby: '🎭',
-      tautulli: '📊', overseerr: '✨', ombi: '🎟', transmission: '⚡',
-      qbittorrent: '🔲', sabnzbd: '🚀', nzbget: '📦', flaresolverr: '🔥',
-      clock: '⏰', 'home-assistant': '🏠', search: '🔎', cloudui: '☁',
-      coinsph: '◈', portainer: '🐳', arcane: '🧿', hermes: '🤖',
-      opencode: '⌨'
-    };
-
+    // Text-only monograms: the retro design has no sprite icons.
     function podFor(service) {
-      const keys = [service.icon, service.name].filter(Boolean).map(k => String(k).toLowerCase());
-      for (const key of keys) {
-        if (iconEmojis[key]) return { glyph: iconEmojis[key], mono: false };
-      }
-      return { glyph: service.name.trim().charAt(0).toUpperCase(), mono: true };
+      const words = String(service.name || '?').trim().split(/\s+/);
+      const glyph = words.length > 1
+        ? words.slice(0, 2).map(w => w[0]).join('')
+        : (service.name || '?').trim().slice(0, 2);
+      return { glyph: `[${glyph.toLowerCase()}]`, mono: true };
     }
 
     /* ================= URLs ================= */
@@ -50,7 +41,7 @@
     function tick() {
       const now = new Date();
       document.getElementById('readout-time').textContent =
-        now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
       document.getElementById('readout-date').textContent =
         now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
       const tz = now.toLocaleTimeString([], { timeZoneName: 'short' }).split(' ').pop();
@@ -59,15 +50,15 @@
 
     function greeting() {
       const h = new Date().getHours();
-      if (h < 5)  return 'Deep in the night watch';
-      if (h < 12) return 'Good morning, commander';
-      if (h < 18) return 'Good afternoon, commander';
-      return 'Good evening, commander';
+      if (h < 5)  return 'deep in the night watch';
+      if (h < 12) return 'good morning';
+      if (h < 18) return 'good afternoon';
+      return 'good evening';
     }
 
     tick();
     setInterval(tick, 15000);
-    document.getElementById('host').textContent = '⟡ ' + (currentHost || 'localhost');
+    document.getElementById('host').textContent = currentHost || 'localhost';
 
     /* ================= Render ================= */
     const grid = document.getElementById('services');
@@ -84,7 +75,7 @@
         const services = config.services || [];
         document.getElementById('count').textContent =
           `${services.length} system${services.length === 1 ? '' : 's'} nominal`;
-        document.getElementById('greeting').textContent = `${greeting()} — all systems standing by.`;
+        document.getElementById('greeting').textContent = `${greeting()} · all systems standing by.`;
 
         services.forEach((service, i) => {
           const { url, port } = resolve(service);
@@ -107,11 +98,8 @@
                 ${port ? `<span class="port">:${port}</span>` : ''}
               </span>
             </span>
-            <span class="chevron">››</span>
+            <span class="chevron">→</span>
           `;
-          // Nudge the throttle on hover, punch it to lightspeed on launch
-          card.addEventListener('pointerenter', () => window.warp && window.warp(0.3));
-          card.addEventListener('click', () => window.warp && window.warp(3.2));
           grid.appendChild(card);
         });
       })

@@ -241,3 +241,135 @@
   #tele-card-cpu { grid-column: 1 / -1; }
   #tele-card-mem .tele-graph { left: 0; transform: none; }
 }
+
+/* ---------- Process list inside the memory panel ----------
+   The memory card expands into the 1h graph plus a live process table:
+   sort by cpu or memory, then send SIGTERM or SIGKILL to one pid. */
+#tele-card-mem .tele-graph { width: min(760px, calc(100vw - 2.5rem)); }
+
+#tele-card-mem.expanded .tele-graph { max-height: min(72vh, 640px); }
+
+.tele-procs {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin-top: 0.5rem;
+  padding-top: 0.35rem;
+  border-top: 1px dotted var(--border);
+}
+
+.procs-bar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-size: 0.56rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.procs-title { color: var(--accent); }
+.procs-title::before { content: "┤ "; color: var(--accent); }
+.procs-title::after { content: " ├"; color: var(--accent); }
+
+.procs-meta {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+  letter-spacing: 0;
+  text-transform: none;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.procs-meta.is-bad { color: var(--bad, #ff6b5e); }
+
+.procs-scroll {
+  max-height: min(48vh, 420px);
+  margin-top: 0.35rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.procs-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.procs-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.2rem 0.3rem;
+  background: var(--well, #080c1b);
+  font-size: 0.56rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--muted);
+  border-bottom: 1px dotted var(--border);
+  white-space: nowrap;
+}
+
+.procs-table td {
+  padding: 0.16rem 0.3rem;
+  border-bottom: 1px dotted color-mix(in srgb, var(--border) 55%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.procs-table tbody tr:hover { background: rgba(255, 255, 255, 0.045); }
+
+.procs-table .p-pid { width: 4.4rem; color: var(--muted); text-align: right; }
+.procs-table th.p-pid, .procs-table th.p-num { text-align: right; }
+.procs-table .p-name { width: auto; }
+.procs-table .p-num { width: 4.3rem; text-align: right; }
+.procs-table .p-sig { width: 7.4rem; text-align: right; }
+
+.procs-sort {
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.procs-sort:hover { color: var(--text); }
+.procs-sort[aria-pressed="true"] { color: var(--accent); font-weight: 700; }
+
+.p-signal {
+  font: inherit;
+  color: var(--muted);
+  background: none;
+  border: 1px solid transparent;
+  padding: 0 0.18rem;
+  cursor: pointer;
+}
+
+.p-signal:hover { background: var(--accent); color: #050805; }
+.p-signal[data-sig="KILL"]:hover { background: var(--bad, #ff6b5e); color: #050805; }
+.p-signal:disabled { color: var(--dim, var(--muted)); opacity: 0.35; cursor: not-allowed; background: none; }
+.p-signal:focus-visible { outline: 1px dotted var(--accent); outline-offset: 1px; }
+
+@media (max-width: 560px) {
+  #tele-card-mem .tele-graph { width: calc(100vw - 1.6rem); }
+  .procs-table .p-pid { display: none; }
+  .procs-table { font-size: 0.62rem; }
+  .procs-table .p-num { width: 3.5rem; }
+  .procs-table .p-sig { width: 5.8rem; }
+  .procs-table td, .procs-table th { padding: 0.16rem 0.22rem; }
+}

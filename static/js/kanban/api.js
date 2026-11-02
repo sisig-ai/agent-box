@@ -15,7 +15,13 @@ async function call(method, path, body) {
 
 export const api = {
   board: () => call('GET', '/api/opsboard'),
+  search: (q, opts = {}) => {
+    const params = new URLSearchParams({ q, limit: String(opts.limit || 200) });
+    if (opts.archived) params.set('archived', opts.archived);
+    return call('GET', `/api/opsboard/search?${params}`);
+  },
   getCard: (id) => call('GET', `/api/opsboard/cards/${id}`),
+  archived: () => call('GET', '/api/opsboard/archived'),
   addCard: (card) => call('POST', '/api/opsboard/cards', card),
   patchCard: (id, changes) => call('PATCH', `/api/opsboard/cards/${id}`, changes),
   deleteCard: (id) => call('DELETE', `/api/opsboard/cards/${id}`),

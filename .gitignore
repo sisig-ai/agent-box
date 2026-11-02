@@ -16,3 +16,6 @@ deploy/rehearsal-pids.json
 
 # Logs
 *.log
+
+# Rollback copies of the tui skin kept on-host by the design pass
+static/css/*.bak-*

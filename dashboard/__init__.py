@@ -12,9 +12,11 @@ def create_app():
 
     from . import config, db
     from .fs_api import bp as fs_bp
-    from .gmgn_api import bp as gmgn_bp
     from .kanban_api import bp as kanban_bp
+    from .mcp import bp as mcp_bp
     from .notes_api import bp as notes_bp
+    from .procs_api import bp as procs_bp
+    from .progress_api import bp as progress_bp
     from .shell.api import bp as shell_bp
     from .telemetry_api import bp as telemetry_bp
 
@@ -31,7 +33,7 @@ def create_app():
         path = request.path
         if path.startswith(("/static/fonts/", "/static/vendor/")):
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
-        elif path in ("/", "/index.html", "/config.json", "/gmgn", "/manifest.webmanifest", "/sw.js"):
+        elif path in ("/", "/index.html", "/config.json"):
             response.headers["Cache-Control"] = "no-cache"
         return response
 
@@ -39,28 +41,17 @@ def create_app():
     app.teardown_appcontext(db.close_db)
     app.register_blueprint(notes_bp)
     app.register_blueprint(telemetry_bp)
+    app.register_blueprint(procs_bp)
     app.register_blueprint(fs_bp)
     app.register_blueprint(shell_bp)
-    app.register_blueprint(gmgn_bp)
     app.register_blueprint(kanban_bp)
+    app.register_blueprint(progress_bp)
+    app.register_blueprint(mcp_bp)
 
     @app.get("/")
     @app.get("/index.html")
-    @app.get("/gmgn")
     def index():
         return send_from_directory(config.STATIC_DIR, "index.html")
-
-    @app.get("/manifest.webmanifest")
-    def webmanifest():
-        return send_from_directory(
-            config.STATIC_DIR,
-            "manifest.webmanifest",
-            mimetype="application/manifest+json",
-        )
-
-    @app.get("/sw.js")
-    def service_worker():
-        return send_from_directory(config.STATIC_DIR, "sw.js", mimetype="application/javascript")
 
     @app.get("/config.json")
     def config_json():

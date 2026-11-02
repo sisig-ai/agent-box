@@ -73,7 +73,7 @@
 .schedule-preview p { margin: 0.5em 0; }
 .schedule-preview ul, .schedule-preview ol { margin: 0.5em 0; padding-left: 1.3em; }
 .schedule-preview li { margin: 0.22em 0; }
-.schedule-preview li.task-list-item { list-style: none; margin-left: -1.3em; }
+.schedule-preview li.task-list-item { list-style: none; }
 .schedule-preview input[type="checkbox"] { margin-right: 0.4em; accent-color: var(--blue); }
 
 .schedule-preview code {

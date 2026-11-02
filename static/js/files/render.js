@@ -23,9 +23,9 @@ export const state = {
 };
 
 const fileIcon = (e) => {
-  if (e.is_dir) return e.is_link ? '🔗' : '📁';
-  if (e.type === 'other') return '⚙';
-  return '📄';
+  if (e.is_link) return 'l';
+  if (e.is_dir) return 'd';
+  return e.type === 'other' ? '?' : '-';
 };
 
 export function fmtSize(n) {

@@ -262,4 +262,11 @@
   background: rgba(5,8,20,0.6); border: 1px solid var(--border); border-radius: 6px; padding: 0.2rem 0.3rem;
 }
 .kb-op-filter select.active { border-color: #f5c84c; color: #f5c84c; }
+.kb-updated-filter select { max-width: 8.5rem; }
+.kb-updated-filter input[type="date"] {
+  font-family: var(--mono); font-size: 0.72rem; color: var(--text); max-width: 8.5rem;
+  background: rgba(5,8,20,0.6); border: 1px solid var(--border); border-radius: 6px; padding: 0.16rem 0.3rem;
+}
+.kb-updated-filter input[type="date"].active { border-color: #f5c84c; color: #f5c84c; }
+.kb-updated-filter input[type="date"][hidden] { display: none; }
 .kb-add-form .kb-add-opname { font-family: var(--mono); font-size: 0.72rem; }

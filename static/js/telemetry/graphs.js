@@ -1,5 +1,6 @@
 // Telemetry graph registry: one 1h ring per card, canvas draw + hover tooltip.
 import { $ } from '../dom.js';
+import { procsStart, procsStop } from './procs.js';
 
 const WINDOW = 3600; // seconds shown per graph
 
@@ -264,16 +265,18 @@ export function toggle(cardId, key) {
   if (open) {
     ensureHistory(g, key === 'cpu' ? 'cpu' : key === 'mem' ? 'mem_used' : 'pwr');
     requestAnimationFrame(() => drawGraph(g));
+    if (key === 'mem') procsStart();
   } else {
     g.hover = -1;
     if (g.tip) g.tip.classList.remove('show');
+    if (key === 'mem') procsStop();
   }
 }
 
 for (const [cardId, key] of [['tele-card-cpu', 'cpu'], ['tele-card-mem', 'mem'], ['tele-card-pwr', 'pwr']]) {
   const g = graphs[key];
   g.card.addEventListener('click', (e) => {
-    if (e.target.closest('button')) return; // badge / tabs / clear manage themselves
+    if (e.target.closest('button, .tele-procs')) return; // badges, tabs, proc table manage themselves
     toggle(cardId, key);
   });
   g.card.addEventListener('keydown', (e) => {

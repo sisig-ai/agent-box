@@ -23,7 +23,7 @@
 }
 
 .fs-modal h3 { font-size: 0.9rem; margin-bottom: 0.5rem; }
-.fs-modal p { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.7rem; overflow-wrap: anywhere; }
+.fs-modal p { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.7rem; overflow-wrap: anywhere; white-space: pre-line; }
 
 .fs-modal input {
   width: 100%;

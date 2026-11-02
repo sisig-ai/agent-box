@@ -2,10 +2,10 @@
 // and the markdown body (rendered view, or Write + live Preview editor).
 // Deep-linkable: #/kanban/card-<id> opens it, #/kanban/card-<id>/edit opens
 // straight into the editor (board.js routes the hash here).
-import { api } from './api.js?v=kanban7';
-import { inlineEdit } from './edit.js?v=kanban7';
-import { loadPurify, renderBody, toggleTask } from './markdown.js?v=kanban7';
-import { buildComments, paintComments } from './comments.js?v=kanban7';
+import { api } from './api.js?v=kanban20';
+import { inlineEdit } from './edit.js?v=kanban20';
+import { loadPurify, renderBody, toggleTask } from './markdown.js?v=kanban20';
+import { buildComments, paintComments, resetComments } from './comments.js?v=kanban28';
 
 const ui = {};
 const st = { card: null, id: null, editing: false, seq: 0, ctx: null, busy: { busy: 0 } };
@@ -245,8 +245,10 @@ export async function openCard(id, { edit = false } = {}) {
   st.id = id;
   st.card = null;
   st.editing = false;
+  resetComments();
   ui.backdrop.classList.remove('editing');
   ui.backdrop.hidden = false;
+  ui.backdrop.scrollTop = 0;
   document.body.classList.add('kbd-open');
   ui.id.textContent = `#${id}`;
   ui.title.textContent = 'loading…';
@@ -259,6 +261,7 @@ export async function openCard(id, { edit = false } = {}) {
     const [card] = await Promise.all([api.getCard(id), loadPurify()]);
     if (seq !== st.seq) return;
     st.card = card;
+    st.ctx?.onRead?.(card);
     if (st.wantEdit) setEditing(true); else paint();
   } catch (e) {
     if (seq !== st.seq) return;
@@ -294,7 +297,7 @@ export function syncFromBoard(cards) {
   const fresh = cards.find((c) => c.id === id);
   if (fresh && fresh.updated_at !== st.card.updated_at) {
     api.getCard(id).then((card) => {
-      if (openId() === id && !st.editing) { st.card = card; paint(); }
+      if (openId() === id && !st.editing) { st.card = card; st.ctx?.onRead?.(card); paint(); }
     }).catch(() => {});
   }
 }

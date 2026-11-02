@@ -1,8 +1,12 @@
 # Macmini Control Surface
 
-Base URL: http://macmini:5555  (also reachable on LAN / tailnet by hostname or IP)
+Base URL: http://macmini:5555 (also http://100.114.80.24:5555 over the tailnet)
 
-Local home-server landing page + agent API for Kix's "quick-arr-stack".
+**MCP endpoint: `POST http://macmini:5555/mcp`** — use this for the Ops Board
+(kanban), the Daily Sitrep / weekly schedule, and the Progress Bars. The HTTP API
+documented at the bottom still exists for scripts, but new work should use MCP.
+
+Local home-server landing page + agent surface for Kix's "quick-arr-stack".
 No authentication. Exposed only over the LAN / tailnet — treat it as private.
 
 ## Host context
@@ -10,356 +14,174 @@ No authentication. Exposed only over the LAN / tailnet — treat it as private.
 - Machine: macmini (Apple M2 Pro, 32 GB unified memory, macOS)
 - Timezone: Asia/Manila (UTC+8). All dates are YYYY-MM-DD in Manila time; omitting a date defaults to today (Manila).
 - Services on the landing page: Coins.ph Agent (:7777), Hermes Agent (:9119), Opencode (:4096).
-- The page at / is a service grid + a Daily Sitrep markdown canvas (formerly Daily Brief; one entry per day, autosaved).
 
-## Views (tabs)
-
-The page has tabs sharing one header + live sys-monitor cards (CPU / Memory /
-Power, 1s tick with 1h graphs). Hash routes: `#/brief` (Daily Sitrep), `#/` (Stack, default),
-`#/files`, `#/shell`, `#/kanban` (Ops Board). The hash routes keep their old ids.
-
-- **Daily Sitrep** (formerly Daily Brief) — markdown canvas (one entry per day, autosaved) + weekly schedule side panel.
-- **Stack** — service grid with the `/`-focused filter scanner.
-- **Files** — host filesystem browser rooted at `~`: browse folders, create files/folders, upload/download, rename, delete, click any entry for full details, and open any text file in an inline editor (syntax highlighting, save in place, download).
-- **Shell** — interactive host tty rooted in `~` (see Web shell below).
-- **Ops Board** (formerly Kanban) — a small Trello-style board: lanes as columns, cards with title + owner + optional opname (operation name, shown as a yellow chip; the header **Op** filter or clicking a chip narrows the board to one operation) + a markdown body, drag and drop, inline owner edit. Click a card to open its detail modal (edit title / owner / opname / lane, rendered markdown body with a Write + live Preview editor, clickable checklists); `#/kanban/card-<id>` deep-links a card, `#/kanban/card-<id>/edit` opens it in the editor. Polls every 3 s, so cards agents write through `/api/opsboard` appear on their own (see Ops Board below).
-
-## API
-
-### Daily Sitrep (formerly Daily Brief) — markdown notes, one entry per day
-
-Canonical routes: `/api/sitrep` and `/api/sitrep/list`.
-
-**Deprecated aliases:** `/api/brief` and `/api/brief/list` (every method: GET / PUT / POST / DELETE)
-still work and call the same handlers with identical payloads, so existing
-routines keep running. New code should use `/api/sitrep`; the aliases may be
-removed later.
-
-Stored in SQLite at /Users/kixpanganiban/quick-arr-stack/arr-dashboard/data/briefs.db (host mount — survives container rebuilds).
-
-Markdown previews (Daily Sitrep and weekly schedule) render through a sanitizer: script/style/iframe/object/embed/link/meta/base/form elements, `on*=` handlers, and `javascript:`/`data:`/`vbscript:` URLs are stripped before insert; the stored markdown is unchanged.
-
-**Sitrep task lists are clickable and persist.** Any GFM task item in a sitrep (`- [ ] item`, `- [x] done`; also `*`/`+`/`1.` bullets, nested or in `>` quotes) renders as a live checkbox in the Daily Sitrep preview. Ticking/unticking flips that line's `[ ]` ↔ `[x]` in the stored markdown and saves immediately through `PUT /api/sitrep` (same date + content); nothing else in the entry changes, and items inside fenced code blocks are not checkboxes. Before writing, the page re-fetches the day's entry, so a tick lands on the newest copy (matched by item text) instead of clobbering a rewrite another agent just PUT; if the item no longer exists it reloads and writes nothing. **Operators/agents: write every actionable sitrep item as a task line prefixed with `- [ ] `** (one per line, the checkbox first) so Kix can tick it off; when rewriting an entry, keep items he already ticked as `- [x]` — read the entry first with `GET /api/sitrep?date=…`.
-
-| Method | Path | Behavior |
-|--------|------|----------|
-| GET    | /api/sitrep?date=YYYY-MM-DD | Fetch a day's entry. Returns {"date", "content"} — content is "" when no entry exists yet. |
-| GET    | /api/sitrep/list?limit=N | All entries, newest first. Default limit 30, max 365. |
-| PUT    | /api/sitrep | Create or replace a day's entry. JSON body: {"date"?: "YYYY-MM-DD", "content": "markdown string"}. |
-| POST   | /api/sitrep | Same as PUT. |
-| DELETE | /api/sitrep?date=YYYY-MM-DD | Delete a day's entry. 404 if it doesn't exist. |
-
-PUT/POST examples (post today's sitrep):
-
-    curl -X PUT http://macmini:5555/api/sitrep \
-      -H 'Content-Type: application/json' \
-      -d '{"content":"# Daily Sitrep\n\n- shipped the landing page sitrep feature"}'
-
-Explicit date (for any day):
-
-    curl -X PUT http://macmini:5555/api/sitrep \
-      -H 'Content-Type: application/json' \
-      -d '{"date":"2026-08-14","content":"..."}'
-
-Read today's entry:
-
-    curl http://macmini:5555/api/sitrep
-
-The weekly schedule (`GET|PUT|POST|DELETE /api/schedule`, `GET /api/schedule/list`) uses the same `YYYY-MM-DD` week form; `week` coerces to that week's Monday, and a well-formed but impossible date such as `2026-02-30` returns 400 rather than 500.
-
-### Ops Board (formerly Kanban) — lanes + cards, agent-drivable
-
-Canonical routes: `/api/opsboard` and everything under it (`/api/opsboard/cards`,
-`/api/opsboard/cards/:id`, `/api/opsboard/archived`, `/api/opsboard/archive-done`,
-`/api/opsboard/lanes`, `/api/opsboard/lanes/:lane`).
-
-**Deprecated aliases:** `/api/kanban` and every `/api/kanban/...` subpath (same
-methods, same handlers, same payloads) still work, so existing routines keep
-running. Swap the `/api/kanban` prefix for `/api/opsboard` in new code; the
-aliases may be removed later.
-
-Stored in the same SQLite database (tables `kanban_lane`, `kanban_card`, `kanban_comment`), so cards
-survive restarts. No auth, same as everything else here. Default lanes on first
-start: Backlog, To Do, In Progress, Done. Lanes are data: add, rename, reorder,
-or delete them through the API.
-
-Card: `{"id", "title", "owner" (string or null), "status" (lane name), "lane_id",
-"position" (0-based within the lane, 0 = top), "created_at", "updated_at",
-"archived_at" (null, or when it was archived), "body" (markdown string, "" when
-empty), "has_body" (bool), "body_preview" (first prose line of the body, markers
-stripped, max 140 chars), "body_tasks" (`{"done", "total"}` checklist counts, or
-null), "opname" (string or null)}`.
-
-Opname: an optional **operation name** grouping related cards across lanes,
-e.g. `"Operation Lightspeed"`. Free text, max 100 chars, whitespace collapsed;
-`null` or "" clears it. Every card payload (listings, single card, POST/PATCH
-responses, both `/api/opsboard` and `/api/kanban`) carries `opname` (null when
-unset); it was added without changing any other field. Filter any listing with
-`?opname=<name>` (case-insensitive exact match; `?opname=` empty = cards with no
-opname); list the operations in use with `GET /api/opsboard/opnames`. Reuse an
-existing spelling from that list rather than inventing a variant.
-
-Body: free-form **markdown** (GFM: headings, lists, `- [ ]` / `- [x]` task
-items, fenced code, links, tables), up to 200,000 characters. It is stored
-verbatim (CRLF normalised to LF); `null` or whitespace-only clears it to "".
-The board UI renders it sanitized (marked + DOMPurify), so HTML in a body is
-never executed. **Listings (`GET /api/opsboard`, `/api/opsboard/cards`,
-`/api/opsboard/archived`) omit `body`** and return only the summary fields, to
-keep the 3 s poll light; pass `?include_body=1` for full bodies, or read one
-card with `GET /api/opsboard/cards/:id` (always full). POST/PATCH responses return
-the full card, body included.
-Lane: `{"id", "name", "position", "card_count" (visible cards), "archived_count",
-"created_at", "updated_at"}`.
-
-Archiving: archived cards are hidden from the board and from every card listing
-by default, but they are kept (not deleted) and stay readable by id. Positions
-stay contiguous among the visible cards of each lane; an archived card's
-`position` is just where it sat when archived. The board's **Archive Done**
-button (Done column header, two-click confirm) calls `POST /api/opsboard/archive-done`.
-
-Wherever a lane is referenced (`status` in a card body, `?status=`, the `:lane`
-path segment, `?target=`) you can pass the lane name, **case-insensitive**
-("in progress" = "In Progress"), or its numeric id. Errors are JSON
-`{"error": "..."}`: 400 bad input (unknown lane, empty title, unknown field,
-bad position), 404 missing card/lane, 409 conflict (duplicate lane name,
-deleting a non-empty lane).
-
-| Method | Path | Behavior |
-|--------|------|----------|
-| GET    | /api/opsboard?status=&owner=&opname=&include_archived=&include_body= | `{"lanes": [...], "cards": [...]}`. All lanes always; non-archived cards ordered by lane then position, optionally filtered by `status` (lane), `owner` (case-insensitive exact; `owner=` empty = unowned) and/or `opname` (case-insensitive exact; `opname=` empty = no opname). `include_archived=1` also returns archived cards (after the visible ones, `archived_at` set). Cards carry `has_body` / `body_preview` / `body_tasks` but no `body` unless `include_body=1`. |
-| GET    | /api/opsboard/cards?status=&owner=&opname=&include_archived=&include_body= | Just the cards array (same filters). |
-| GET    | /api/opsboard/archived?status=&owner=&opname=&include_body= | Archived cards only, most recently archived first. |
-| GET    | /api/opsboard/opnames?include_archived= | Distinct opnames, alphabetical: `[{"opname", "card_count", "active_count", "archived_count"}]`. Archived cards are counted by default; `include_archived=0` counts only cards on the board. Case-only variants are merged under the most recently updated spelling. |
-| POST   | /api/opsboard/archive-done | Archive every non-archived card in the lane named "Done" (case-insensitive) → `{"archived": N, "ids": [...], "lane", "archived_at"}`. No body needed. 404 if there is no Done lane. |
-| POST   | /api/opsboard/cards | JSON `{"title", "owner"?, "status"?, "position"?, "body"?, "opname"?}` → 201 + card. `status` defaults to the first lane; `position` defaults to the bottom. Title max 500 chars, owner max 100, body (markdown) max 200,000. |
-| GET    | /api/opsboard/cards/:id | One card, **with its full markdown `body`** (archived cards too). 404 if missing. |
-| PATCH  | /api/opsboard/cards/:id | Any of `{"title", "owner", "body", "opname", "status", "position", "archived"}`. `"opname": null` (or "") clears it; setting it touches no other field. `body` replaces the whole markdown body (read it first to append; `null` clears). Changing `status` without `position` appends to the bottom of the new lane; `position` alone reorders within the lane. `"owner": null` (or "") clears it. `"archived": true` archives one card; `"archived": false` restores it to the bottom of its lane (or to `status` / `position` if given). `archived` must be a JSON boolean. |
-| DELETE | /api/opsboard/cards/:id | Delete → `{"deleted": id, "card": {...}}`. |
-| GET    | /api/opsboard/cards/:id/comments | The card's comment thread, oldest first (newest last): `[{"id", "card_id", "author", "body", "created_at"}]`. 404 if the card is missing. |
-| POST   | /api/opsboard/cards/:id/comments | JSON `{"author", "body"}` (both required; author max 100 chars, body markdown max 20,000) → 201 + `{"id", "card_id", "author", "body", "created_at"}`. `created_at` is server-set ISO 8601 with offset (e.g. `2026-10-23T08:12:05+08:00`, Asia/Manila). Bumps the card's `updated_at`. |
-| DELETE | /api/opsboard/cards/:id/comments/:commentId | Delete one comment → `{"deleted": commentId, "comment": {...}}`. 404 if it doesn't belong to that card. |
-| GET    | /api/opsboard/lanes | Lanes in board order, with `card_count`. |
-| POST   | /api/opsboard/lanes | JSON `{"name", "position"?}` → 201 + lane. Names are unique (case-insensitive), max 60 chars, not all digits. |
-| PATCH  | /api/opsboard/lanes/:lane | `{"name"?, "position"?}` — rename and/or move the column. Cards follow a rename automatically. |
-| DELETE | /api/opsboard/lanes/:lane | Refused with 409 if the lane has cards (visible or archived), unless `?target=<lane>` (cards move to that lane; visible ones go to the bottom) or `?force=1` (cards are deleted too). |
-
-Examples:
-
-    # whole board
-    curl http://macmini:5555/api/opsboard
-
-    # add a card (lands in Backlog)
-    curl -X POST http://macmini:5555/api/opsboard/cards \
-      -H 'Content-Type: application/json' \
-      -d '{"title":"Renew the domain","owner":"hermes"}'
-
-    # add straight into a lane
-    curl -X POST http://macmini:5555/api/opsboard/cards \
-      -H 'Content-Type: application/json' \
-      -d '{"title":"Fix backup cron","status":"to do"}'
-
-    # move card 7 to In Progress, at the top
-    curl -X PATCH http://macmini:5555/api/opsboard/cards/7 \
-      -H 'Content-Type: application/json' \
-      -d '{"status":"in progress","position":0}'
-
-    # edit title / owner
-    curl -X PATCH http://macmini:5555/api/opsboard/cards/7 \
-      -H 'Content-Type: application/json' \
-      -d '{"title":"Fix the backup cron job","owner":"kix"}'
-
-    # tag card 7 with an operation; clear it again
-    curl -X PATCH http://macmini:5555/api/opsboard/cards/7 \
-      -H 'Content-Type: application/json' -d '{"opname":"Operation Valhalla"}'
-    curl -X PATCH http://macmini:5555/api/opsboard/cards/7 \
-      -H 'Content-Type: application/json' -d '{"opname":null}'
-
-    # every card in an operation (archived too); the operations in use
-    curl 'http://macmini:5555/api/opsboard/cards?opname=operation%20valhalla&include_archived=1'
-    curl http://macmini:5555/api/opsboard/opnames
-
-    # my cards still in flight
-    curl 'http://macmini:5555/api/opsboard?owner=hermes&status=in%20progress'
-
-    # delete a card
-    curl -X DELETE http://macmini:5555/api/opsboard/cards/7
-
-    # card with a markdown body (use the handoff template below)
-    curl -X POST http://macmini:5555/api/opsboard/cards \
-      -H 'Content-Type: application/json' \
-      -d '{"title":"Migrate backups to restic","owner":"hermes","status":"in progress","body":"## Goal\nMove nightly backups to restic.\n\n## Next steps\n- [ ] write the cron\n- [ ] test a restore"}'
-
-    # read one card with its full body; replace the body
-    curl http://macmini:5555/api/opsboard/cards/7
-    curl -X PATCH http://macmini:5555/api/opsboard/cards/7 \
-      -H 'Content-Type: application/json' -d '{"body":"## Goal\n..."}'
-
-    # whole board including every body
-    curl 'http://macmini:5555/api/opsboard?include_body=1'
-
-    # archive one card / restore it
-    curl -X PATCH http://macmini:5555/api/opsboard/cards/7 \
-      -H 'Content-Type: application/json' -d '{"archived":true}'
-    curl -X PATCH http://macmini:5555/api/opsboard/cards/7 \
-      -H 'Content-Type: application/json' -d '{"archived":false}'
-
-    # archive everything in Done (same as the board's Archive Done button)
-    curl -X POST http://macmini:5555/api/opsboard/archive-done
-
-    # see archived cards
-    curl http://macmini:5555/api/opsboard/archived
-    curl 'http://macmini:5555/api/opsboard?include_archived=1'
-
-    # lanes: add "Review" as the 4th column, rename it, delete it (moving cards to Done)
-    curl -X POST http://macmini:5555/api/opsboard/lanes \
-      -H 'Content-Type: application/json' -d '{"name":"Review","position":3}'
-    curl -X PATCH http://macmini:5555/api/opsboard/lanes/review \
-      -H 'Content-Type: application/json' -d '{"name":"QA"}'
-    curl -X DELETE 'http://macmini:5555/api/opsboard/lanes/qa?target=done'
-
-#### Card comments (timestamped thread)
-
-Every card has an append-only comment thread — the easy way to log progress
-without rewriting the body. Every card payload (listings included) carries
-`comment_count`; `GET /api/opsboard/cards/:id` also returns `comments` (oldest
-first). The detail modal shows the thread (author + time like `Oct 23 0812
-manila`) with an add-comment box; tiles show a 💬 N badge. Deleting a card
-deletes its comments. `/api/kanban/cards/:id/comments` aliases work too.
-
-    curl http://macmini:5555/api/opsboard/cards/7/comments
-    curl -X POST http://macmini:5555/api/opsboard/cards/7/comments \
-      -H 'Content-Type: application/json' \
-      -d '{"author": "Forge", "body": "Deployed to staging; **tests green**."}'
-    curl -X DELETE http://macmini:5555/api/opsboard/cards/7/comments/3
-
-Use your agent name as `author`. Prefer a comment for short progress updates;
-keep the body for the durable Goal / Context / state.
-
-#### Card body handoff template (agents: use this)
-
-When an agent picks up, works on, or hands off a card, keep the card's `body`
-in this shape so the next agent (or Kix) can resume without asking. Set
-`owner` to your agent name, move the card with `status`, and **append** to the
-progress log rather than rewriting history: `GET /api/opsboard/cards/:id`, edit
-the markdown, then `PATCH {"body": ...}` with the whole new body. Timestamps
-are Asia/Manila (`date '+%Y-%m-%d %H:%M %z'`). Keep secrets out of the body.
-
-    ## Goal
-    One or two sentences: the outcome that means this card is done.
-
-    ## Context
-    Why this matters, constraints, related cards (#12), decisions already made.
-
-    ## Agent
-    - Host: macmini (or the machine the work runs on)
-    - Provider / model: <provider> / <model>
-    - Agent id: <agent or session id>
-    - Worktree: /path/to/worktree
-    - Branch: feature/xyz (commit abc1234, not pushed)
-
-    ## Status / progress log
-    - 2026-10-16 19:45 +0800: picked up; reading the existing code
-    - 2026-10-16 20:10 +0800: migration written, tests green
-    - 2026-10-16 20:30 +0800: **blocked**: needs Kix to approve the DNS change
-
-    ## Findings
-    - What you learned that is not obvious from the code (gotchas, numbers, error messages).
-
-    ## Next steps
-    - [x] done step
-    - [ ] the next concrete step, small enough to start immediately
-    - [ ] verification to run before moving to Done
-
-    ## Links
-    - PR / commit: https://…
-    - Logs, docs, dashboards: https://…
-
-Checklist items (`- [ ]` / `- [x]`) show as a `☑ done/total` badge on the
-board card and can be ticked in the card modal (which PATCHes the body). The
-board shows `body_preview`, the first prose line (headings skipped), so make
-the first line under `## Goal` a good one-line summary.
-
-### Native macOS telemetry
-
-`GET /api/stats` returns live CPU utilization, average CPU-die temperature,
-unified-memory use, and system power. Native Apple SMC/IOReport counters are
-read by macmon; psutil reads macOS CPU/memory counters. System power is the
-SMC device estimate, not an external wall-plug measurement. `GET
-/api/stats/history?seconds=3600` returns the one-hour series. Collection runs
-once per second even with the browser closed. Stale sampler output returns 503.
-
-### Filesystem explorer — host FS, rooted at ~
-
-The Files tab (`/#/files`) browses the host filesystem, opening at `~`. Paths are
-lexically normalised (no shell interpolation); empty/missing `path` means `~`.
-The API below backs the tab and works from curl. There is no chroot — like the
-shell, it runs as the dashboard user.
-
-| Method | Path | Behavior |
-|--------|------|----------|
-| GET    | /api/fs/list?path=… | Folder listing. Returns `{path, name, parent, home, places, entries, total, truncated}`; `entries` is capped at 2,000 and `truncated` is true when the folder held more, so `total` counts the entries returned. Each entry: `{name, path, type (dir/file/link/other), is_dir, is_link, size, mtime, mode, hidden, readable, writable}`. 404/400/403 on missing/not-a-dir/denied. |
-| GET    | /api/fs/stat?path=… | One entry plus `mime`, `owner`, `group`, `uid`, `gid`, `link_target`, and ISO times (`mtime_iso`, `ctime_iso`, `btime_iso` on macOS). |
-| GET    | /api/fs/read?path=… | Read one UTF-8 text file for the inline editor. Returns `{path, name, text, size, mtime}`. 404 missing; 400 directory or not a regular file; 403 denied; 413 over 2 MB; 415 binary (NUL byte or non-UTF-8). |
-| GET    | /api/fs/download?path=… | Stream one file as an attachment (range-capable). 400 for directories. |
-| PUT    | /api/fs/write | JSON `{path, content}` — overwrite one existing text file, in place, UTF-8, permissions kept. 404 missing; 400 directory/not-regular/missing content; 403 not writable. |
-| POST   | /api/fs/upload | Multipart form: `path` (target folder), one or more `file`, optional `overwrite=1`. 409 when a name exists and overwrite is off. |
-| POST   | /api/fs/mkdir | JSON `{path}` or `{parent, name}` — create one folder. |
-| POST   | /api/fs/touch | JSON `{path}` or `{parent, name}` — create one empty file. |
-| POST   | /api/fs/rename | JSON `{path, name}` — rename within the same folder. |
-| DELETE | /api/fs?path=… | Delete a file, symlink, or folder (recursive). Refuses `~`, `/`, and ancestors of `~`. |
-
-`name` values are reduced to a single path component (basename), so separators and
-`..` cannot escape the target folder. Symlinks are operated on directly — deleting
-a link removes only the link, never its target.
-
-### Web shell — interactive host tty rooted in ~
-
-The Shell tab (`/#/shell`) is a live WebSocket terminal. Each browser owns a
-tmux session on the host, started with cwd `~` (`/Users/kixpanganiban`). The HTTP API below provides the same session operations; agents generally don't need it, but it works from curl too.
-
-| Method | Path | Behavior |
-|--------|------|----------|
-| POST | /api/shell/new | Create (or attach to) a session. JSON `{"id"?, "cols"?, "rows"?}` → `{"id", "session", "cols", "rows", "cwd": "~"}`. Omit `id` for a server-generated one. |
-| GET  | /api/shell/pane?id=… | Snapshot: `{"alive", "text" (ANSI, visible pane), "cursor_x", "cursor_y", "cols", "rows", "cmd"}`. 404 when the session is gone. |
-| POST | /api/shell/input | Type literal text. JSON `{"id", "text"}` (max 4096 chars, stdin-piped — no shell quoting). |
-| POST | /api/shell/key | One special key. JSON `{"id", "key"}` where key is a named key (Enter, Backspace, Tab, Escape, Up/Down/Left/Right, Home, End, PageUp, PageDown, Delete, Insert) optionally prefixed with `C-`/`M-`/`S-` (e.g. `C-c`, `M-Left`, `C-M-x`, `S-Tab`), or one printable character. |
-| POST | /api/shell/resize | JSON `{"id", "cols", "rows"}` (clamped 20–300 × 5–100). |
-| POST | /api/shell/kill | Destroy the session. JSON `{"id"}`. |
-| GET  | /api/shell/list | Dashboard-owned host sessions (`dash-*`). |
-
-Session ids match `^[A-Za-z0-9_-]{1,32}$`; tmux names are `dash-<id>`.
-Persistence lives in host tmux, so the API is stateless across gunicorn workers.
-
-### Shell over websocket (live tab transport)
-
-The Shell tab itself doesn't poll — it holds one websocket per tab and the
-server pushes snapshots (plus an immediate push after every input):
-
-    ws://<host>:5556/ws/shell?id=<sid>   (service `shell-ws`, stdlib only)
-
-Client → server (JSON text frames):
-
-| Message | Behavior |
-|---------|----------|
-| `{"t":"input","text":…}` | Type literal text (max 4096 chars, same as HTTP) |
-| `{"t":"key","key":…}` | One allowlisted special key (same set as HTTP) |
-| `{"t":"resize","cols":…,"rows":…}` | Resize the pty |
-| `{"t":"new"}` | Kill + recreate the session (keeps pty size) |
-
-Server → client:
-
-| Message | Behavior |
-|---------|----------|
-| `{"t":"hello","id":…,"cols":…,"rows":…,"cwd":"~"}` | Sent on connect (session created if missing) |
-| `{"t":"pane","alive":true,"text":…,"cursor_x":…,"cursor_y":…,"cols":…,"rows":…,"cmd":…}` | Snapshot, sent only when it changes (idle = silent) |
-| `{"t":"pane","alive":false,…}` | Session is gone (client shows "press New") |
-| `{"t":"error","error":…}` | Bad message content (connection stays open) |
-
-## Agent etiquette
-
-- Daily Sitrep content is markdown. Preserve existing structure when appending — don't rewrite an entry unless the user asks.
-- The Daily Sitrep (formerly Daily Brief) is meant for Kix: one markdown entry per calendar day. If asked to "post the daily sitrep" (or the "daily brief"), write today's entry in Manila time via `PUT /api/sitrep`.
-- Sitrep items Kix should act on go in as `- [ ] ` task lines — the sitrep is always checkable, and his ticks persist as `- [x]` in the stored markdown. Don't reset his ticks when updating an entry.
-- The UI at / is read-only from an agent's perspective; do all writes through the API.
-- Ops Board (formerly Kanban): use your agent name as `owner` so cards are attributable; move cards rather than deleting them when work finishes (Done is a lane). Don't delete or rename lanes unless asked, and only call archive-done when asked (it sweeps everyone's Done cards); archive a single card with PATCH instead.
-- No auth headers needed. Keep requests on the LAN/tailnet.
+## MCP server (primary interface)
+
+Transport: **Streamable HTTP, stateless**. One JSON-RPC 2.0 message per POST
+(batches are also accepted). No session id and no server-initiated stream, so
+`GET /mcp` and `DELETE /mcp` answer 405 — that is expected, not a fault.
+Protocol version `2025-06-18` (also accepts `2025-03-26` and `2024-11-05`).
+
+Register it once:
+
+    # Claude Code / Claude Desktop
+    claude mcp add --transport http macmini http://100.114.80.24:5555/mcp
+
+    # Cursor / any client that takes mcp.json
+    {"mcpServers": {"macmini": {"url": "http://100.114.80.24:5555/mcp"}}}
+
+Smoke test with curl (handshake, then call):
+
+    curl -s -X POST http://macmini:5555/mcp -H 'Content-Type: application/json' \
+      -d '{"jsonrpc":"2.0","id":1,"method":"initialize",
+           "params":{"protocolVersion":"2025-06-18","capabilities":{},
+                     "clientInfo":{"name":"curl","version":"0"}}}'
+
+    curl -s -X POST http://macmini:5555/mcp -H 'Content-Type: application/json' \
+      -d '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+
+    curl -s -X POST http://macmini:5555/mcp -H 'Content-Type: application/json' \
+      -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+
+    curl -s -X POST http://macmini:5555/mcp -H 'Content-Type: application/json' \
+      -d '{"jsonrpc":"2.0","id":3,"method":"tools/call",
+           "params":{"name":"create_card",
+                     "arguments":{"title":"Renew the domain","owner":"hermes"}}}'
+
+Every successful call returns `content[0].text` (pretty-printed JSON) and, when
+the payload is an object, the same data in `structuredContent`. A failed call
+returns `result.isError: true` with a human-readable message, so read the text
+instead of assuming success. Protocol problems come back as JSON-RPC errors:
+`-32602` unknown tool or bad params, `-32601` unknown method, `-32700` body was
+not JSON (HTTP 400).
+
+### Tool catalogue
+
+**Board (kanban)**
+
+| Tool | What it does |
+|------|--------------|
+| `board_overview` | Lanes plus cards. Filters: `status`, `owner` (alias `author`), `opname`, `archived` (`exclude`/`include`/`only`), `include_body`. |
+| `list_cards` | Cards only, same filters. Bodies are omitted unless `include_body` is true. |
+| `list_archived` | Archived cards, most recently archived first. |
+| `get_card` | One card with its full markdown `body` and its `comments` thread. |
+| `search_cards` | `q` (required) + optional `status`, `owner` (alias `author`), `opname`, `archived`, `limit` (default 50, max 200). Full-text (FTS5) over titles, bodies, comments, opnames and owners: words are ANDed and match prefixes, `"a phrase"` is exact, `-word` excludes. Results are best-match first; each has `matched` (`title`/`body`/`comment`/`meta`) and a `snippet` whose hits are wrapped in `\x01…\x02`. Search before creating a card that may already exist. |
+| `list_opnames` | Existing operation names with card counts — reuse a spelling instead of inventing one. |
+| `create_card` | `title` (required), `owner`, `status` (lane, default first lane), `position`, `body`, `opname`. |
+| `update_card` | `id` (required) plus any of `title`, `owner`, `body`, `opname`, `status`, `position`, `archived`. |
+| `delete_card` | Delete a card and its comments. Prefer moving finished work to Done. |
+| `archive_done` | Archive every live card in Done. Sweeps everyone's cards — only when asked. |
+
+**Card comments** — `list_comments(card_id)`, `add_comment(card_id, author, body)`,
+`delete_comment(card_id, comment_id)`. Comments are the easy way to log progress
+without rewriting a body; `add_comment` bumps the card's `updated_at`.
+
+**Lanes (columns)** — `list_lanes`, `create_lane(name, position?)`,
+`update_lane(lane, name?, position?)`, `delete_lane(lane, target?, force?)`.
+A lane is referenced by name (case-insensitive) or numeric id. Deleting a lane
+with cards needs `target` (move them) or `force` (delete them). Don't rename or
+delete lanes unless asked.
+
+**Daily Sitrep (one markdown entry per day)**
+
+| Tool | What it does |
+|------|--------------|
+| `get_sitrep(date?)` | That day's markdown; empty `content` when no entry exists. |
+| `list_sitreps(limit?)` | Recent days, newest first (default 30, max 365). |
+| `put_sitrep(content, date?)` | Create or replace a day's entry. |
+| `delete_sitrep(date?)` | Remove a day's entry. |
+
+**Weekly schedule (keyed by that week's Monday)**
+
+| Tool | What it does |
+|------|--------------|
+| `get_schedule(week?)` | The week's markdown; any date in the week is accepted and coerced to the Monday. |
+| `list_schedules(limit?)` | Recent weeks, newest first (default 20, max 104). |
+| `put_schedule(content, week?)` | Create or replace that week's entry. |
+| `delete_schedule(week?)` | Remove that week's entry. |
+
+**Progress Bars (shared visual tracking for humans and agents)**
+
+A bar is a title, a `percent` (0–100, fractions allowed), optional `owner`, and
+any number of flat `fields` shown as k-v pairs on the card. Bars nest through
+`parent_id`; children render under their parent (a batch's completion bar can
+have a budget child). Everyone shares one set — no per-agent namespaces.
+
+| Tool | What it does |
+|------|--------------|
+| `list_progress_bars(flat?, archived?)` | Roots with nested `children` (default), or every bar in one list with `flat=true`. `archived` is `exclude` (default), `include`, or `only`. `count` is the returned bars; `archived_count` is the total archived. |
+| `get_progress_bar(id)` | One bar with its nested children and fields (archived included). |
+| `create_progress_bar(title, percent?, parent_id?, fields?, owner?, position?)` | Create a bar. `parent_id` nests it; `position` orders siblings. Archived bars cannot take new children. |
+| `update_progress_bar(id, …)` | Change `title`, `percent`, `owner`, `parent_id`, `position`; `fields` replaces the map, `add_fields` merges, `remove_fields` deletes keys. Set `archived=true` to hide this bar and its nested bars, `false` to restore them. Call this as work progresses. |
+| `delete_progress_bar(id, cascade?)` | Delete a bar. Refused with a child count when it has children unless `cascade=true`. Archiving is the reversible alternative. |
+
+Use `fields` for the numbers that matter and keep them updated alongside
+`percent` (e.g. `{"done": 374, "total": 1000, "cost": "$18.00"}`). Percentages
+are independent: a parent does not auto-compute from its children.
+
+### Conventions
+
+- Dates are Manila time. Omit them for "today"/"this week" rather than guessing a UTC date.
+- Set `owner` (cards) and `author` (comments) to your agent name so work is attributable.
+- Keep a card's body in the handoff shape: `## Goal` (one-line outcome), `## Context`, `## Agent` (host, provider/model, worktree/branch), `## Status / progress log` (append timestamped lines), `## Findings`, `## Next steps` (`- [ ]` items), `## Links`.
+- Read the card before replacing its body (`get_card`), then append — never rewrite history, and keep items Kix already ticked as `- [x]`.
+- Sitrep items Kix should act on go in as `- [ ] ` task lines on their own line; his ticks persist as `- [x]`, so don't reset them when updating an entry.
+- Move finished cards to Done; archive a single card instead of deleting it, and only call `archive_done` when asked.
+- Group related cards with `opname` (max 100 chars, e.g. `Operation Valhalla`) instead of inventing a parallel board.
+- Track long-running batches and jobs as Progress Bars instead of burying status in a card comment; nest a budget or per-stage bar under the main one and keep `percent` + fields current.
+- Timestamps: `date '+%Y-%m-%d %H:%M %z'` on the host. Keep secrets out of bodies and comments.
+
+## Other endpoints on this host (not covered by MCP)
+
+- `GET /api/stats`, `GET /api/stats/history?seconds=3600` — live CPU / temperature / memory / power, sampled once per second.
+- `GET /api/procs?sort=rss|cpu|pid|name&order=desc|asc&limit=40` — host processes with `rss_bytes`, `cpu_percent` (one 0.12s sample), `user`, `status`, `cmdline`, and `protected` (init or the dashboard's own ancestry). `POST /api/procs/:pid/signal` with `{"signal":"TERM"|"KILL"}` sends a signal; other users' processes return 403.
+- Files (host FS rooted at `~`): `GET /api/fs/list|stat|read|download`, `PUT /api/fs/write`, `POST /api/fs/upload|mkdir|touch|rename`, `DELETE /api/fs?path=…`.
+- Shell (tmux-backed tty in `~`): `POST /api/shell/new|input|key|resize|kill`, `GET /api/shell/pane|list`, and the live websocket at `ws://macmini:5556/ws/shell?id=<sid>`.
+- Page tabs: `#/brief` (Daily Sitrep), `#/` (Stack), `#/files`, `#/shell`, `#/kanban` (Ops Board), `#/progress` (Progress Bars).
+
+## Raw REST API (legacy — same data as the MCP tools)
+
+Kept for existing scripts and routines. Prefer the MCP tools; these routes may
+change independently of them. No auth headers are needed on any of them.
+
+**Daily Sitrep** — `GET|PUT|POST|DELETE /api/sitrep` (`?date=YYYY-MM-DD`), `GET /api/sitrep/list?limit=N`.
+**Deprecated aliases:** `/api/brief` and `/api/brief/list` still work with identical payloads.
+
+**Weekly schedule** — `GET|PUT|POST|DELETE /api/schedule` (`?week=YYYY-MM-DD`), `GET /api/schedule/list?limit=N`.
+
+**Progress Bars** — canonical prefix `/api/progress`; percentages are 0–100, `fields` is a flat JSON object.
+
+| Method | Path |
+|--------|------|
+| GET | `/api/progress` (roots with nested children), `/api/progress/flat` |
+| GET/DELETE | `/api/progress/:id` (`DELETE …?cascade=1` removes the subtree) |
+| POST | `/api/progress` |
+| PATCH | `/api/progress/:id` |
+
+Listings take `?archived=exclude|include|only` (default `exclude`) and return
+`count` plus `archived_count`. POST/PATCH accept `title`, `percent`,
+`parent_id`, `fields`, `owner`, `position`; PATCH also accepts `add_fields`,
+`remove_fields`, and `archived` (boolean, cascades through the subtree).
+
+**Ops Board** — canonical prefix `/api/opsboard`; `opname` filters every listing.
+
+| Method | Path |
+|--------|------|
+| GET | `/api/opsboard?status=&owner=&opname=&include_archived=&include_body=` |
+| GET | `/api/opsboard/cards`, `/api/opsboard/archived` |
+| GET | `/api/opsboard/search?q=&limit=&archived=&status=&owner=&opname=` |
+| GET | `/api/opsboard/opnames` |
+| POST | `/api/opsboard/cards`, `/api/opsboard/archive-done` |
+| GET/PATCH/DELETE | `/api/opsboard/cards/:id` |
+| GET/POST | `/api/opsboard/cards/:id/comments` |
+| DELETE | `/api/opsboard/cards/:id/comments/:commentId` |
+| GET/POST | `/api/opsboard/lanes` |
+| PATCH/DELETE | `/api/opsboard/lanes/:lane` |
+
+**Deprecated aliases:** `/api/kanban` and every `/api/kanban/...` subpath call
+the same handlers with the same payloads. Swap the prefix for `/api/opsboard` in
+new code. Cards carry `opname`, `body`, `has_body`, `body_preview`,
+`body_tasks`, `comment_count`; pass `?include_body=1` for full bodies in
+listings. Storage: SQLite at
+`/Users/kixpanganiban/quick-arr-stack/arr-dashboard/data/briefs.db` (host mount,
+survives rebuilds).

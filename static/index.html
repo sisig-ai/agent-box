@@ -4,69 +4,79 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#0b0e10">
+  <meta name="theme-color" content="#080b09">
   <meta name="format-detection" content="telephone=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="GMGN">
   <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=terran1">
-  <link rel="icon" href="/icons/icon-192.png?v=terran1">
-  <script>
-    (function () {
-      var app = new URLSearchParams(location.search).get('app') === 'gmgn' || location.pathname === '/gmgn';
-      var standalone = window.navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
-      if (app || standalone) {
-        document.documentElement.classList.add('gmgn-app');
-        if (location.hash !== '#/gmgn') location.hash = '#/gmgn';
-      }
-    })();
-  </script>
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="macmini">
+  <link rel="icon" href="/icons/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/icons/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=ascii2">
   <script src="/static/vendor/marked.min.js"></script>
   <link rel="preload" href="/static/fonts/FiraCodeNerdFontMono-Regular.woff2?v=nf3.4.0" as="font" type="font/woff2" crossorigin>
-  <title>Macmini</title>
+  <title>macmini</title>
   <link rel="stylesheet" href="/static/css/base.css">
   <link rel="stylesheet" href="/static/css/header.css?v=clockpill1">
-  <link rel="stylesheet" href="/static/css/telemetry.css?v=clockpill1">
+  <link rel="stylesheet" href="/static/css/telemetry.css?v=procs3">
   <link rel="stylesheet" href="/static/css/power-alerts.css?v=compact1">
   <link rel="stylesheet" href="/static/css/scanner.css">
   <link rel="stylesheet" href="/static/css/fleet.css">
   <link rel="stylesheet" href="/static/css/brief.css">
   <link rel="stylesheet" href="/static/css/schedule.css">
-  <link rel="stylesheet" href="/static/css/shell.css">
+  <link rel="stylesheet" href="/static/css/shell.css?v=ascii13">
   <link rel="stylesheet" href="/static/css/files.css">
   <link rel="stylesheet" href="/static/css/editor.css">
-  <link rel="stylesheet" href="/static/css/gmgn.css?v=gmgn11">
-  <link rel="stylesheet" href="/static/css/gmgn-days.css?v=gmgn10">
-  <link rel="stylesheet" href="/static/css/gmgn-graphs.css?v=gmgn10">
-  <link rel="stylesheet" href="/static/css/kanban.css?v=kanban7">
-  <link rel="stylesheet" href="/static/css/kanban-detail.css?v=kanban7">
+  <link rel="stylesheet" href="/static/css/kanban.css?v=kanban29">
+  <link rel="stylesheet" href="/static/css/kanban-search.css?v=kanban20">
+  <link rel="stylesheet" href="/static/css/kanban-detail.css?v=kanban20">
   <link rel="stylesheet" href="/static/css/modal.css?v=clockpill1">
-  <link rel="preload" href="/static/fonts/VT323-Regular.woff2?v=terran1" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/static/css/terran/core.css?v=terran1">
-  <link rel="stylesheet" href="/static/css/terran/console.css?v=terran7">
-  <link rel="stylesheet" href="/static/css/terran/hud.css?v=terran4">
-  <link rel="stylesheet" href="/static/css/terran/panels.css?v=terran1">
-  <link rel="stylesheet" href="/static/css/terran/kanban.css?v=terran2">
-  <link rel="stylesheet" href="/static/css/terran/mobile.css?v=terran7">
+  <link rel="stylesheet" href="/static/css/ascii.css?v=ascii12">
+  <link rel="stylesheet" href="/static/css/ascii-views.css?v=ascii12">
+  <link rel="stylesheet" href="/static/css/ascii-content.css?v=ascii13">
+  <link rel="stylesheet" href="/static/css/ascii-board.css?v=ascii13">
+  <link rel="stylesheet" href="/static/css/ascii-progress.css?v=progress1">
+  <link rel="stylesheet" href="/static/css/ascii-attention.css?v=attention8">
+  <link rel="stylesheet" href="/static/css/tui.css?v=tui80b">
+  <link rel="stylesheet" href="/static/css/pwa.css?v=pwa1">
 </head>
 <body data-view="stack">
-  <canvas id="warpfield" aria-hidden="true"></canvas>
-  <div class="nebula" aria-hidden="true"><span></span><span></span><span></span></div>
-  <div class="vignette" aria-hidden="true"></div>
-
   <div class="container">
-    <header>
-      <div class="brand">
-        <div class="eyebrow"><span class="pulse"></span><span id="count">Spinning up drives</span></div>
-        <h1 id="title">Macmini</h1>
-        <p class="subtitle" id="greeting">All systems standing by.</p>
+    <aside class="side">
+      <a class="home" href="#/">macmini</a>
+      <p class="by" id="count">loading…</p>
+      <nav class="view-tabs" aria-label="Views">
+        <a class="view-btn" id="view-btn-brief" href="#/brief" title="Daily Sitrep (b)">[sitrep]</a>
+        <a class="view-btn" id="view-btn-stack" href="#/" title="Stack (s)">[stack]</a>
+        <a class="view-btn" id="view-btn-files" href="#/files" title="Files (f)">[files]</a>
+        <a class="view-btn" id="view-btn-shell" href="#/shell" title="Shell (t)">[shell]</a>
+        <a class="view-btn" id="view-btn-kanban" href="#/kanban" title="Ops Board (k)">[ops board]</a>
+        <a class="view-btn" id="view-btn-progress" href="#/progress" title="Progress Bars (p)">[progress]</a>
+      </nav>
+      <div class="side-foot">
+        <p class="dim">host</p>
+        <p id="host">—</p>
+        <button type="button" class="linkbtn" id="keys-btn">[keys]</button>
       </div>
-      <!-- ---------- Live telemetry: compact pills inline with the title (1s tick, every tab) ---------- -->
+    </aside>
+
+    <main class="page">
+      <header>
+        <div class="brand">
+          <h1 id="title">macmini</h1>
+          <p class="subtitle" id="greeting">all systems standing by.</p>
+        </div>
+        <div class="readout" aria-label="Local time">
+          <span class="readout-time" id="readout-time">--:--</span>
+          <span class="readout-meta"><span id="readout-date"></span> <span class="readout-tz" id="readout-tz"></span></span>
+        </div>
+      </header>
+
+      <!-- ---------- Live host telemetry (1s tick, every tab) ---------- -->
       <section class="telemetry" id="telemetry" aria-label="Live host telemetry">
-        <div class="tele-card" id="tele-card-cpu" style="--accent:#6fd3ff;--accent2:#ffb33d" role="button" tabindex="0" aria-expanded="false" aria-label="CPU — activate to expand 1 hour graph">
-          <i class="tr-res-ico tr-res-cpu" aria-hidden="true"></i><div class="tele-label"><span>CPU</span><span class="tele-live"><i></i>live</span></div>
+        <div class="tele-card" id="tele-card-cpu" role="button" tabindex="0" aria-expanded="false" aria-label="CPU — activate to expand 1 hour graph">
+          <div class="tele-label"><span>cpu</span><span class="tele-live"><i></i>live</span></div>
           <div class="tele-duo">
             <div class="tele-half">
               <div class="tele-main"><span id="tele-cpu-util">—</span><span class="tele-unit">%</span></div>
@@ -81,338 +91,346 @@
           </div>
           <div class="tele-graph"><canvas id="tele-cpu-graph"></canvas></div>
         </div>
-        <div class="tele-card" id="tele-card-mem" style="--accent:#3dff73" role="button" tabindex="0" aria-expanded="false" aria-label="Memory — activate to expand 1 hour graph">
-          <i class="tr-res-ico tr-res-mem" aria-hidden="true"></i><div class="tele-label"><span>Memory</span><span class="tele-live"><i></i>live</span></div>
+        <div class="tele-card" id="tele-card-mem" role="button" tabindex="0" aria-expanded="false" aria-label="Memory — activate to expand 1 hour graph and the process list">
+          <div class="tele-label"><span>memory</span><span class="tele-live"><i></i>live</span></div>
           <div class="tele-main"><span id="tele-mem-used">—</span><span class="tele-unit" id="tele-mem-total">/ — GB</span></div>
           <div class="tele-sub" id="tele-mem-free">free —</div>
           <div class="tele-bar"><i id="tele-mem-bar"></i></div>
-          <div class="tele-graph"><canvas id="tele-mem-graph"></canvas></div>
+          <div class="tele-graph">
+            <canvas id="tele-mem-graph"></canvas>
+            <div class="tele-procs" id="tele-procs">
+              <div class="procs-bar">
+                <span class="procs-title">proc table</span>
+                <span class="procs-meta" id="procs-meta">loading…</span>
+              </div>
+              <div class="procs-scroll">
+                <table class="procs-table">
+                  <thead>
+                    <tr>
+                      <th class="p-pid">pid</th>
+                      <th class="p-name">process</th>
+                      <th class="p-num"><button type="button" class="procs-sort" data-sort="cpu" aria-sort="none">cpu%</button></th>
+                      <th class="p-num"><button type="button" class="procs-sort" data-sort="rss" aria-sort="none">mem</button></th>
+                      <th class="p-sig">signal</th>
+                    </tr>
+                  </thead>
+                  <tbody id="procs-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="tele-card" id="tele-card-pwr" style="--accent:#f5d547" role="button" tabindex="0" aria-expanded="false" aria-label="Power — activate to expand 1 hour graph">
-          <i class="tr-res-ico tr-res-pwr" aria-hidden="true"></i><div class="tele-label"><span>System Power</span><span class="tele-right"><span class="tele-live"><i></i>live</span><button class="pwr-badge" id="tele-pwr-badge" title="Dismiss power alert" aria-label="Dismiss power alert">⚠<span id="tele-pwr-badge-text"></span><span class="pwr-x" aria-hidden="true">×</span></button></span></div>
+        <div class="tele-card" id="tele-card-pwr" role="button" tabindex="0" aria-expanded="false" aria-label="Power — activate to expand 1 hour graph">
+          <div class="tele-label">
+            <span>power</span>
+            <span class="tele-right"><span class="tele-live"><i></i>live</span><button class="pwr-badge" id="tele-pwr-badge" title="Dismiss power alert" aria-label="Dismiss power alert">⚠<span id="tele-pwr-badge-text"></span><span class="pwr-x" aria-hidden="true">×</span></button></span>
+          </div>
           <div class="tele-main"><span id="tele-pwr-total">—</span><span class="tele-unit">W</span></div>
           <div class="tele-sub" id="tele-pwr-split">cpu — · gpu —</div>
           <div class="tele-bar"><i id="tele-pwr-bar"></i></div>
           <div class="tele-graph" data-ptab="graph"><canvas id="tele-pwr-graph"></canvas>
             <div class="tele-tabs" role="tablist" aria-label="Power views">
-              <button class="tele-tab active" data-ptab="graph" role="tab" aria-selected="true">Graph</button>
-              <button class="tele-tab" data-ptab="alerts" role="tab" aria-selected="false">Alerts<span id="tele-pwr-alert-count"></span></button>
+              <button class="tele-tab active" data-ptab="graph" role="tab" aria-selected="true">[graph]</button>
+              <button class="tele-tab" data-ptab="alerts" role="tab" aria-selected="false">[alerts<span id="tele-pwr-alert-count"></span>]</button>
             </div>
             <div class="tele-alerts" id="tele-pwr-alerts" aria-live="polite"></div>
           </div>
         </div>
       </section>
-      <div class="tr-chip" id="tr-chip" data-adjutant aria-hidden="true">
-        <img class="tr-adj-idle" src="/static/img/terran/adjutant-idle-chip.webp?v=terran4" alt="" decoding="async">
-      </div>
-      <div class="readout" style="--accent:#4fe3c1" aria-label="Local time">
-        <div class="tele-label"><span>Local</span><span class="readout-tz" id="readout-tz"></span></div>
-        <div class="tele-main readout-time" id="readout-time">--:--</div>
-        <div class="tele-sub readout-date" id="readout-date"></div>
-      </div>
-    </header>
 
-    <!-- ---------- Terran console: selection readout · adjutant portrait · command card ---------- -->
-    <div class="tr-console" id="tr-console">
-      <div class="tr-select" aria-live="polite">
-        <div class="tr-wire"><img id="tr-wire-img" src="/static/img/terran/wire-command.webp?v=terran1" alt="" decoding="async"></div>
-        <div class="tr-sel-text">
-          <div class="tr-sel-name" id="tr-sel-name">Command Center</div>
-          <div class="tr-sel-rank" id="tr-sel-rank">Stack</div>
-          <div class="tr-sel-stats" id="tr-sel-stats"></div>
-        </div>
-      </div>
-      <div class="tr-portrait" id="tr-portrait" data-adjutant aria-hidden="true">
-        <img class="tr-adj-idle" src="/static/img/terran/adjutant-idle.webp?v=terran4" alt="" decoding="async">
-        <img class="tr-adj-color" src="/static/img/terran/adjutant-color.webp?v=terran4" alt="" decoding="async">
-        <span class="tr-portrait-tag">adjutant</span>
-      </div>
-      <nav class="view-tabs tr-cmd" aria-label="Views">
-        <a class="view-btn tr-cmd-btn" id="view-btn-brief" href="#/brief" data-hotkey="b" title="Daily Sitrep (B)" aria-keyshortcuts="B"><img src="/static/img/terran/ico-brief.webp?v=terran1" alt="" width="64" height="64" decoding="async"><span class="tr-cmd-lbl">Sitrep<span class="tr-long"> [<u>B</u>]</span></span><kbd>B</kbd></a>
-        <a class="view-btn tr-cmd-btn" id="view-btn-stack" href="#/" data-hotkey="s" title="Stack (S)" aria-keyshortcuts="S"><img src="/static/img/terran/ico-stack.webp?v=terran1" alt="" width="64" height="64" decoding="async"><span class="tr-cmd-lbl"><u>S</u>tack</span><kbd>S</kbd></a>
-        <a class="view-btn tr-cmd-btn" id="view-btn-files" href="#/files" data-hotkey="f" title="Files (F)" aria-keyshortcuts="F"><img src="/static/img/terran/ico-files.webp?v=terran1" alt="" width="64" height="64" decoding="async"><span class="tr-cmd-lbl"><u>F</u>iles</span><kbd>F</kbd></a>
-        <a class="view-btn tr-cmd-btn" id="view-btn-shell" href="#/shell" data-hotkey="t" title="Shell (T)" aria-keyshortcuts="T"><img src="/static/img/terran/ico-shell.webp?v=terran1" alt="" width="64" height="64" decoding="async"><span class="tr-cmd-lbl">Shell<span class="tr-long"> [<u>T</u>]</span></span><kbd>T</kbd></a>
-        <a class="view-btn tr-cmd-btn" id="view-btn-kanban" href="#/kanban" data-hotkey="k" title="Ops Board (K)" aria-keyshortcuts="K"><img src="/static/img/terran/ico-kanban.webp?v=terran1" alt="" width="64" height="64" decoding="async"><span class="tr-cmd-lbl">Ops Board<span class="tr-long"> [<u>K</u>]</span></span><kbd>K</kbd></a>
-        <a class="view-btn tr-cmd-btn" id="view-btn-gmgn" href="#/gmgn" data-hotkey="g" title="GMGN (G)" aria-keyshortcuts="G"><img src="/static/img/terran/ico-gmgn.webp?v=terran1" alt="" width="64" height="64" decoding="async"><span class="tr-cmd-lbl"><u>G</u>MGN</span><kbd>G</kbd></a>
-        <button type="button" class="tr-cmd-btn tr-cmd-util" id="tr-sound" data-hotkey="m" title="Sound effects (M)" aria-pressed="false"><span class="tr-glyph" aria-hidden="true">♪</span><span class="tr-cmd-lbl">Muted</span><kbd>M</kbd></button>
-        <button type="button" class="tr-cmd-btn tr-cmd-util" id="tr-crt" data-hotkey="c" title="CRT scanlines (C)" aria-pressed="true"><span class="tr-glyph" aria-hidden="true">▤</span><span class="tr-cmd-lbl">CRT on</span><kbd>C</kbd></button>
-        <button type="button" class="tr-cmd-btn tr-cmd-util" id="tr-help" data-hotkey="?" title="Hotkeys (?)"><span class="tr-glyph" aria-hidden="true">?</span><span class="tr-cmd-lbl">Hotkeys</span><kbd>?</kbd></button>
-      </nav>
-    </div>
-    <div class="tr-msgs" id="tr-msgs" role="log" aria-live="polite" aria-label="Advisor messages"></div>
-
-
-    <!-- ---------- Daily Sitrep + Weekly Schedule ---------- -->
-    <section class="brief" data-tabpanel="brief" id="brief" aria-label="Daily Sitrep and weekly schedule">
-      <div class="brief-main">
-        <div class="brief-head">
-          <div class="brief-title">
-            <h2>Daily Sitrep</h2>
-            <span class="brief-date-label" id="brief-date-label"></span>
-          </div>
-          <div class="brief-nav">
-            <button class="brief-btn" id="brief-prev" title="Previous day" aria-label="Previous day">‹</button>
-            <input type="date" id="brief-date" aria-label="Sitrep date">
-            <button class="brief-btn" id="brief-next" title="Next day" aria-label="Next day">›</button>
-            <button class="brief-btn" id="brief-today" title="Jump to today" aria-label="Jump to today">Today</button>
-          </div>
-        </div>
-
-        <div class="brief-toolbar" role="toolbar" aria-label="Markdown toolbar">
-          <button class="tool-btn" data-md="h1" title="Heading 1">H1</button>
-          <button class="tool-btn" data-md="h2" title="Heading 2">H2</button>
-          <button class="tool-btn" data-md="h3" title="Heading 3">H3</button>
-          <span class="tool-sep"></span>
-          <button class="tool-btn" data-md="bold" title="Bold (Ctrl/Cmd+B)"><b>B</b></button>
-          <button class="tool-btn" data-md="italic" title="Italic (Ctrl/Cmd+I)"><i>I</i></button>
-          <button class="tool-btn" data-md="strike" title="Strikethrough"><s>S</s></button>
-          <span class="tool-sep"></span>
-          <button class="tool-btn" data-md="code" title="Inline code">&lt;/&gt;</button>
-          <button class="tool-btn" data-md="codeblock" title="Code block">```</button>
-          <button class="tool-btn" data-md="quote" title="Blockquote">❝</button>
-          <span class="tool-sep"></span>
-          <button class="tool-btn" data-md="ul" title="Bullet list">•</button>
-          <button class="tool-btn" data-md="ol" title="Numbered list">1.</button>
-          <button class="tool-btn" data-md="task" title="Task list">☐</button>
-          <button class="tool-btn" data-md="hr" title="Horizontal rule">—</button>
-          <span class="tool-sep"></span>
-          <button class="tool-btn" data-md="link" title="Link">🔗</button>
-          <button class="tool-btn" data-md="table" title="Table">▦</button>
-        </div>
-
-        <div class="brief-tabs">
-          <button class="tab-btn active" data-tab="preview">Preview</button>
-          <button class="tab-btn" data-tab="write">Edit</button>
-        </div>
-
-        <div class="brief-panes">
-          <textarea class="brief-editor" id="brief-editor"
-            placeholder="Type today's sitrep… markdown supported. Saved automatically."></textarea>
-          <div class="brief-preview" id="brief-preview"></div>
-        </div>
-
-        <div class="brief-status">
-          <span class="brief-save-state" id="brief-save-state">ready</span>
-          <span id="brief-wordcount"></span>
-        </div>
-      </div>
-
-      <aside class="brief-schedule" id="brief-schedule" aria-label="Weekly schedule">
-        <div class="schedule-head">
-          <div class="schedule-title">
-            <h2>Schedule</h2>
-            <span class="schedule-week-label" id="schedule-week-label"></span>
-          </div>
-          <div class="schedule-nav">
-            <button class="brief-btn" id="sched-prev" title="Previous week" aria-label="Previous week">‹</button>
-            <button class="brief-btn" id="sched-next" title="Next week" aria-label="Next week">›</button>
-            <button class="brief-btn" id="sched-now" title="This week" aria-label="This week">Now</button>
-          </div>
-        </div>
-        <div class="schedule-preview" id="schedule-preview"></div>
-      </aside>
-    </section>
-
-    <!-- ---------- Stack (service grid) ---------- -->
-    <div data-tabpanel="stack">
-      <div class="scanner">
-        <span class="glyph">&gt;</span>
-        <input id="search" type="text" placeholder="scan for a system…" autocomplete="off" spellcheck="false" aria-label="Search services">
-        <span class="kbd">/</span>
-      </div>
-      <div class="grid" id="services"></div>
-    </div>
-
-    <!-- ---------- Shell (host tty, starts in ~) ---------- -->
-    <section class="shell" data-tabpanel="shell" id="shell-view" aria-label="Host shell">
-      <div class="shell-head">
-        <div class="shell-title">
-          <span class="shell-dot" id="shell-dot"></span>
-          <span>shell — kixpanganiban@macmini <span style="opacity:0.55">~</span></span>
-          <span class="shell-sess" id="shell-sess"></span>
-        </div>
-        <div class="shell-actions">
-          <button class="brief-btn" id="shell-fit" title="Resize pty to fit this window">Fit</button>
-          <button class="brief-btn" id="shell-clear" title="Clear screen (Ctrl-L)">Clear</button>
-          <button class="brief-btn" id="shell-reconnect" title="Reconnect (poll now)">Reconnect</button>
-          <button class="brief-btn" id="shell-new" title="Kill and start a fresh shell in ~">New</button>
-        </div>
-      </div>
-      <div class="term-wrap">
-        <div class="term" id="term" tabindex="0" role="textbox" aria-label="Host shell terminal" aria-multiline="true">
-          <pre class="term-screen" id="term-screen">connecting…</pre>
-        </div>
-      </div>
-      <div class="term-keys" id="term-keys" role="toolbar" aria-label="Terminal keys">
-        <button class="key-btn mod" data-mod="S" title="Shift (sticky)" aria-pressed="false">⇧</button>
-        <button class="key-btn mod" data-mod="C" title="Ctrl (sticky)" aria-pressed="false">Ctrl</button>
-        <button class="key-btn mod" data-mod="M" title="Alt (sticky)" aria-pressed="false">Alt</button>
-        <button class="key-btn" data-key="Escape" title="Esc">Esc</button>
-        <button class="key-btn" data-key="Tab" title="Tab">Tab</button>
-        <button class="key-btn" data-key="Left" title="Left">←</button>
-        <button class="key-btn" data-key="Up" title="Up">↑</button>
-        <button class="key-btn" data-key="Down" title="Down">↓</button>
-        <button class="key-btn" data-key="Right" title="Right">→</button>
-      </div>
-      <div class="term-hint">
-        <span>click terminal, then type — full tty on the host, starting in ~</span>
-        <span id="shell-state">…</span>
-      </div>
-    </section>
-
-    <!-- ---------- Files (host filesystem explorer, opens at ~) ---------- -->
-    <section class="files" data-tabpanel="files" id="files-view" aria-label="Filesystem explorer">
-      <div class="files-head">
-        <div class="files-title">
-          <h2>Files</h2>
-          <span class="files-path-label" id="files-path-label">~</span>
-        </div>
-        <div class="files-actions">
-          <button class="brief-btn" id="files-up" title="Up one level">↑ Up</button>
-          <button class="brief-btn" id="files-home" title="Go to home directory">~ Home</button>
-          <button class="brief-btn" id="files-refresh" title="Reload this folder">⟳ Refresh</button>
-          <button class="brief-btn toggled" id="files-hidden" title="Show or hide dotfiles">◌ Hidden</button>
-          <button class="brief-btn" id="files-mkdir" title="Create a new folder">+ Folder</button>
-          <button class="brief-btn" id="files-touch" title="Create a new empty file">+ File</button>
-          <button class="brief-btn" id="files-upload" title="Upload files into this folder">⬆ Upload</button>
-          <input type="file" id="files-upload-input" multiple hidden>
-        </div>
-      </div>
-
-      <nav class="files-breadcrumb" id="files-breadcrumb" aria-label="Current folder"></nav>
-
-      <div class="files-body">
-        <div class="files-editor" id="files-editor" hidden>
-          <div class="files-editor-head">
-            <span class="files-editor-name" id="files-editor-name"></span>
-            <span class="files-editor-dirty" id="files-editor-dirty" hidden>unsaved</span>
-            <div class="files-editor-actions">
-              <button class="brief-btn" id="files-editor-save" title="Save (Cmd/Ctrl+S)">Save</button>
-              <button class="brief-btn" id="files-editor-download" title="Download current content">Download</button>
-              <button class="brief-btn" id="files-editor-close" title="Close (Esc)">Close</button>
+      <!-- ---------- Daily Sitrep + Weekly Schedule ---------- -->
+      <section class="brief" data-tabpanel="brief" id="brief" aria-label="Daily Sitrep and weekly schedule">
+        <div class="brief-main">
+          <div class="brief-head">
+            <div class="brief-title">
+              <h2>Daily Sitrep</h2>
+              <span class="brief-date-label" id="brief-date-label"></span>
+            </div>
+            <div class="brief-nav">
+              <button class="brief-btn" id="brief-prev" title="Previous day" aria-label="Previous day">‹</button>
+              <input type="date" id="brief-date" aria-label="Sitrep date">
+              <button class="brief-btn" id="brief-next" title="Next day" aria-label="Next day">›</button>
+              <button class="brief-btn" id="brief-today" title="Jump to today" aria-label="Jump to today">today</button>
             </div>
           </div>
-          <div class="files-editor-host" id="files-editor-host"></div>
-          <div class="files-editor-status" id="files-editor-status"></div>
+
+          <div class="brief-toolbar" role="toolbar" aria-label="Markdown toolbar">
+            <button class="tool-btn" data-md="h1" title="Heading 1">H1</button>
+            <button class="tool-btn" data-md="h2" title="Heading 2">H2</button>
+            <button class="tool-btn" data-md="h3" title="Heading 3">H3</button>
+            <span class="tool-sep"></span>
+            <button class="tool-btn" data-md="bold" title="Bold (Ctrl/Cmd+B)"><b>B</b></button>
+            <button class="tool-btn" data-md="italic" title="Italic (Ctrl/Cmd+I)"><i>I</i></button>
+            <button class="tool-btn" data-md="strike" title="Strikethrough"><s>S</s></button>
+            <span class="tool-sep"></span>
+            <button class="tool-btn" data-md="code" title="Inline code">&lt;/&gt;</button>
+            <button class="tool-btn" data-md="codeblock" title="Code block">```</button>
+            <button class="tool-btn" data-md="quote" title="Blockquote">❝</button>
+            <span class="tool-sep"></span>
+            <button class="tool-btn" data-md="ul" title="Bullet list">•</button>
+            <button class="tool-btn" data-md="ol" title="Numbered list">1.</button>
+            <button class="tool-btn" data-md="task" title="Task list">☐</button>
+            <button class="tool-btn" data-md="hr" title="Horizontal rule">—</button>
+            <span class="tool-sep"></span>
+            <button class="tool-btn" data-md="link" title="Link">link</button>
+            <button class="tool-btn" data-md="table" title="Table">tbl</button>
+          </div>
+
+          <div class="brief-tabs">
+            <button class="tab-btn active" data-tab="preview">preview</button>
+            <button class="tab-btn" data-tab="write">edit</button>
+          </div>
+
+          <div class="brief-panes">
+            <textarea class="brief-editor" id="brief-editor"
+              placeholder="type today's sitrep… markdown supported. saved automatically."></textarea>
+            <div class="brief-preview" id="brief-preview"></div>
+          </div>
+
+          <div class="brief-status">
+            <span class="brief-save-state" id="brief-save-state">ready</span>
+            <span id="brief-wordcount"></span>
+          </div>
         </div>
-        <div class="files-list-wrap" id="files-list-wrap">
-          <table class="files-table">
-            <thead>
-              <tr>
-                <th class="col-name sorted asc" data-sort="name">Name</th>
-                <th class="col-size" data-sort="size">Size</th>
-                <th class="col-date" data-sort="mtime">Modified</th>
-                <th class="col-mode" data-sort="mode">Mode</th>
-                <th class="col-actions" aria-label="Actions"></th>
-              </tr>
-            </thead>
-            <tbody id="files-tbody"></tbody>
-          </table>
-          <div class="files-empty" id="files-empty" hidden></div>
-          <div class="files-drop-hint">drop to upload into this folder</div>
-        </div>
-        <aside class="files-info" aria-label="Selection details">
-          <h3>Details</h3>
-          <div id="files-info-body"><div class="files-info-empty">click a file or folder to see its info</div></div>
-          <div class="files-places" id="files-places"></div>
+
+        <aside class="brief-schedule" id="brief-schedule" aria-label="Weekly schedule">
+          <div class="schedule-head">
+            <div class="schedule-title">
+              <h2>Schedule</h2>
+              <span class="schedule-week-label" id="schedule-week-label"></span>
+            </div>
+            <div class="schedule-nav">
+              <button class="brief-btn" id="sched-prev" title="Previous week" aria-label="Previous week">‹</button>
+              <button class="brief-btn" id="sched-next" title="Next week" aria-label="Next week">›</button>
+              <button class="brief-btn" id="sched-now" title="This week" aria-label="This week">now</button>
+            </div>
+          </div>
+          <div class="schedule-preview" id="schedule-preview"></div>
         </aside>
-      </div>
+      </section>
 
-      <div class="files-status" id="files-status-bar">
-        <span id="files-status">opening ~ …</span>
-        <span id="files-count"></span>
-      </div>
-    </section>
-
-    <!-- ---------- Ops Board (lanes + cards, driven by /api/opsboard) ---------- -->
-    <section class="kanban" data-tabpanel="kanban" id="kanban-view" aria-label="Ops Board">
-      <div class="kanban-head">
-        <div class="kanban-title">
-          <h2>Ops Board</h2>
-          <span class="kanban-sub">drag cards between lanes · click a card to open · agents: /api/opsboard</span>
+      <!-- ---------- Stack (service grid) ---------- -->
+      <div data-tabpanel="stack">
+        <div class="scanner">
+          <span class="glyph">&gt;</span>
+          <input id="search" type="text" placeholder="scan for a system…" autocomplete="off" spellcheck="false" aria-label="Search services">
+          <span class="kbd">/</span>
         </div>
-        <div class="kanban-actions">
-          <button class="brief-btn" id="kanban-add-lane" title="Add a lane">+ Lane</button>
-          <button class="brief-btn" id="kanban-refresh" title="Reload the board">⟳ Refresh</button>
-        </div>
+        <div class="grid" id="services"></div>
       </div>
-      <div class="kanban-board" id="kanban-board"></div>
-      <div class="kanban-status">
-        <span id="kanban-status">loading…</span>
-        <span id="kanban-count"></span>
-      </div>
-    </section>
 
-    <section class="gmgn" data-tabpanel="gmgn" id="gmgn" aria-label="GMGN loop">
-      <div class="gmgn-bar">
-        <div class="gmgn-brand"><i></i>gmgn</div>
-        <div class="gmgn-bar-side">
-          <span id="gmgn-updated">—</span>
-          <a class="gmgn-dash" href="#/">dashboard</a>
+      <!-- ---------- Shell (host tty, starts in ~) ---------- -->
+      <section class="shell" data-tabpanel="shell" id="shell-view" aria-label="Host shell">
+        <div class="shell-head">
+          <div class="shell-title">
+            <span class="shell-dot" id="shell-dot"></span>
+            <span>shell — kixpanganiban@macmini <span class="dim">~</span></span>
+            <span class="shell-sess" id="shell-sess"></span>
+          </div>
+          <div class="shell-actions">
+            <button class="brief-btn" id="shell-fit" title="Resize pty to fit this window">fit</button>
+            <button class="brief-btn" id="shell-clear" title="Clear screen (Ctrl-L)">clear</button>
+            <button class="brief-btn" id="shell-reconnect" title="Reconnect (poll now)">reconnect</button>
+            <button class="brief-btn" id="shell-new" title="Kill and start a fresh shell in ~">new</button>
+          </div>
         </div>
-      </div>
-      <div class="gmgn-card gmgn-balance" id="gmgn-balance"><div class="label">balance</div><div class="value">—</div><div class="meta"></div></div>
-      <div class="gmgn-cards">
-        <div class="gmgn-card" id="gmgn-h12"><div class="label">12h</div><div class="value">—</div><div class="meta"></div></div>
-        <div class="gmgn-card" id="gmgn-d1"><div class="label">1d</div><div class="value">—</div><div class="meta"></div></div>
-        <div class="gmgn-card" id="gmgn-d7"><div class="label">7d</div><div class="value">—</div><div class="meta"></div></div>
-      </div>
-      <p class="gmgn-install" id="gmgn-install">safari share, then add to home screen. it opens this tab full screen.</p>
-      <div class="gmgn-screen" id="gmgn-screen"></div>
-      <div class="gmgn-block" id="gmgn-open-block" hidden>
-        <div class="gmgn-section-label"><span>open</span></div>
-        <div class="gmgn-open" id="gmgn-open"></div>
-      </div>
-      <div class="gmgn-block">
-        <div class="gmgn-section-label"><span>trades</span><span id="gmgn-trade-count" aria-live="polite"></span></div>
-        <nav class="gmgn-day-pager" id="gmgn-day-pager" aria-label="trade days, manila time" hidden>
-          <button type="button" id="gmgn-newer" aria-controls="gmgn-timeline">newer</button>
-          <label for="gmgn-day">day <select id="gmgn-day" aria-controls="gmgn-timeline"></select></label>
-          <button type="button" id="gmgn-older" aria-controls="gmgn-timeline">older</button>
-        </nav>
-        <div class="gmgn-timeline" id="gmgn-timeline"></div>
-      </div>
-    </section>
+        <div class="term-wrap">
+          <div class="term" id="term" tabindex="0" role="textbox" aria-label="Host shell terminal" aria-multiline="true">
+            <pre class="term-screen" id="term-screen">connecting…</pre>
+          </div>
+        </div>
+        <div class="term-keys" id="term-keys" role="toolbar" aria-label="Terminal keys">
+          <button class="key-btn mod" data-mod="S" title="Shift (sticky)" aria-pressed="false">⇧</button>
+          <button class="key-btn mod" data-mod="C" title="Ctrl (sticky)" aria-pressed="false">ctrl</button>
+          <button class="key-btn mod" data-mod="M" title="Alt (sticky)" aria-pressed="false">alt</button>
+          <button class="key-btn" data-key="Escape" title="Esc">esc</button>
+          <button class="key-btn" data-key="Tab" title="Tab">tab</button>
+          <button class="key-btn" data-key="Left" title="Left">←</button>
+          <button class="key-btn" data-key="Up" title="Up">↑</button>
+          <button class="key-btn" data-key="Down" title="Down">↓</button>
+          <button class="key-btn" data-key="Right" title="Right">→</button>
+        </div>
+        <div class="term-hint">
+          <span>click terminal, then type — full tty on the host, starting in ~</span>
+          <span id="shell-state">…</span>
+        </div>
+      </section>
 
-    <footer>
-      <span>// edit <code>config.json</code> to add systems</span>
-      <span id="host"></span>
-    </footer>
+      <!-- ---------- Files (host filesystem explorer, opens at ~) ---------- -->
+      <section class="files" data-tabpanel="files" id="files-view" aria-label="Filesystem explorer">
+        <div class="files-head">
+          <div class="files-title">
+            <h2>Files</h2>
+            <span class="files-path-label" id="files-path-label">~</span>
+          </div>
+          <div class="files-actions">
+            <button class="brief-btn" id="files-up" title="Up one level">↑ up</button>
+            <button class="brief-btn" id="files-home" title="Go to home directory">~ home</button>
+            <button class="brief-btn" id="files-refresh" title="Reload this folder">⟳ refresh</button>
+            <button class="brief-btn toggled" id="files-hidden" title="Show or hide dotfiles">◌ hidden</button>
+            <button class="brief-btn" id="files-mkdir" title="Create a new folder">+ folder</button>
+            <button class="brief-btn" id="files-touch" title="Create a new empty file">+ file</button>
+            <button class="brief-btn" id="files-upload" title="Upload files into this folder">⬆ upload</button>
+            <input type="file" id="files-upload-input" multiple hidden>
+          </div>
+        </div>
+
+        <nav class="files-breadcrumb" id="files-breadcrumb" aria-label="Current folder"></nav>
+
+        <div class="files-body">
+          <div class="files-editor" id="files-editor" hidden>
+            <div class="files-editor-head">
+              <span class="files-editor-name" id="files-editor-name"></span>
+              <span class="files-editor-dirty" id="files-editor-dirty" hidden>unsaved</span>
+              <div class="files-editor-actions">
+                <button class="brief-btn" id="files-editor-save" title="Save (Cmd/Ctrl+S)">save</button>
+                <button class="brief-btn" id="files-editor-download" title="Download current content">download</button>
+                <button class="brief-btn" id="files-editor-close" title="Close (Esc)">close</button>
+              </div>
+            </div>
+            <div class="files-editor-host" id="files-editor-host"></div>
+            <div class="files-editor-status" id="files-editor-status"></div>
+          </div>
+          <div class="files-list-wrap" id="files-list-wrap">
+            <table class="files-table">
+              <thead>
+                <tr>
+                  <th class="col-name sorted asc" data-sort="name">Name</th>
+                  <th class="col-size" data-sort="size">Size</th>
+                  <th class="col-date" data-sort="mtime">Modified</th>
+                  <th class="col-mode" data-sort="mode">Mode</th>
+                  <th class="col-actions" aria-label="Actions"></th>
+                </tr>
+              </thead>
+              <tbody id="files-tbody"></tbody>
+            </table>
+            <div class="files-empty" id="files-empty" hidden></div>
+            <div class="files-drop-hint">drop to upload into this folder</div>
+          </div>
+          <aside class="files-info" aria-label="Selection details">
+            <h3>details</h3>
+            <div id="files-info-body"><div class="files-info-empty">click a file or folder to see its info</div></div>
+            <div class="files-places" id="files-places"></div>
+          </aside>
+        </div>
+
+        <div class="files-status" id="files-status-bar">
+          <span id="files-status">opening ~ …</span>
+          <span id="files-count"></span>
+        </div>
+      </section>
+
+      <!-- ---------- Ops Board ---------- -->
+      <section class="kanban" data-tabpanel="kanban" id="kanban-view" aria-label="Ops Board">
+        <div class="kanban-head">
+          <div class="kanban-title">
+            <h2>Ops Board</h2>
+            <span class="kanban-sub">drag cards between lanes · click a card to open · agents: /api/opsboard</span>
+          </div>
+          <div class="kanban-actions">
+            <div class="kb-search" role="search">
+              <input id="kanban-search" type="search" placeholder="search board…" autocomplete="off" spellcheck="false" aria-label="Full-text search over cards, bodies and comments" title="Search titles, bodies, comments, opnames and owners — Esc clears">
+              <button type="button" id="kanban-search-clear" class="kb-search-clear" title="Clear search" hidden>×</button>
+            </div>
+            <button class="brief-btn" id="kanban-add-lane" title="Add a lane">+ lane</button>
+            <button class="brief-btn" id="kanban-refresh" title="Reload the board">⟳ refresh</button>
+          </div>
+        </div>
+        <div class="kanban-board" id="kanban-board"></div>
+        <div class="kanban-status">
+          <span id="kanban-status">loading…</span>
+          <span id="kanban-count"></span>
+        </div>
+      </section>
+
+      <!-- ---------- Progress Bars ---------- -->
+      <section class="progress" data-tabpanel="progress" id="progress-view" aria-label="Progress Bars">
+        <div class="progress-head">
+          <div class="progress-title">
+            <h2>Progress Bars</h2>
+            <span class="progress-sub">shared tracking for humans and agents · nested bars · k-v fields · <code>/api/progress</code></span>
+          </div>
+          <div class="progress-actions">
+            <button class="brief-btn" id="progress-archived" title="Show archived bars">archived</button>
+            <button class="brief-btn" id="progress-add" title="Add a top-level progress bar">+ bar</button>
+            <button class="brief-btn" id="progress-refresh" title="Reload every bar">⟳ refresh</button>
+          </div>
+        </div>
+        <div class="progress-grid" id="progress-grid"></div>
+        <div class="progress-status">
+          <span id="progress-status">loading…</span>
+          <span id="progress-count"></span>
+        </div>
+      </section>
+
+      <footer class="foot">
+        <span class="dim">// edit <code>config.json</code> to add systems</span>
+        <span class="dim">? keys · macmini:5555</span>
+      </footer>
+    </main>
   </div>
 
   <!-- Shared modal for the files explorer (prompt / confirm) -->
   <div class="fs-modal-backdrop" id="fs-modal" hidden>
     <div class="fs-modal" role="dialog" aria-modal="true" aria-labelledby="fs-modal-title">
-      <h3 id="fs-modal-title">Title</h3>
+      <h3 id="fs-modal-title">title</h3>
       <p id="fs-modal-text" hidden></p>
       <input type="text" id="fs-modal-input" hidden autocomplete="off" spellcheck="false">
       <div class="fs-modal-actions">
-        <button class="brief-btn" id="fs-modal-cancel">Cancel</button>
-        <button class="brief-btn fs-modal-ok" id="fs-modal-ok">OK</button>
+        <button class="brief-btn" id="fs-modal-cancel">cancel</button>
+        <button class="brief-btn fs-modal-ok" id="fs-modal-ok">ok</button>
       </div>
     </div>
   </div>
 
-  <div class="tr-boot" id="tr-boot" aria-hidden="true">
-    <div class="tr-boot-screen">
-      <div class="tr-boot-art"></div>
-      <div class="tr-boot-text">
-        <div class="tr-boot-title">MACMINI // SECTOR COMMAND</div>
-        <pre class="tr-boot-log" id="tr-boot-log"></pre>
-        <div class="tr-boot-hint">tap or press any key to take command</div>
+  <dialog class="ascii-dialog progress-dialog" id="progress-dialog" aria-labelledby="progress-dialog-title">
+    <h3 id="progress-dialog-title">new bar</h3>
+    <form id="progress-form">
+      <label>title
+        <input type="text" id="pb-title" maxlength="200" autocomplete="off" spellcheck="false" placeholder="e.g. 1,000-document enrichment batch">
+      </label>
+      <div class="pb-form-row">
+        <label>percent
+          <input type="number" id="pb-percent" min="0" max="100" step="0.1" placeholder="0–100">
+        </label>
+        <label>owner
+          <input type="text" id="pb-owner" maxlength="100" autocomplete="off" spellcheck="false" placeholder="who is tracking this">
+        </label>
       </div>
-    </div>
+      <label>parent
+        <select id="pb-parent"></select>
+      </label>
+      <fieldset class="pb-fieldset">
+        <legend>fields — any key/value pairs shown on the card</legend>
+        <div id="pb-fields"></div>
+        <button type="button" class="brief-btn" id="pb-add-field">+ field</button>
+      </fieldset>
+      <p class="pb-error" id="pb-error" hidden></p>
+      <div class="progress-dialog-actions">
+        <button type="button" class="brief-btn" id="pb-cancel">cancel</button>
+        <button type="submit" class="brief-btn" id="pb-save">save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="ascii-dialog" id="keys-dialog" aria-labelledby="keys-title">
+    <h3 id="keys-title">keys</h3>
+    <pre class="keys">
+ b   sitrep        s   stack
+ f   files         t   shell
+ k   ops board     p   progress
+ /   search        ?   this panel
+ esc close / clear / read</pre>
+    <form method="dialog"><button class="brief-btn">close</button></form>
+  </dialog>
+
+  <div class="tui-bar" aria-hidden="true">
+    <span class="tui-bar-id">macmini@tty</span>
+    <span class="tui-bar-keys">b sitrep · s stack · f files · t shell · k ops · p progress · ? keys</span>
+    <span class="tui-bar-cursor">█</span>
   </div>
-  <script>
-    (function () {
-      // Briefing splash: once per browser session, never in the GMGN PWA,
-      // and instant when reduced motion is preferred. Runs before modules.
-      var d = document.documentElement, seen = false;
-      try { seen = sessionStorage.getItem('tr-booted') === '1'; } catch (e) {}
-      try { if (localStorage.getItem('tr-crt') === '0') d.classList.add('tr-no-crt'); } catch (e) {}
-      if (seen || d.classList.contains('gmgn-app') || location.hash.indexOf('#/kanban/card-') === 0) d.classList.add('tr-booted');
-    })();
-  </script>
-  <script type="module" src="/static/js/main.js?v=terran11"></script>
+
+  <script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}))}</script>
+  <script type="module" src="/static/js/main.js?v=kanban29"></script>
 </body>
 </html>

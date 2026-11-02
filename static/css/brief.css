@@ -145,7 +145,7 @@
 .brief-preview p { margin: 0.55em 0; }
 .brief-preview ul, .brief-preview ol { margin: 0.55em 0; padding-left: 1.4em; }
 .brief-preview li { margin: 0.2em 0; }
-.brief-preview li.task-list-item { list-style: none; margin-left: -1.4em; }
+.brief-preview li.task-list-item { list-style: none; }
 .brief-preview input[type="checkbox"] { margin-right: 0.45em; accent-color: var(--blue); }
 
 .brief-preview code {

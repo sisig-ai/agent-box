@@ -1,16 +1,18 @@
 {
-  "name": "GMGN",
-  "short_name": "GMGN",
-  "id": "/?app=gmgn",
-  "start_url": "/?app=gmgn",
+  "name": "macmini",
+  "short_name": "macmini",
+  "description": "macmini host dashboard — sitrep, stack, files, shell, ops board, progress.",
+  "id": "/",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#050814",
-  "theme_color": "#050814",
+  "orientation": "any",
+  "background_color": "#050805",
+  "theme_color": "#050805",
   "icons": [
-    { "src": "/icons/icon-180.png", "sizes": "180x180", "type": "image/png" },
     { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
   ]
 }

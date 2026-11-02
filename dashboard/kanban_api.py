@@ -291,4 +291,7 @@ def lane_delete(lane_ref):
     )
 
 
-from . import kanban_comments_api  # noqa: E402,F401  (registers comment routes on bp)
+from . import (  # noqa: E402
+    kanban_comments_api,  # noqa: F401  (registers comment routes on bp)
+    kanban_search_api,  # noqa: F401  (registers search route on bp)
+)
