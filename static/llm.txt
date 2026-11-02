@@ -119,6 +119,29 @@ Use `fields` for the numbers that matter and keep them updated alongside
 `percent` (e.g. `{"done": 374, "total": 1000, "cost": "$18.00"}`). Percentages
 are independent: a parent does not auto-compute from its children.
 
+
+**Docs (prefix-keyed text store for long-horizon work)**
+
+A doc is one object: a slash-separated `prefix` that acts as the key (for
+example `handoffs/2026-11-02-box-assistant.md`), arbitrary text `content`,
+a free-text `author`, `tags`, and created/updated timestamps plus a `revision`
+that increments on every write. Prefixes have no leading or trailing slash and
+no `.` or `..` segments. Full-text search covers prefix, content, tags and
+author.
+
+| Tool | What it does |
+|------|--------------|
+| `put_doc(prefix, content, author?, tags?)` | Create or replace the doc at that prefix. Replacing overwrites content, author and tags in full and bumps `revision`. |
+| `get_doc(prefix)` | One doc in full. |
+| `patch_doc(prefix, content?, author?, tags?)` | Update only the fields you pass; keeps the rest. |
+| `list_docs(prefix?, limit?, offset?)` | Metadata only (no content), newest update first; `prefix` narrows to a path and its descendants. |
+| `search_docs(q, prefix?, limit?)` | Full-text search; terms are prefix-matched, `-word` excludes, `"two words"` is a phrase. Hits carry a snippet with `\\u0001`/`\\u0002` around the match. |
+| `delete_doc(prefix)` | Remove one doc. Irreversible; only when asked. |
+
+Read before you rewrite: `put_doc` is a full replace, so a stale copy silently
+drops whatever changed in between. Use `patch_doc` for appends and small edits,
+and one prefix per topic so handoffs, specs and research stay addressable.
+
 ### Conventions
 
 - Dates are Manila time. Omit them for "today"/"this week" rather than guessing a UTC date.
@@ -137,7 +160,8 @@ are independent: a parent does not auto-compute from its children.
 - `GET /api/procs?sort=rss|cpu|pid|name&order=desc|asc&limit=40` — host processes with `rss_bytes`, `cpu_percent` (one 0.12s sample), `user`, `status`, `cmdline`, and `protected` (init or the dashboard's own ancestry). `POST /api/procs/:pid/signal` with `{"signal":"TERM"|"KILL"}` sends a signal; other users' processes return 403.
 - Files (host FS rooted at `~`): `GET /api/fs/list|stat|read|download`, `PUT /api/fs/write`, `POST /api/fs/upload|mkdir|touch|rename`, `DELETE /api/fs?path=…`.
 - Shell (tmux-backed tty in `~`): `POST /api/shell/new|input|key|resize|kill`, `GET /api/shell/pane|list`, and the live websocket at `ws://macmini:5556/ws/shell?id=<sid>`.
-- Page tabs: `#/brief` (Daily Sitrep), `#/` (Stack), `#/files`, `#/shell`, `#/kanban` (Ops Board), `#/progress` (Progress Bars).
+- Docs REST: `GET /api/docs?prefix=&limit=&offset=&content=1`, `GET|PUT|PATCH|DELETE /api/docs/<path:prefix>`, `POST /api/docs` (body carries `prefix`, 409 if taken), `GET /api/docs/search?q=&prefix=`, `GET /api/docs/prefixes`.
+- Page tabs: `#/brief` (Daily Sitrep), `#/` (Stack), `#/files`, `#/shell`, `#/kanban` (Ops Board), `#/progress` (Progress Bars), `#/docs` (Docs).
 
 ## Raw REST API (legacy — same data as the MCP tools)
 

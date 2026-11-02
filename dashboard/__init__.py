@@ -11,6 +11,7 @@ def create_app():
     from flask import Flask, jsonify, request, send_from_directory
 
     from . import config, db
+    from .docs_api import bp as docs_bp
     from .fs_api import bp as fs_bp
     from .kanban_api import bp as kanban_bp
     from .mcp import bp as mcp_bp
@@ -46,6 +47,7 @@ def create_app():
     app.register_blueprint(shell_bp)
     app.register_blueprint(kanban_bp)
     app.register_blueprint(progress_bp)
+    app.register_blueprint(docs_bp)
     app.register_blueprint(mcp_bp)
 
     @app.get("/")

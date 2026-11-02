@@ -1,0 +1,306 @@
+// Docs view: prefix-keyed text store with metadata and full-text search.
+// List on the left (filtered by path or search query), editor on the right.
+// A doc's prefix is its identity: it is editable while creating, read-only once
+// the doc exists, so a rename can never orphan or clobber another entry.
+import { armDelete } from '../kanban/edit.js?v=kanban29';
+
+const $ = (id) => document.getElementById(id);
+const DEBOUNCE_MS = 180;
+const SEARCH_MIN = 2;
+const LIST_LIMIT = 200;
+const HIT = '\x01';
+
+const state = {
+  started: false,
+  docs: [],
+  hits: new Map(),
+  q: '',
+  prefix: '',
+  current: null, // {prefix, author, tags, content, created_at, updated_at, revision} or null (new)
+  dirty: false,
+  timer: 0,
+  seq: 0,
+};
+
+function el(tag, cls, text) {
+  const node = document.createElement(tag);
+  if (cls) node.className = cls;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+async function api(path, options = {}) {
+  const res = await fetch(path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+const docPath = (prefix) => '/api/docs/' + prefix.split('/').map(encodeURIComponent).join('/');
+const tagLabel = (tags) => (tags || []).join(' · ');
+const fmtTime = (iso) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '—'
+    : d.toLocaleString([], { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+};
+
+function setStatus(text, isError) {
+  const node = $('docs-status');
+  node.textContent = text;
+  node.classList.toggle('err', !!isError);
+}
+
+// Hit snippets carry the server's \x01…\x02 markers; render them as <mark>.
+function marked(text) {
+  const frag = document.createDocumentFragment();
+  String(text || '').split(/\x01|\x02/).forEach((part, i) => {
+    if (!part) return;
+    if (i % 2) {
+      const mark = el('mark', 'docs-hl', part);
+      frag.append(mark);
+    } else {
+      frag.append(document.createTextNode(part));
+    }
+  });
+  return frag;
+}
+
+function renderList() {
+  const list = $('docs-list');
+  const searching = state.hits.size > 0 || (state.q.length >= SEARCH_MIN && state.q);
+  const rows = searching ? [...state.hits.values()] : state.docs;
+  list.replaceChildren(...rows.map((doc) => {
+    const item = el('li', 'docs-item');
+    item.dataset.prefix = doc.prefix;
+    if (state.current && state.current.prefix === doc.prefix) item.classList.add('selected');
+    const head = el('div', 'docs-item-head');
+    const name = el('span', 'docs-item-name');
+    name.append(marked(doc.prefix_snip || doc.prefix));
+    head.append(name);
+    item.append(head);
+    if (doc.snippet) {
+      const snip = el('p', 'docs-item-snip');
+      snip.append(marked(doc.snippet));
+      item.append(snip);
+    }
+    const meta = el('div', 'docs-item-meta');
+    meta.append(el('span', '', doc.author ? `@${doc.author}` : '—'));
+    meta.append(el('span', '', fmtTime(doc.updated_at)));
+    if (doc.tags && doc.tags.length) meta.append(el('span', 'docs-item-tags', tagLabel(doc.tags)));
+    else if (doc.size) meta.append(el('span', '', `${doc.size}b`));
+    item.append(meta);
+    item.addEventListener('click', () => selectDoc(doc.prefix));
+    return item;
+  }));
+  $('docs-empty-list').hidden = rows.length > 0;
+  const docs = state.docs.length;
+  $('docs-count').textContent = searching
+    ? `${rows.length} match${rows.length === 1 ? '' : 'es'} · ${docs} doc${docs === 1 ? '' : 's'}`
+    : `${docs} doc${docs === 1 ? '' : 's'}`
+      + (state.prefix ? ` under ${state.prefix}` : '');
+  $('docs-empty-list').textContent = searching ? `no docs match “${state.q}”` : 'no docs yet';
+}
+
+function renderPrefixes(prefixes) {
+  const sel = $('docs-prefix');
+  const opts = [['', 'all prefixes'], ...prefixes.map((p) => [p.prefix, `${p.prefix} (${p.total})`])];
+  sel.replaceChildren(...opts.map(([value, label]) => {
+    const option = el('option', '', label);
+    option.value = value;
+    option.selected = value === state.prefix;
+    return option;
+  }));
+  sel.classList.toggle('active', !!state.prefix);
+}
+
+async function loadList() {
+  const params = new URLSearchParams({ limit: String(LIST_LIMIT) });
+  if (state.prefix) params.set('prefix', state.prefix);
+  const data = await api(`/api/docs?${params}`);
+  state.docs = data.docs;
+  renderList();
+}
+
+async function loadPrefixes() {
+  const data = await api('/api/docs/prefixes');
+  renderPrefixes(data.prefixes);
+}
+
+async function refresh() {
+  try {
+    await Promise.all([loadList(), loadPrefixes()]);
+    setStatus(`synced ${new Date().toLocaleTimeString([], { hour12: false })}`);
+  } catch (err) {
+    setStatus(`load failed: ${err.message}`, true);
+  }
+}
+
+async function runSearch() {
+  const q = $('docs-search').value.trim();
+  $('docs-search-clear').hidden = !q;
+  state.q = q;
+  if (q.length < SEARCH_MIN) {
+    state.hits = new Map();
+    renderList();
+    return;
+  }
+  const seq = ++state.seq;
+  try {
+    const params = new URLSearchParams({ q, limit: String(LIST_LIMIT) });
+    if (state.prefix) params.set('prefix', state.prefix);
+    const data = await api(`/api/docs/search?${params}`);
+    if (seq !== state.seq) return;
+    state.hits = new Map(data.hits.map((hit) => [hit.prefix, hit]));
+    renderList();
+    setStatus(`${data.count} of ${data.total} match`);
+  } catch (err) {
+    if (seq !== state.seq) return;
+    state.hits = new Map();
+    renderList();
+    setStatus(`search failed: ${err.message}`, true);
+  }
+}
+
+function setEditorVisible(visible) {
+  $('docs-editor').hidden = !visible;
+  $('docs-empty').hidden = visible;
+}
+
+function fillEditor(doc) {
+  $('doc-prefix').value = doc ? doc.prefix : '';
+  $('doc-prefix').readOnly = !!doc;
+  $('doc-author').value = doc?.author || '';
+  $('doc-tags').value = (doc?.tags || []).join(', ');
+  $('doc-content').value = doc?.content || '';
+  $('doc-delete').hidden = !doc;
+  $('doc-status').textContent = doc
+    ? `rev ${doc.revision} · created ${fmtTime(doc.created_at)} · updated ${fmtTime(doc.updated_at)}`
+    : 'new doc';
+  $('doc-status').classList.remove('err');
+  state.dirty = false;
+}
+
+async function selectDoc(prefix) {
+  if (state.dirty && state.current && !confirm('Discard unsaved changes?')) return;
+  try {
+    const doc = await api(docPath(prefix));
+    state.current = doc;
+    fillEditor(doc);
+    setEditorVisible(true);
+    renderList();
+    $('doc-content').focus();
+  } catch (err) {
+    setStatus(`open failed: ${err.message}`, true);
+  }
+}
+
+function startNew() {
+  if (state.dirty && state.current && !confirm('Discard unsaved changes?')) return;
+  state.current = null;
+  fillEditor(null);
+  setEditorVisible(true);
+  $('doc-prefix').focus();
+}
+
+async function save() {
+  const prefix = $('doc-prefix').value.trim().replace(/^\/+|\/+$/g, '');
+  if (!prefix) {
+    setStatus('prefix is required', true);
+    $('doc-prefix').focus();
+    return;
+  }
+  const body = {
+    content: $('doc-content').value,
+    author: $('doc-author').value.trim() || null,
+    tags: $('doc-tags').value.split(',').map((t) => t.trim()).filter(Boolean),
+  };
+  try {
+    const doc = await api(docPath(prefix), { method: 'PUT', body: JSON.stringify(body) });
+    state.current = doc;
+    fillEditor(doc);
+    setStatus(`saved ${doc.prefix} · rev ${doc.revision}`);
+    await refresh();
+    if (state.q) await runSearch();
+  } catch (err) {
+    setStatus(`save failed: ${err.message}`, true);
+  }
+}
+
+async function remove() {
+  if (!state.current) return;
+  const prefix = state.current.prefix;
+  try {
+    await api(docPath(prefix), { method: 'DELETE' });
+    state.current = null;
+    setEditorVisible(false);
+    state.q = '';
+    $('docs-search').value = '';
+    $('docs-search-clear').hidden = true;
+    state.hits = new Map();
+    setStatus(`deleted ${prefix}`);
+    await refresh();
+  } catch (err) {
+    setStatus(`delete failed: ${err.message}`, true);
+  }
+}
+
+function markDirty() {
+  if (!state.current && !$('doc-prefix').value) return;
+  if (!state.dirty) {
+    state.dirty = true;
+    $('doc-status').textContent = 'unsaved changes';
+  }
+}
+
+function bind() {
+  $('docs-search').addEventListener('input', () => {
+    clearTimeout(state.timer);
+    state.timer = setTimeout(runSearch, DEBOUNCE_MS);
+  });
+  $('docs-search-clear').addEventListener('click', () => {
+    $('docs-search').value = '';
+    state.q = '';
+    state.hits = new Map();
+    $('docs-search-clear').hidden = true;
+    renderList();
+    $('docs-search').focus();
+  });
+  $('docs-prefix').addEventListener('change', (e) => {
+    state.prefix = e.target.value;
+    refresh().then(() => { if (state.q) runSearch(); });
+  });
+  $('docs-new').addEventListener('click', startNew);
+  $('docs-refresh').addEventListener('click', () => refresh());
+  $('doc-save').addEventListener('click', save);
+  armDelete($('doc-delete'), remove);
+  for (const id of ['doc-prefix', 'doc-author', 'doc-tags', 'doc-content']) {
+    $(id).addEventListener('input', markDirty);
+  }
+  $('doc-content').addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      save();
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (document.body.dataset.view !== 'docs') return;
+    if (e.key === 'Escape' && document.activeElement === $('docs-search')) {
+      $('docs-search').value = '';
+      $('docs-search-clear').click();
+    }
+  });
+  window.addEventListener('beforeunload', (e) => {
+    if (state.dirty) { e.preventDefault(); e.returnValue = ''; }
+  });
+}
+
+export function initDocs() {
+  if (state.started) { refresh(); return; }
+  state.started = true;
+  bind();
+  setEditorVisible(false);
+  refresh();
+}

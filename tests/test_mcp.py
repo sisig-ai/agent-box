@@ -93,6 +93,12 @@ def test_tools_list_covers_board_comments_lanes_and_notes(client):
         "create_progress_bar",
         "update_progress_bar",
         "delete_progress_bar",
+        "put_doc",
+        "get_doc",
+        "patch_doc",
+        "list_docs",
+        "search_docs",
+        "delete_doc",
     }
     for tool in tools:
         assert tool["description"]

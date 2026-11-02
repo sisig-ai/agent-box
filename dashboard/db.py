@@ -84,10 +84,12 @@ def init_db():
                 )
                 """
             )
+            from .docs import init_schema as init_docs_schema
             from .kanban import init_schema as init_kanban_schema
             from .progress import init_schema as init_progress_schema
 
             init_kanban_schema(conn)
             init_progress_schema(conn)
+            init_docs_schema(conn)
     finally:
         conn.close()

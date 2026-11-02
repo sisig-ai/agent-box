@@ -1,6 +1,6 @@
 // Single-letter view hotkeys and the [keys] panel. Mirrors the sidebar tags;
 // ignored while typing so the shell, editor and search fields keep their keys.
-const ROUTES = { b: '#/brief', s: '#/', f: '#/files', t: '#/shell', k: '#/kanban', p: '#/progress' };
+const ROUTES = { b: '#/brief', s: '#/', f: '#/files', t: '#/shell', k: '#/kanban', p: '#/progress', d: '#/docs' };
 
 function typing(e) {
   if (e.ctrlKey || e.metaKey || e.altKey) return true;

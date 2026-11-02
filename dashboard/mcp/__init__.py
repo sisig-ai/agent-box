@@ -9,6 +9,7 @@ import json
 
 from flask import Blueprint, Response, request
 
+from ..docs import DocsError
 from ..kanban import KanbanError
 from ..progress import ProgressError
 from . import protocol, registry
@@ -27,7 +28,9 @@ INSTRUCTIONS = (
     "markdown bodies, threaded comments, operation names), a Daily Sitrep "
     "(one markdown entry per day in Asia/Manila) plus its weekly schedule, and "
     "shared Progress Bars (nested 0-100 bars with arbitrary k-v fields) for "
-    "tracking batches and jobs visually. Dates are YYYY-MM-DD in Manila time and "
+    "tracking batches and jobs visually, and Docs: an S3-ish store of long-form "
+    "text keyed by slash-separated prefix with author, tags and full-text search, "
+    "for handoffs, specs and long-horizon notes. Dates are YYYY-MM-DD in Manila time and "
     "default to today. Use your agent name as owner/author so work stays "
     "attributable, prefer comments for short progress notes, and keep card bodies "
     "in the Goal / Context / Progress / Next steps shape. Move finished cards to "
@@ -80,6 +83,8 @@ def _call_tool(request_id, params):
     except KanbanError as exc:
         return protocol.result(request_id, _error_content(exc.message))
     except ProgressError as exc:
+        return protocol.result(request_id, _error_content(exc.message))
+    except DocsError as exc:
         return protocol.result(request_id, _error_content(exc.message))
     return _tool_result(request_id, data)
 
