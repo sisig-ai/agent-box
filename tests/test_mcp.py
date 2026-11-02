@@ -102,6 +102,8 @@ def test_tools_list_covers_board_comments_lanes_and_notes(client):
         "semantic_search_docs",
         "reindex_docs",
         "list_access_logs",
+        "semantic_search_cards",
+        "reindex_cards",
     }
     for tool in tools:
         assert tool["description"]

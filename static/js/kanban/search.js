@@ -12,11 +12,16 @@ const LIMIT = 200;
 const HIT = '\x01';
 
 let onChange = () => {};
-const state = { q: '', cards: new Map(), total: 0, seq: 0, timer: 0, error: '' };
+const state = {
+  q: '', cards: new Map(), semantic: new Map(), semNote: '',
+  total: 0, seq: 0, timer: 0, error: '',
+};
 
 export const active = () => state.q !== '';
 export const query = () => state.q;
-export const sig = () => `${state.q}|${state.total}|${[...state.cards.keys()].sort((a, b) => a - b)}`;
+export const sig = () =>
+  `${state.q}|${state.total}|${[...state.cards.keys()].sort((a, b) => a - b)}`
+  + `|${[...state.semantic.keys()].sort((a, b) => a - b)}|${state.semNote}`;
 
 // Text with the server's hit markers as <mark> nodes (never innerHTML: card and
 // comment text is untrusted).
@@ -70,6 +75,23 @@ async function run(query, notify = true) {
   }
   control();
   if (notify) onChange();
+  if (active()) loadSemantic(wanted, seq);
+}
+
+// Vector hits land after the exact ones and are merged into the same filter.
+async function loadSemantic(query, seq) {
+  try {
+    // Live cards only: the board renders archived hits from its own batch.
+    const res = await api.semantic(query, { limit: 10, archived: 'exclude' });
+    if (seq !== state.seq) return;
+    state.semantic = new Map((res.hits || []).map((hit) => [hit.id, hit]));
+    state.semNote = '';
+  } catch (error) {
+    if (seq !== state.seq) return;
+    state.semantic = new Map();
+    state.semNote = `semantic unavailable: ${error.message}`;
+  }
+  onChange();
 }
 
 export function init(onUpdate) {
@@ -108,11 +130,34 @@ export async function refresh() {
 }
 
 export function filter(cards) {
-  return active() ? cards.filter((c) => state.cards.has(c.id)) : cards;
+  if (!active()) return cards;
+  return cards.filter((c) => state.cards.has(c.id) || state.semantic.has(c.id));
+}
+
+// True when a card matched only the vector pass, so the board can mark it.
+export function isSemantic(id) {
+  return active() && !state.cards.has(id) && state.semantic.has(id);
+}
+
+export function score(id) {
+  const hit = state.semantic.get(id);
+  return hit ? hit.score : null;
 }
 
 // Title highlight + the matched line, replacing the plain body preview.
 export function decorate(node, card) {
+  if (isSemantic(card.id)) {
+    node.classList.add('kb-semantic-hit');
+    const meta = node.querySelector('.kb-card-meta');
+    if (meta) {
+      const chip = document.createElement('span');
+      chip.className = 'kb-semantic-score';
+      chip.textContent = `≈ ${score(card.id).toFixed(2)}`;
+      chip.title = 'Matched by meaning, not by exact words';
+      meta.prepend(chip);
+    }
+    return;
+  }
   const hit = state.cards.get(card.id);
   if (!active() || !hit) return;
   node.classList.add('kb-search-hit');
@@ -140,7 +185,10 @@ export function note() {
   const n = state.total;
   const shown = state.cards.size;
   const archived = [...state.cards.values()].filter((r) => r.archived_at).length;
+  const semantic = state.semantic.size;
   return `search “${state.q}” · ${n} match${n === 1 ? '' : 'es'}`
     + (archived ? ` · ${archived} archived` : '')
-    + (n > shown ? ` · showing ${shown}` : '');
+    + (n > shown ? ` · showing ${shown}` : '')
+    + (semantic ? ` · ${semantic} semantic` : '')
+    + (state.semNote ? ` · ${state.semNote}` : '');
 }

@@ -20,6 +20,11 @@ export const api = {
     if (opts.archived) params.set('archived', opts.archived);
     return call('GET', `/api/opsboard/search?${params}`);
   },
+  semantic: (q, opts = {}) => {
+    const params = new URLSearchParams({ q, limit: String(opts.limit || 10) });
+    if (opts.archived) params.set('archived', opts.archived);
+    return call('GET', `/api/opsboard/semantic?${params}`);
+  },
   getCard: (id) => call('GET', `/api/opsboard/cards/${id}`),
   archived: () => call('GET', '/api/opsboard/archived'),
   addCard: (card) => call('POST', '/api/opsboard/cards', card),

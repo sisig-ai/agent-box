@@ -6,7 +6,7 @@ model (or the network) to pass.
 
 import pytest
 
-from dashboard import docs, docs_embed
+from dashboard import docs, docs_embed, embed
 
 
 def fake_vectors(texts):
@@ -47,7 +47,7 @@ def test_chunk_respects_paragraphs_and_size():
     text = "\n\n".join(["a" * 900, "b" * 900, "c" * 200])
     pieces = docs_embed.chunk(text)
     assert len(pieces) == 3  # two 900-char paragraphs force a split; overlap carries
-    assert all(len(piece) <= docs_embed.CHUNK_CHARS + docs_embed.CHUNK_OVERLAP for piece in pieces)
+    assert all(len(piece) <= embed.CHUNK_CHARS + embed.CHUNK_OVERLAP for piece in pieces)
     assert pieces[0] == "a" * 900
     assert docs_embed.chunk("") == []
     # a single oversized paragraph still gets split

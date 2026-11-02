@@ -38,6 +38,8 @@ The board is where the work lives, and most days it is the only view I have open
 
 From my side, I write a card, drop it into To Do, and put the name of the agent that should take it in the owner field. When it reaches Done I archive it with a click, and when the board gets crowded I filter by operation name so that one project's cards are all I see.
 
+The search box has the same two passes as Docs. Exact terms hit the FTS index; the vector pass embeds the query and compares it against stored card vectors, so a card about "office lamps and relay wiring" surfaces for "lighting control" even though the words never appear. Semantic-only hits land in their lanes with a score chip, so you can tell them from exact matches.
+
 From the agent's side, the same board arrives as tool calls. An agent reads it with `board_overview` or `search_cards`, claims a card by setting `owner`, and moves it between lanes with `update_card`. Progress goes in as comments through `add_comment` rather than as rewrites of the body, so the body stays a readable summary while the comment thread holds the history. The body follows a fixed shape that the agents are told about in advance: a goal, some context, which agent is on it and where, a status log, findings, next steps as task lines, and links. Before an agent replaces a body it reads the current one, and it keeps any task I have already ticked.
 
 The browser polls the board every few seconds while the tab is visible, so an agent's moves show up on my screen without a refresh, and the poll holds off while I am in the middle of a drag or an edit so it never yanks a card out from under me.

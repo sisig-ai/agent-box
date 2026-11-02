@@ -13,7 +13,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from dashboard import access_log, config, docs_embed, fs_paths, telemetry_store
+from dashboard import access_log, config, docs_embed, fs_paths, kanban_embed, telemetry_store
 from dashboard import fs as fs_module
 
 
@@ -38,6 +38,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setattr(fs_module, "FS_HOME", home)
     # Docs embeddings call a local Ollama; tests drive them explicitly instead.
     monkeypatch.setattr(docs_embed, "_AUTO_INDEX", False)
+    monkeypatch.setattr(kanban_embed, "_AUTO_INDEX", False)
     monkeypatch.setattr(telemetry_store, "_TELE_LAST_WRITE", {"t": 0.0})
     monkeypatch.setattr(telemetry_store, "_LATEST_STATS_CACHE", {"sig": None, "snapshot": None})
     monkeypatch.setattr(telemetry_store, "_HISTORY_CACHE", {"key": None, "payload": None})

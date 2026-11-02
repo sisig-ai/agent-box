@@ -1,127 +1,33 @@
-"""Local embeddings for Docs: chunk, embed through Ollama, score in Python.
+"""Docs embeddings: chunk each doc, embed through Ollama, score in Python.
 
-Vectors live in SQLite (``doc_embedding``) as float32 blobs, one row per chunk.
-The corpus is small, so a semantic query loads the vectors for the active model
-and scores them with a dot product (Ollama returns L2-normalised vectors) rather
-than shipping a vector index.
-
-Indexing never blocks a write: ``enqueue`` hands the doc id to a background
-worker that chunks the content, embeds it, and stamps ``doc.embed_hash`` so a
-later pass can tell stale content from indexed content. If Ollama is down the
-write still succeeds; the doc simply stays unindexed until ``reindex`` or the
-next edit.
+Storage and scoring live here; the shared model and maths live in
+``dashboard.embed``. Vectors sit in ``doc_embedding`` as float32 blobs.
 """
 
-import array
-import hashlib
 import json
 import queue
-import re
 import threading
 import time
-import urllib.error
-import urllib.request
 
 from . import config, db
 from .dates import now_iso
+from .embed import (
+    EXCERPT_CHARS,
+    EmbedError,
+    chunk,
+    content_hash,
+    cosine,
+    embed_texts,
+    pack,
+    unpack,
+)
 
-CHUNK_CHARS = 1200
-CHUNK_OVERLAP = 200
-EXCERPT_CHARS = 280
-MAX_CHUNKS = 60
-
-# Tests (and any caller that wants manual control) can turn off the background
-# worker: enqueue then becomes a no-op and index_doc is called explicitly.
+# Tests (and callers that want manual control) turn the background worker off:
+# enqueue becomes a no-op and index_doc is called explicitly.
 _AUTO_INDEX = True
 _QUEUE = queue.Queue()
 _WORKER = None
 _WORKER_LOCK = threading.Lock()
-
-
-class EmbedError(Exception):
-    """Embedding backend unavailable or answering with garbage."""
-
-
-# ---------------------------------------------------------------- embedding
-
-
-def embed_texts(texts):
-    """Return one vector per text from the configured Ollama model."""
-    if not texts:
-        return []
-    body = json.dumps({"model": config.EMBED_MODEL, "input": list(texts)}).encode()
-    request = urllib.request.Request(
-        f"{config.OLLAMA_URL}/api/embed",
-        data=body,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=config.EMBED_TIMEOUT_S) as response:
-            payload = json.loads(response.read().decode())
-    except urllib.error.HTTPError as error:
-        detail = error.read().decode(errors="replace")[:200]
-        raise EmbedError(f"ollama answered {error.code}: {detail}") from None
-    except (urllib.error.URLError, TimeoutError, OSError) as error:
-        raise EmbedError(
-            f"ollama unreachable at {config.OLLAMA_URL} ({type(error).__name__}); "
-            f"start it with `ollama serve` and `ollama pull {config.EMBED_MODEL}`"
-        ) from None
-    except ValueError as error:
-        raise EmbedError(f"ollama returned invalid JSON: {error}") from None
-    vectors = payload.get("embeddings")
-    if not isinstance(vectors, list) or len(vectors) != len(texts):
-        raise EmbedError("ollama returned no embeddings")
-    return vectors
-
-
-def chunk(text):
-    """Split content into overlapping windows that respect paragraph breaks."""
-    clean = (text or "").strip()
-    if not clean:
-        return []
-    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", clean) if p.strip()]
-    chunks, current = [], ""
-    for paragraph in paragraphs:
-        while len(paragraph) > CHUNK_CHARS:
-            head, paragraph = paragraph[:CHUNK_CHARS], paragraph[CHUNK_CHARS - CHUNK_OVERLAP :]
-            if current:
-                chunks.append(current)
-                current = ""
-            chunks.append(head)
-        if not current:
-            current = paragraph
-        elif len(current) + 2 + len(paragraph) <= CHUNK_CHARS:
-            current += "\n\n" + paragraph
-        else:
-            chunks.append(current)
-            tail = current[-CHUNK_OVERLAP:]
-            current = tail + "\n\n" + paragraph
-    if current:
-        chunks.append(current)
-    return chunks[:MAX_CHUNKS]
-
-
-def cosine(a, b):
-    """Dot product of two L2-normalised vectors (Ollama normalises)."""
-    if len(a) != len(b):
-        return 0.0
-    return float(sum(x * y for x, y in zip(a, b, strict=False)))
-
-
-def content_hash(text):
-    return hashlib.sha256((text or "").encode()).hexdigest()
-
-
-def _pack(vector):
-    return array.array("f", [float(x) for x in vector]).tobytes()
-
-
-def _unpack(blob):
-    values = array.array("f")
-    values.frombytes(blob)
-    return values
-
 
 # ---------------------------------------------------------------- storage
 
@@ -191,7 +97,7 @@ def index_doc(conn, doc_id, prefix=None, content=None, model=None):
             "INSERT INTO doc_embedding (doc_id, chunk, model, dim, vector, text, updated_at)"
             " VALUES (?, ?, ?, ?, ?, ?, ?)",
             [
-                (doc_id, index, model, len(vector), _pack(vector), piece, stamp)
+                (doc_id, index, model, len(vector), pack(vector), piece, stamp)
                 for index, (piece, vector) in enumerate(zip(pieces, vectors, strict=True))
             ],
         )
@@ -324,7 +230,7 @@ def search(query, prefix=None, prefix_q=None, limit=50, conn=None):
 
     best = {}
     for row in rows:
-        score = cosine(vector, _unpack(row["vector"]))
+        score = cosine(vector, unpack(row["vector"]))
         current = best.get(row["doc_id"])
         if current is None or score > current["score"]:
             excerpt = " ".join((row["text"] or "").split())[:EXCERPT_CHARS]

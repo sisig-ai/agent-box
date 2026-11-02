@@ -270,3 +270,14 @@
 .kb-updated-filter input[type="date"].active { border-color: #f5c84c; color: #f5c84c; }
 .kb-updated-filter input[type="date"][hidden] { display: none; }
 .kb-add-form .kb-add-opname { font-family: var(--mono); font-size: 0.72rem; }
+
+/* Cards that matched the vector pass rather than exact words. */
+.kb-card.kb-semantic-hit { border-left: 2px dotted var(--violet, #aa87ff); }
+.kb-semantic-score {
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.04em;
+  color: var(--violet, #aa87ff);
+  border: 1px dotted currentColor;
+  padding: 0 0.2rem;
+}

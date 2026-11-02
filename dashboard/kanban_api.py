@@ -9,7 +9,7 @@ Errors are JSON ``{"error": "..."}`` with a 400 / 404 / 409 status.
 
 from flask import Blueprint, jsonify, request
 
-from . import kanban, kanban_lanes
+from . import db, kanban, kanban_embed, kanban_lanes
 from .kanban import KanbanError
 
 bp = Blueprint("kanban", __name__)
@@ -162,6 +162,46 @@ def cards_list():
 def archived_list():
     """GET /api/kanban/archived?status=&owner= — archived cards, newest first."""
     return jsonify(filtered_board("only")["cards"])
+
+
+@bp.get("/api/opsboard/semantic")
+@bp.get("/api/kanban/semantic")
+def opsboard_semantic():
+    """Meaning-based card search: embed the query, cosine-rank stored card vectors."""
+    query = (request.args.get("q") or "").strip()
+    if not query:
+        raise KanbanError("q is required")
+    archived = request.args.get("archived") or "exclude"
+    if archived not in ("exclude", "include", "only"):
+        raise KanbanError("archived must be one of: exclude, include, only")
+    try:
+        limit = max(1, min(int(request.args.get("limit", 15)), 200))
+    except (TypeError, ValueError):
+        raise KanbanError("limit must be a number") from None
+    with db.get_db() as conn:
+        status = request.args.get("status")
+        lane_id = kanban.require_lane(conn, status)["id"] if status else None
+        try:
+            return jsonify(
+                kanban_embed.search(
+                    query,
+                    limit=limit,
+                    archived=archived,
+                    lane_id=lane_id,
+                    owner=request.args.get("owner") or None,
+                    opname=request.args.get("opname") or None,
+                    conn=conn,
+                )
+            )
+        except kanban_embed.EmbedError as exc:
+            return jsonify({"error": str(exc), "available": False}), 503
+
+
+@bp.post("/api/opsboard/reindex")
+@bp.post("/api/kanban/reindex")
+def opsboard_reindex():
+    """Queue every card whose vectors are missing, stale or from another model."""
+    return jsonify({"queued": kanban_embed.reindex_all(), "model": kanban_embed.config.EMBED_MODEL})
 
 
 @bp.get("/api/opsboard/opnames")

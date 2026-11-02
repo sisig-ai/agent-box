@@ -4,10 +4,10 @@
 // card opens the detail modal (detail.js); #/kanban/card-<id> deep-links it.
 // Cards may carry an `opname` (operation name): shown as a chip; the header
 // "op" filter (or clicking a chip) narrows the board to one operation.
-import { api } from './api.js?v=kanban20';
+import { api } from './api.js?v=kanban31';
 import { inlineEdit, armDelete } from './edit.js?v=kanban20';
 import { closeCard, openCard, openId, setupDetail, syncFromBoard } from './detail.js?v=kanban28';
-import * as search from './search.js?v=kanban20';
+import * as search from './search.js?v=kanban31';
 import * as attention from '../attention.js?v=attention7';
 
 const POLL_MS = 3000;

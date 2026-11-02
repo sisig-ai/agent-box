@@ -1,6 +1,6 @@
 """MCP tools: Ops Board (kanban) lanes/cards, archiving, operation names."""
 
-from .. import db, kanban, kanban_comments, kanban_search
+from .. import db, kanban, kanban_comments, kanban_embed, kanban_search
 from ..kanban_api import (
     clean_body,
     clean_opname,
@@ -10,65 +10,17 @@ from ..kanban_api import (
     clean_title,
 )
 from .protocol import SEARCH_DEFAULT_LIMIT, ToolError, tool_spec
-
-CARD_ID = {
-    "type": "integer",
-    "minimum": 1,
-    "description": "Card id (the number in #/kanban/card-<id>).",
-}
-LANE_REF = {"type": "string", "description": "Lane name (case-insensitive) or numeric lane id."}
-ARCHIVED = {
-    "type": "string",
-    "enum": ["exclude", "include", "only"],
-    "default": "exclude",
-    "description": "exclude = live cards, include = live then archived, only = archived.",
-}
-OWNER = {
-    "type": "string",
-    "description": (
-        "Owner tag, usually the agent name (the board UI labels this Author). "
-        "Empty string matches unowned cards in listings."
-    ),
-}
-AUTHOR = {
-    "type": "string",
-    "description": (
-        "Alias of owner for the board's Author filter: the same tag the UI shows "
-        "as the card's author. Empty string matches unassigned cards."
-    ),
-}
-OPNAME = {
-    "type": "string",
-    "description": (
-        "Optional operation name grouping cards, e.g. 'Operation Valhalla'. "
-        "Null or '' clears it; see list_opnames for existing spellings."
-    ),
-}
-BODY = {
-    "type": "string",
-    "description": (
-        "Markdown up to 200,000 chars. Agents should keep the Goal / Context / "
-        "Agent / Progress / Next steps shape. Null clears it."
-    ),
-}
-POSITION = {
-    "type": "integer",
-    "minimum": 0,
-    "description": "0-based slot within the lane; 0 = top.",
-}
-
-FILTER_PROPS = {
-    "status": LANE_REF,
-    "owner": OWNER,
-    "author": AUTHOR,
-    "opname": OPNAME,
-    "archived": ARCHIVED,
-    "include_body": {
-        "type": "boolean",
-        "default": False,
-        "description": "Include full markdown bodies (listings omit them by default).",
-    },
-}
+from .schema import (
+    ARCHIVED,
+    AUTHOR,
+    BODY,
+    CARD_ID,
+    FILTER_PROPS,
+    LANE_REF,
+    OPNAME,
+    OWNER,
+    POSITION,
+)
 
 
 def _author(args):
@@ -142,6 +94,37 @@ def search_cards(args):
             opname=" ".join(opname.split()) if isinstance(opname, str) else None,
             limit=limit,
         )
+
+
+def semantic_search_cards(args):
+    query = args.get("q")
+    if not isinstance(query, str) or not query.strip():
+        raise ToolError("q is required")
+    archived = args.get("archived") or "exclude"
+    if archived not in ("exclude", "include", "only"):
+        raise ToolError("archived must be one of: exclude, include, only")
+    limit = args.get("limit", SEARCH_DEFAULT_LIMIT)
+    if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 200:
+        raise ToolError("limit must be an integer from 1 to 200")
+    with db.get_db() as conn:
+        status = args.get("status")
+        lane_id = kanban.require_lane(conn, status)["id"] if status else None
+        try:
+            return kanban_embed.search(
+                query,
+                limit=limit,
+                archived=archived,
+                lane_id=lane_id,
+                owner=_author(args),
+                opname=args.get("opname") or None,
+                conn=conn,
+            )
+        except kanban_embed.EmbedError as exc:
+            raise ToolError(str(exc)) from None
+
+
+def reindex_cards(_args):
+    return {"queued": kanban_embed.reindex_all(), "model": kanban_embed.config.EMBED_MODEL}
 
 
 def get_card(args):
@@ -271,6 +254,45 @@ TOOLS = {
             read_only=True,
         ),
         "handler": search_cards,
+    },
+    "semantic_search_cards": {
+        "spec": tool_spec(
+            "semantic_search_cards",
+            "Semantic Search Cards",
+            "Meaning-based card search: embeds the query with the local Ollama "
+            "model and cosine-ranks stored card vectors (title, body, opname, "
+            "owner). A hit does not need to share words with the query; best chunk "
+            "per card wins, score 0-1. Use it when exact terms fail.",
+            {
+                "q": {"type": "string", "description": "What you are looking for, in plain words."},
+                "status": LANE_REF,
+                "owner": OWNER,
+                "opname": OPNAME,
+                "archived": ARCHIVED,
+                "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 200,
+                    "default": SEARCH_DEFAULT_LIMIT,
+                    "description": (f"Maximum cards to return (default {SEARCH_DEFAULT_LIMIT})."),
+                },
+            },
+            ["q"],
+            read_only=True,
+        ),
+        "handler": semantic_search_cards,
+    },
+    "reindex_cards": {
+        "spec": tool_spec(
+            "reindex_cards",
+            "Reindex Cards",
+            "Queue every card whose vectors are missing, stale or from another "
+            "embedding model. Indexing already happens per write; this is for "
+            "backfill and model changes.",
+            {},
+            [],
+        ),
+        "handler": reindex_cards,
     },
     "get_card": {
         "spec": tool_spec(

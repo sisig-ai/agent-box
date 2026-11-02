@@ -8,7 +8,7 @@ are serialised with a process lock (gunicorn runs one worker, many threads).
 
 import threading
 
-from . import db
+from . import db, kanban_embed
 from .dates import now_iso
 from .kanban_body import with_body_summary
 
@@ -256,7 +256,9 @@ def create_card(title, owner=None, status=None, position=None, body="", opname=N
         new_id = cur.lastrowid
         ids = _place(_lane_card_ids(conn, lane["id"], exclude=new_id), new_id, position)
         _write_order(conn, lane["id"], ids)
-        return card(conn, new_id)
+        result = card(conn, new_id)
+    kanban_embed.enqueue(new_id)
+    return result
 
 
 def update_card(card_id, changes):
@@ -291,7 +293,10 @@ def update_card(card_id, changes):
         fields["updated_at"] = now_iso()
         sets = ", ".join(f"{k} = ?" for k in fields)
         conn.execute(f"UPDATE kanban_card SET {sets} WHERE id = ?", (*fields.values(), card_id))
-        return card(conn, card_id)
+        result = card(conn, card_id)
+    if {"title", "body", "opname", "owner"} & set(fields):
+        kanban_embed.enqueue(card_id)
+    return result
 
 
 def archive_lane(lane_name="Done"):
@@ -317,4 +322,5 @@ def delete_card(card_id):
         conn.execute("DELETE FROM kanban_comment WHERE card_id = ?", (card_id,))
         conn.execute("DELETE FROM kanban_card WHERE id = ?", (card_id,))
         _write_order(conn, current["lane_id"], _lane_card_ids(conn, current["lane_id"]))
+        kanban_embed.drop(card_id, conn)
         return current
