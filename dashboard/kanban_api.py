@@ -190,6 +190,7 @@ def opsboard_semantic():
                     lane_id=lane_id,
                     owner=request.args.get("owner") or None,
                     opname=request.args.get("opname") or None,
+                    sort=request.args.get("sort") or "blend",
                     conn=conn,
                 )
             )

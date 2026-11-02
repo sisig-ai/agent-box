@@ -117,6 +117,7 @@ def semantic_search_cards(args):
                 lane_id=lane_id,
                 owner=_author(args),
                 opname=args.get("opname") or None,
+                sort=args.get("sort") or "blend",
                 conn=conn,
             )
         except kanban_embed.EmbedError as exc:

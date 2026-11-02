@@ -84,6 +84,8 @@ The explorer has two modes. The default is a file tree: folders collapse, clicki
 
 The search box takes text, and a second field beside it takes a prefix: any part of the key, so `card-389` finds every doc about that card wherever it lives. Both boxes can be used together, and a prefix on its own is a listing of everything under that naming pattern, newest first.
 
+Semantic hits are ordered by relevance with a recency nudge, not by score alone: `rank = score + 0.1 * exp(-age_days / 30)`. A fresh note beats a stale one that scored a hair higher, while a month-old note still keeps a small edge over a year-old one. Ask for `sort=score` or `sort=recent` when you want the plain order.
+
 Search runs twice. The exact pass is SQLite full text over the prefix, the body, the tags and the author, and it renders the moment the query settles, with the matched words highlighted in the snippets. The second pass is semantic: the local Ollama model embeds the query and compares it against stored chunk vectors, and those hits slide in underneath a divider after the exact ones have already landed. A wiring note about relay boards comes back for "smart light switch" that way, even though it shares no words with the question.
 
 For agents the same store is six tool calls. `put_doc` creates or replaces an object by prefix, `get_doc` reads one back, `patch_doc` changes only the fields you pass, `list_docs` walks a path, `search_docs` and `semantic_search_docs` are the two passes, and `delete_doc` removes one. The convention I care about is that a rewrite is a full replace, so an agent reads before it puts, or it patches instead, and one prefix per topic so a later handoff can find it.

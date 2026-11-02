@@ -154,3 +154,27 @@ def test_semantic_respects_prefix_query(client):
     index(client)
     hits = client.get("/api/docs/semantic?q=tuya&prefix_q=card-1").get_json()["hits"]
     assert {hit["prefix"] for hit in hits} == {"handoffs/card-1.md", "specs/card-1-spec.md"}
+
+
+def test_default_order_blends_score_with_age(client, monkeypatch):
+    from datetime import datetime, timedelta
+
+    from dashboard import db
+
+    stale = docs.put("notes/stale.md", content="tuya handoff")
+    docs.put("notes/fresh.md", content="tuya handoff")
+    index(client)
+    conn = db.connect()
+    try:
+        stamp = (datetime.now().astimezone() - timedelta(days=400)).isoformat(timespec="seconds")
+        with conn:
+            conn.execute("UPDATE doc SET updated_at = ? WHERE id = ?", (stamp, stale[0]["id"]))
+    finally:
+        conn.close()
+
+    blended = client.get("/api/docs/semantic?q=tuya").get_json()["hits"]
+    assert blended[0]["prefix"] == "notes/fresh.md"
+    assert "rank" in blended[0]
+
+    scored = client.get("/api/docs/semantic?q=tuya&sort=score").get_json()["hits"]
+    assert {hit["prefix"] for hit in scored} == {"notes/fresh.md", "notes/stale.md"}

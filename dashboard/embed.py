@@ -8,11 +8,22 @@ their rows join different parents; only this part is common.
 import array
 import hashlib
 import json
+import math
 import re
 import urllib.error
 import urllib.request
+from datetime import datetime
 
 from . import config
+
+# Default ordering for semantic hits. Relevance leads, and a fresh item gets a
+# bounded nudge so a slightly older, slightly better match can lose to a current
+# one: rank = score + 0.1 * exp(-age_days / 30). At zero age the boost is 0.10,
+# at 30 days 0.037, at 90 days 0.005, so it breaks ties without overruling the
+# vector score. Callers can ask for pure "score" or "recent" instead.
+RECENCY_WEIGHT = 0.10
+RECENCY_TAU_DAYS = 30
+SORTS = ("blend", "score", "recent")
 
 CHUNK_CHARS = 1200
 CHUNK_OVERLAP = 200
@@ -82,6 +93,36 @@ def chunk(text):
     if current:
         chunks.append(current)
     return chunks[:MAX_CHUNKS]
+
+
+def age_days(updated_at, now=None):
+    """Age of an ISO timestamp in days; 0 for anything in the future or broken."""
+    try:
+        stamp = datetime.fromisoformat(str(updated_at))
+    except (TypeError, ValueError):
+        return 0.0
+    if stamp.tzinfo is None:
+        stamp = stamp.replace(tzinfo=datetime.now().astimezone().tzinfo)
+    now = now or datetime.now().astimezone()
+    return max(0.0, (now - stamp).total_seconds() / 86400)
+
+
+def blend_rank(score, updated_at, now=None, weight=RECENCY_WEIGHT, tau_days=RECENCY_TAU_DAYS):
+    """Semantic score plus an exponential age nudge (see RECENCY_WEIGHT)."""
+    return score + weight * math.exp(-age_days(updated_at, now) / tau_days)
+
+
+def order_hits(hits, sort="blend", now=None):
+    """Annotate hits with ``rank`` and return them in the requested order."""
+    if sort not in SORTS:
+        sort = "blend"
+    for hit in hits:
+        hit["rank"] = round(blend_rank(hit["score"], hit.get("updated_at"), now), 4)
+    if sort == "recent":
+        return sorted(hits, key=lambda hit: str(hit.get("updated_at") or ""), reverse=True)
+    if sort == "score":
+        return sorted(hits, key=lambda hit: hit["score"], reverse=True)
+    return sorted(hits, key=lambda hit: (hit["rank"], hit["score"]), reverse=True)
 
 
 def cosine(a, b):

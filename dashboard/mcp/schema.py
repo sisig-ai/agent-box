@@ -46,6 +46,17 @@ POSITION = {
     "description": "0-based slot within the lane; 0 = top.",
 }
 
+SEMANTIC_SORT = {
+    "type": "string",
+    "enum": ["blend", "score", "recent"],
+    "default": "blend",
+    "description": (
+        "Order for semantic hits. blend (default) is score plus a recency nudge "
+        "(rank = score + 0.1 * exp(-age_days/30)), score is pure cosine, recent is "
+        "newest update first."
+    ),
+}
+
 FILTER_PROPS = {
     "status": LANE_REF,
     "owner": OWNER,

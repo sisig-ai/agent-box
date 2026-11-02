@@ -121,3 +121,40 @@ def test_mcp_tools(client):
         call("semantic_search_cards", {"q": "relay", "limit": 1})["structuredContent"]["count"] == 1
     )
     assert call("reindex_cards", {})["structuredContent"]["model"]
+
+
+def test_blend_prefers_fresh_ties_but_score_sort_does_not(client, monkeypatch):
+    from datetime import datetime, timedelta
+
+    from dashboard import embed
+
+    old = make_card(client, title="office lamps", body="relay board")
+    fresh = make_card(client, title="office lights", body="relay board")
+    index_cards()
+    # identical vectors, so only the age term can separate them
+    monkeypatch.setattr(
+        kanban_embed, "embed_texts", lambda texts: [[1.0, 1.0, 0.0, 0.4] for _ in texts]
+    )
+    index_cards()
+
+    from dashboard import db
+
+    conn = db.connect()
+    try:
+        stamp = (datetime.now().astimezone() - timedelta(days=400)).isoformat(timespec="seconds")
+        with conn:
+            conn.execute("UPDATE kanban_card SET updated_at = ? WHERE id = ?", (stamp, old["id"]))
+    finally:
+        conn.close()
+
+    blended = client.get("/api/opsboard/semantic?q=relay").get_json()["hits"]
+    assert blended[0]["id"] == fresh["id"]
+    assert blended[0]["rank"] >= blended[1]["rank"]
+
+    scored = client.get("/api/opsboard/semantic?q=relay&sort=score").get_json()["hits"]
+    assert {hit["id"] for hit in scored} == {old["id"], fresh["id"]}
+    assert scored[0]["score"] == scored[1]["score"]  # equal relevance, age ignored
+
+    newest = client.get("/api/opsboard/semantic?q=relay&sort=recent").get_json()["hits"]
+    assert newest[0]["id"] == fresh["id"]
+    assert embed.SORTS == ("blend", "score", "recent")

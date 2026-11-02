@@ -18,6 +18,7 @@ from .embed import (
     content_hash,
     cosine,
     embed_texts,
+    order_hits,
     pack,
     unpack,
 )
@@ -193,7 +194,7 @@ def wait_idle(timeout=30):
 # ---------------------------------------------------------------- search
 
 
-def search(query, prefix=None, prefix_q=None, limit=50, conn=None):
+def search(query, prefix=None, prefix_q=None, limit=50, sort="blend", conn=None):
     """Cosine-rank chunks of the active model; best chunk per doc wins."""
     query = (query or "").strip()
     if not query:
@@ -244,7 +245,7 @@ def search(query, prefix=None, prefix_q=None, limit=50, conn=None):
                 "score": round(score, 4),
                 "excerpt": excerpt,
             }
-    ranked = sorted(best.values(), key=lambda hit: hit["score"], reverse=True)
+    ranked = order_hits(list(best.values()), sort)
     hits = ranked[: max(1, min(limit, 200))]
     return {
         "q": query,

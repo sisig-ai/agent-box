@@ -26,6 +26,17 @@ TAGS = {
     "items": {"type": "string"},
     "description": "Up to 24 tags, each 60 characters or fewer (e.g. ['handoff', 'doctrine']).",
 }
+SORT = {
+    "type": "string",
+    "enum": ["blend", "score", "recent"],
+    "default": "blend",
+    "description": (
+        "Order for semantic hits. blend (default) is score plus a recency nudge "
+        "(rank = score + 0.1 * exp(-age_days/30)), so a slightly older, slightly "
+        "better match can lose to a current one. score is pure cosine, recent is "
+        "newest update first."
+    ),
+}
 PREFIX_Q = {
     "type": "string",
     "description": (
@@ -137,6 +148,7 @@ def semantic_search_docs(args):
             query,
             prefix=prefix,
             prefix_q=docs.clean_prefix_query(args.get("prefix_q")),
+            sort=args.get("sort") or "blend",
             limit=docs.clean_limit(args.get("limit"), default=SEARCH_DEFAULT_LIMIT),
         )
     except EmbedError as exc:
@@ -241,6 +253,7 @@ TOOLS = {
                     "description": "Optional path filter (that doc and its descendants).",
                 },
                 "prefix_q": PREFIX_Q,
+                "sort": SORT,
                 "limit": {**LIMIT, "default": SEARCH_DEFAULT_LIMIT},
             },
             ["q"],

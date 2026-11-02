@@ -22,6 +22,7 @@ from .embed import (
     content_hash,
     cosine,
     embed_texts,
+    order_hits,
     pack,
     unpack,
 )
@@ -184,7 +185,16 @@ def _work():
             _QUEUE.task_done()
 
 
-def search(query, limit=15, archived="exclude", lane_id=None, owner=None, opname=None, conn=None):
+def search(
+    query,
+    limit=15,
+    archived="exclude",
+    lane_id=None,
+    owner=None,
+    opname=None,
+    sort="blend",
+    conn=None,
+):
     """Cosine-rank card chunks; best chunk per card wins."""
     query = (query or "").strip()
     if not query:
@@ -242,7 +252,7 @@ def search(query, limit=15, archived="exclude", lane_id=None, owner=None, opname
                 "score": round(score, 4),
                 "excerpt": " ".join((row["text"] or "").split())[:EXCERPT_CHARS],
             }
-    ranked = sorted(best.values(), key=lambda hit: hit["score"], reverse=True)
+    ranked = order_hits(list(best.values()), sort)
     hits = ranked[: max(1, min(int(limit or 15), 200))]
     return {
         "q": query,

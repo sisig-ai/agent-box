@@ -77,6 +77,7 @@ def docs_semantic():
             ),
             prefix_q=docs.clean_prefix_query(request.args.get("prefix_q")),
             limit=docs.clean_limit(request.args.get("limit"), default=10),
+            sort=request.args.get("sort") or "blend",
         )
     except EmbedError as exc:
         return jsonify({"error": str(exc), "available": False}), 503
