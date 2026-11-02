@@ -29,7 +29,7 @@ function current() {
 const lazy = {};
 const KANBAN = './kanban/board.js?v=kanban29';
 const PROGRESS = './progress/bars.js?v=progress7';
-const DOCS = './docs/docs.js?v=tree6';
+const DOCS = './docs/docs.js?v=tree8';
 const LOGS = './logs/logs.js?v=logs1';
 let lastView = null;
 function ensure(v) {

@@ -78,7 +78,7 @@ The pattern is that an agent creates a bar when a long job starts and then keeps
 
 Docs is an object store for text, and I use it for the things that outlive a card: handoffs between agents, specs, research notes, and the record of a decision. Every entry is keyed by a slash-separated prefix, which works like a path. A doc carries its body, a free-text author, tags, and the usual timestamps, and every write bumps a revision number.
 
-The explorer has two modes. The default is a file tree: folders collapse, and clicking one scopes the list to that path. The flat mode is a single sortable listing, one line per doc, ordered by prefix, last updated or author, with the direction toggled by clicking the column. Both choices persist in the browser.
+The explorer has two modes. The default is a file tree: folders collapse, clicking one scopes the list to that path, and each folder shows at most five entries with a "show N more" that loads the rest on demand. The flat mode is a single sortable listing, one line per doc, ordered by prefix, last updated or author, with the direction toggled by clicking the column. Both choices persist in the browser.
 
 The search box takes text, and a second field beside it takes a prefix: any part of the key, so `card-389` finds every doc about that card wherever it lives. Both boxes can be used together, and a prefix on its own is a listing of everything under that naming pattern, newest first.
 

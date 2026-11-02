@@ -37,6 +37,16 @@ def docs_list():
     return jsonify(docs.listing(prefix, limit=limit, offset=offset, with_content=with_content))
 
 
+@bp.get("/api/docs/tree")
+def docs_tree():
+    """Folders with counts and at most ``?per=`` docs each, plus the remainder sizes."""
+    try:
+        per_folder = int(request.args.get("per", 5))
+    except (TypeError, ValueError):
+        raise DocsError("per must be a number") from None
+    return jsonify(docs.tree(per_folder=per_folder))
+
+
 @bp.get("/api/docs/prefixes")
 def docs_prefixes():
     """Directories that hold docs, with direct and recursive counts."""

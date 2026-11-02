@@ -204,3 +204,33 @@ def test_prefix_only_search_lists_newest_first(client):
 
 def test_prefix_query_is_validated(client):
     assert client.get("/api/docs/search?prefix_q=" + "a" * 500).status_code == 400
+
+
+def test_tree_caps_each_folder_and_reports_the_remainder(client):
+    for index in range(1, 8):
+        put(client, f"handoffs/card-{index}.md", content="x")
+    put(client, "handoffs/deep/one.md", content="x")
+    put(client, "specs/spec.md", content="x")
+    put(client, "root.md", content="x")
+
+    tree = client.get("/api/docs/tree").get_json()
+    handoffs = next(folder for folder in tree["folders"] if folder["path"] == "handoffs")
+    assert handoffs["total"] == 8
+    assert len(handoffs["docs"]) == 5
+    assert handoffs["more"] == 2  # 7 direct docs, 5 shown
+    assert [doc["name"] for doc in handoffs["docs"]] == [
+        "card-1.md",
+        "card-2.md",
+        "card-3.md",
+        "card-4.md",
+        "card-5.md",
+    ]
+    nested = next(folder for folder in handoffs["folders"] if folder["path"] == "handoffs/deep")
+    assert nested["total"] == 1
+    assert tree["total"] == 10
+    assert [doc["name"] for doc in tree["docs"]] == ["root.md"]
+
+    wide = client.get("/api/docs/tree?per=10").get_json()
+    handoffs_wide = next(folder for folder in wide["folders"] if folder["path"] == "handoffs")
+    assert len(handoffs_wide["docs"]) == 7
+    assert handoffs_wide["more"] == 0

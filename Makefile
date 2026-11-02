@@ -15,7 +15,7 @@ SLOC_STRICT ?= 1
 # the point. docs.js carries the explorer modes and the editor in one module and
 # is the next split candidate; the cap moves only with a matching change.
 SLOC_EXEMPT ?= static/js/kanban/board.js:660 static/index.html:540 \
-	dashboard/progress.py:470 static/js/docs/docs.js:575
+	dashboard/progress.py:470 static/js/docs/docs.js:510
 
 NPM        ?= npm
 ESLINT     ?= npx eslint

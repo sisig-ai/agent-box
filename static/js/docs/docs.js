@@ -4,6 +4,8 @@
 // the doc exists, so a rename can never orphan or clobber another entry.
 import { armDelete } from '../kanban/edit.js?v=kanban29';
 
+import { createTree } from './tree.js?v=tree8';
+
 const $ = (id) => document.getElementById(id);
 const DEBOUNCE_MS = 180;
 const SEARCH_MIN = 2;
@@ -16,7 +18,9 @@ const SORT_KEY = 'docs.sort';
 
 const state = {
   started: false,
-  all: [], // every doc, for the tree
+  all: [], // flat list + search scoping
+  tree: null, // server-built tree (folders, counts, five docs each)
+  folderDocs: new Map(), // folder path -> every doc in it, once "show more" is used
   collapsed: new Set(),
   view: 'tree', // 'tree' (default) or 'flat'
   sort: { key: 'updated', dir: -1 },
@@ -80,80 +84,6 @@ function marked(text) {
   return frag;
 }
 
-// Prefixes are paths: a/b/c.md nests a > b > c.md. Folders first, then leaves.
-function buildTree(docs) {
-  const root = { folders: new Map(), docs: [] };
-  for (const doc of docs) {
-    const parts = doc.prefix.split('/');
-    const name = parts.pop();
-    let node = root;
-    for (const part of parts) {
-      if (!node.folders.has(part)) node.folders.set(part, { folders: new Map(), docs: [] });
-      node = node.folders.get(part);
-    }
-    node.docs.push({ ...doc, name });
-  }
-  return root;
-}
-
-function treeCount(node) {
-  let total = node.docs.length;
-  for (const child of node.folders.values()) total += treeCount(child);
-  return total;
-}
-
-function renderTree() {
-  const host = $('docs-tree');
-  const root = buildTree(state.all);
-  const build = (node, path, depth) => {
-    const list = el('ul', 'docs-tree-list');
-    const folders = [...node.folders.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-    for (const [name, child] of folders) {
-      const full = path ? `${path}/${name}` : name;
-      const open = !state.collapsed.has(full);
-      const item = el('li', 'docs-tree-folder');
-      const row = el('div', 'docs-tree-row');
-      row.style.paddingLeft = `${depth * 0.8}rem`;
-      const twist = el('button', 'docs-tree-twist', open ? '▾' : '▸');
-      twist.title = open ? 'Collapse' : 'Expand';
-      twist.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (open) state.collapsed.add(full); else state.collapsed.delete(full);
-        saveCollapsed();
-        renderTree();
-      });
-      const label = el('button', 'docs-tree-name', name);
-      label.title = `Scope to ${full}/`;
-      if (state.prefix === full) label.classList.add('scoped');
-      label.addEventListener('click', () => setScope(state.prefix === full ? '' : full));
-      row.append(twist, label, el('span', 'docs-tree-count', String(treeCount(child))));
-      item.append(row);
-      if (open) item.append(build(child, full, depth + 1));
-      list.append(item);
-    }
-    const leaves = node.docs.slice().sort((a, b) => a.name.localeCompare(b.name));
-    for (const doc of leaves) {
-      const item = el('li', 'docs-tree-doc');
-      const row = el('div', 'docs-tree-row');
-      row.style.paddingLeft = `${depth * 0.8 + 1.1}rem`;
-      const leaf = el('button', 'docs-tree-name is-doc', doc.name);
-      leaf.title = doc.prefix;
-      if (state.current && state.current.prefix === doc.prefix) leaf.classList.add('open');
-      leaf.addEventListener('click', () => selectDoc(doc.prefix));
-      row.append(el('span', 'docs-tree-twist', '·'), leaf);
-      item.append(row);
-      list.append(item);
-    }
-    return list;
-  };
-  host.replaceChildren(build(root, '', 0));
-  $('docs-tree-empty').hidden = state.all.length > 0;
-}
-
-function saveCollapsed() {
-  try { localStorage.setItem(TREE_KEY, JSON.stringify([...state.collapsed])); } catch { /* storage blocked */ }
-}
-
 function setScope(prefix) {
   state.prefix = prefix || '';
   try {
@@ -161,7 +91,7 @@ function setScope(prefix) {
     else localStorage.removeItem(SCOPE_KEY);
   } catch { /* storage blocked */ }
   applyScope();
-  renderTree();
+  tree.render();
   if (state.q) runSearch();
 }
 
@@ -187,7 +117,7 @@ function setView(view) {
   state.view = view === 'flat' ? 'flat' : 'tree';
   try { localStorage.setItem(VIEW_KEY, state.view); } catch { /* storage blocked */ }
   paintView();
-  renderTree();
+  tree.render();
   renderList();
 }
 
@@ -290,6 +220,10 @@ function docRow(doc, kind) {
   return item;
 }
 
+const tree = createTree({
+  el, api, state, $, setStatus, selectDoc, setScope, LIST_LIMIT,
+});
+
 function renderList() {
   const list = $('docs-list');
   const searching = state.searching;
@@ -331,11 +265,17 @@ function renderList() {
 }
 
 async function loadList() {
-  // The tree needs every doc, so fetch once and scope client-side.
-  const data = await api(`/api/docs?${new URLSearchParams({ limit: String(LIST_LIMIT) })}`);
-  state.all = data.docs;
+  // Two shapes of the same corpus: the flat list for sorting and scoped views,
+  // and the server-built tree so the explorer never needs every doc row.
+  const [list, treeData] = await Promise.all([
+    api(`/api/docs?${new URLSearchParams({ limit: String(LIST_LIMIT) })}`),
+    api(`/api/docs/tree?${new URLSearchParams({ per: '5' })}`),
+  ]);
+  state.all = list.docs;
+  state.tree = treeData;
+  state.folderDocs.clear();
   applyScope();
-  renderTree();
+  tree.render();
 }
 
 async function refresh() {
@@ -436,7 +376,7 @@ async function selectDoc(prefix) {
     fillEditor(doc);
     setEditorVisible(true);
     renderList();
-    renderTree();
+    tree.render();
     $('doc-content').focus();
   } catch (err) {
     setStatus(`open failed: ${err.message}`, true);
@@ -448,7 +388,7 @@ function startNew() {
   state.current = null;
   fillEditor(null);
   setEditorVisible(true);
-  renderTree();
+  tree.render();
   $('doc-prefix').focus();
 }
 
