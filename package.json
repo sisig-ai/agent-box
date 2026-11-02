@@ -1,0 +1,15 @@
+{
+  "name": "agent-box",
+  "version": "0.1.0",
+  "private": true,
+  "description": "All-in-one dashboard for agents and humans to collaborate on work.",
+  "scripts": {
+    "lint": "eslint static/js tests --ext .js,.mjs && prettier --check \"static/**/*.{css,html}\" \"static/js/**/*.js\"",
+    "format": "prettier --write \"static/**/*.{css,html}\" \"static/js/**/*.js\"",
+    "test:js": "node --test tests/*.test.mjs"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0"
+  }
+}

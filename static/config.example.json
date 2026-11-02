@@ -1,0 +1,12 @@
+{
+  "title": "agent-box",
+  "services": [
+    {
+      "name": "Example Agent",
+      "icon": "example",
+      "description": "Your agent · short status line",
+      "color": "#e6b45f",
+      "port": 8000
+    }
+  ]
+}
