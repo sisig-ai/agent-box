@@ -3,6 +3,7 @@
 from .. import db, kanban, kanban_comments, kanban_embed, kanban_search
 from ..kanban_api import (
     clean_body,
+    clean_docs,
     clean_opname,
     clean_owner,
     clean_position,
@@ -15,6 +16,7 @@ from .schema import (
     AUTHOR,
     BODY,
     CARD_ID,
+    DOCS,
     FILTER_PROPS,
     LANE_REF,
     OPNAME,
@@ -155,6 +157,7 @@ def create_card(args):
         position=clean_position(args.get("position")),
         body=clean_body(args.get("body")),
         opname=clean_opname(args.get("opname")),
+        docs=clean_docs(args.get("docs")),
     )
 
 
@@ -165,6 +168,7 @@ CLEANERS = {
     "opname": clean_opname,
     "status": clean_status,
     "position": clean_position,
+    "docs": clean_docs,
 }
 
 
@@ -178,7 +182,7 @@ def update_card(args):
     if not changes:
         raise ToolError(
             "nothing to update: pass at least one of title, owner, body, opname, "
-            "status, position, archived"
+            "status, position, archived, docs"
         )
     return kanban.update_card(card_id, changes)
 
@@ -328,6 +332,7 @@ TOOLS = {
                 "position": POSITION,
                 "body": BODY,
                 "opname": OPNAME,
+                "docs": DOCS,
             },
             ["title"],
         ),
@@ -337,7 +342,8 @@ TOOLS = {
         "spec": tool_spec(
             "update_card",
             "Update a card",
-            "Patch any subset of title, owner, body, opname, status, position, archived. "
+            "Patch any subset of title, owner, body, opname, status, position, "
+            "archived, docs. "
             "Read the card first when replacing a body, then append to the progress log.",
             {
                 "id": CARD_ID,

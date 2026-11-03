@@ -489,8 +489,11 @@ function bind() {
   });
 }
 
-export function initDocs() {
-  if (state.started) { refresh(); return; }
+export function initDocs(openPrefix = '') {
+  if (state.started) {
+    refresh().then(() => { if (openPrefix) selectDoc(openPrefix); });
+    return;
+  }
   state.started = true;
   try { state.prefix = localStorage.getItem(SCOPE_KEY) || ''; } catch { /* storage blocked */ }
   try {
@@ -501,5 +504,5 @@ export function initDocs() {
   bind();
   paintView();
   setEditorVisible(false);
-  refresh();
+  refresh().then(() => { if (openPrefix) selectDoc(openPrefix); });
 }

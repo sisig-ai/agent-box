@@ -46,6 +46,16 @@ POSITION = {
     "description": "0-based slot within the lane; 0 = top.",
 }
 
+DOCS = {
+    "type": "array",
+    "items": {"type": "string"},
+    "description": (
+        "Docs prefixes this card points at, e.g. ['handoffs/x.md', 'specs/y.md']. "
+        "At most 20; duplicates collapse; the doc does not need to exist yet. "
+        "An empty list clears the links."
+    ),
+}
+
 SEMANTIC_SORT = {
     "type": "string",
     "enum": ["blend", "score", "recent"],

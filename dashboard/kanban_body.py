@@ -7,6 +7,7 @@ checkbox counts) so the UI can badge cards without shipping every body on each
 ``?include_body=1``.
 """
 
+import json
 import re
 
 PREVIEW_MAX = 140
@@ -44,6 +45,11 @@ def with_body_summary(row, include_body=True):
     """Card dict plus ``has_body`` / ``body_preview`` / ``body_tasks``; drops
     ``body`` itself unless ``include_body`` (board listings stay light)."""
     out = dict(row)
+    refs = out.pop("doc_refs", None)
+    try:
+        out["docs"] = json.loads(refs) if refs else []
+    except (TypeError, ValueError):
+        out["docs"] = []
     body = out.get("body") or ""
     out["body"] = body
     out["has_body"] = bool(body.strip())

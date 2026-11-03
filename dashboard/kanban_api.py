@@ -84,6 +84,38 @@ def clean_body(raw):
     return body if body.strip() else ""
 
 
+DOCS_MAX = 20
+
+
+def clean_docs(raw):
+    """List of doc prefixes this card points at; null/[] clears them.
+
+    Format is checked here; existence is not, so an agent can link a doc it is
+    about to write. The UI marks missing targets instead.
+    """
+    if raw is None:
+        return []
+    if not isinstance(raw, list):
+        raise KanbanError("docs must be a list of doc prefixes")
+    from .docs import DocsError, clean_prefix
+
+    refs, seen = [], set()
+    for item in raw:
+        if not isinstance(item, str):
+            raise KanbanError("docs entries must be strings (doc prefixes)")
+        try:
+            prefix = clean_prefix(item)
+        except DocsError as exc:
+            raise KanbanError(f"docs: {exc.message}") from None
+        if prefix in seen:
+            continue
+        seen.add(prefix)
+        refs.append(prefix)
+    if len(refs) > DOCS_MAX:
+        raise KanbanError(f"at most {DOCS_MAX} doc references per card")
+    return refs
+
+
 def clean_status(raw):
     if isinstance(raw, bool) or not isinstance(raw, (str, int)) or not str(raw).strip():
         raise KanbanError("status must be a lane name (or lane id)")
@@ -228,7 +260,7 @@ def archive_done():
 @bp.post("/api/opsboard/cards")
 @bp.post("/api/kanban/cards")
 def card_create():
-    body = json_body(("title", "owner", "status", "position", "body", "opname"))
+    body = json_body(("title", "owner", "status", "position", "body", "opname", "docs"))
     status = clean_status(body["status"]) if body.get("status") not in (None, "") else None
     card = kanban.create_card(
         clean_title(body.get("title")),
@@ -237,6 +269,7 @@ def card_create():
         clean_position(body.get("position")),
         clean_body(body.get("body")),
         clean_opname(body.get("opname")),
+        clean_docs(body.get("docs")),
     )
     return jsonify(card), 201
 
@@ -255,7 +288,7 @@ def card_get(card_id):
 @bp.patch("/api/kanban/cards/<card_id>")
 def card_patch(card_id):
     card_id = parse_card_id(card_id)
-    body = json_body(("title", "owner", "body", "opname", "status", "position", "archived"))
+    body = json_body(("title", "owner", "body", "opname", "status", "position", "archived", "docs"))
     if not body:
         raise KanbanError(
             "nothing to update; send any of title, owner, body, opname, status, position, archived"
@@ -269,6 +302,8 @@ def card_patch(card_id):
         changes["body"] = clean_body(body["body"])
     if "opname" in body:
         changes["opname"] = clean_opname(body["opname"])
+    if "docs" in body:
+        changes["docs"] = clean_docs(body["docs"])
     if "status" in body:
         changes["status"] = clean_status(body["status"])
     if "position" in body:

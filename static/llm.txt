@@ -173,6 +173,14 @@ Comments stay in the FTS index only. Indexing runs per card write; use
 | `semantic_search_cards(q, status?, owner?, opname?, archived?, sort?, limit?)` | Cosine-ranked cards, best chunk per card, 15 by default. Filters behave like `search_cards`. |
 | `reindex_cards()` | Queue every card whose vectors are stale, missing or from another model. |
 
+**Cards pointing at Docs**
+
+A card can carry `docs`, a list of up to 20 doc prefixes it depends on. Pass it
+to `create_card` / `update_card` (`["handoffs/x.md", "specs/y.md"]`, empty list
+clears). The target does not need to exist yet, so a handoff can link the doc it
+is about to write; the board and the card modal render the refs as clickable
+items that open `#/docs/<prefix>`.
+
 **Access logs (what agents actually did here)**
 
 Every `tools/call` is recorded: timestamp, tool, the entity it touched (doc

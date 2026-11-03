@@ -2,7 +2,7 @@
 // and the markdown body (rendered view, or Write + live Preview editor).
 // Deep-linkable: #/kanban/card-<id> opens it, #/kanban/card-<id>/edit opens
 // straight into the editor (board.js routes the hash here).
-import { api } from './api.js?v=kanban20';
+import { api } from './api.js?v=docs3';
 import { inlineEdit } from './edit.js?v=kanban20';
 import { loadPurify, renderBody, toggleTask } from './markdown.js?v=kanban20';
 import { buildComments, paintComments, resetComments } from './comments.js?v=kanban28';
@@ -58,6 +58,14 @@ function build() {
   ui.archive = el('button', 'kb-archive-btn kbd-archive');
   meta.append(laneLab, ownerLab, opLab, ui.times, ui.archive);
 
+  const docsSec = el('div', 'kbd-docs');
+  docsSec.append(el('span', 'kbd-section-label', 'Docs'));
+  ui.docList = el('div', 'kbd-doc-list');
+  ui.docInput = el('input', 'kbd-doc-input');
+  ui.docInput.placeholder = 'doc prefixes, comma separated';
+  ui.docInput.title = 'Docs this card points at: handoffs/x.md, specs/y.md (blank clears)';
+  docsSec.append(ui.docList, ui.docInput);
+
   const sec = el('div', 'kbd-section');
   sec.append(el('span', 'kbd-section-label', 'Description'));
   ui.edit = el('button', 'brief-btn kbd-edit-btn', '✎ Edit');
@@ -82,10 +90,32 @@ function build() {
   ui.foot.append(ui.cancel, ui.save);
   foot.append(ui.msg, ui.foot);
 
-  modal.append(head, meta, sec, ui.view, ui.editor, foot, buildComments());
+  modal.append(head, meta, docsSec, sec, ui.view, ui.editor, foot, buildComments());
   ui.backdrop.append(modal);
   document.body.append(ui.backdrop);
   wire();
+}
+
+export function openDoc(prefix) {
+  ui.backdrop.hidden = true;
+  location.hash = `#/docs/${prefix}`;
+}
+
+function paintDocs() {
+  if (!ui.docList) return;
+  const refs = st.card?.docs || [];
+  ui.docList.replaceChildren(...refs.map((prefix) => {
+    const chip = el('a', 'kbd-doc', prefix);
+    chip.href = `#/docs/${prefix}`;
+    chip.title = `Open ${prefix}`;
+    chip.addEventListener('click', (e) => {
+      e.preventDefault();
+      openDoc(prefix);
+    });
+    return chip;
+  }));
+  if (!refs.length) ui.docList.append(el('span', 'kbd-doc none', 'no docs linked'));
+  if (document.activeElement !== ui.docInput) ui.docInput.value = refs.join(', ');
 }
 
 function setMsg(text, isError) {
@@ -149,6 +179,7 @@ function paint() {
   ui.opname.classList.toggle('set', !!c.opname);
   ui.times.textContent = `created ${fmt(c.created_at)} · updated ${fmt(c.updated_at)}`
     + (c.archived_at ? ` · archived ${fmt(c.archived_at)}` : '');
+  paintDocs();
   ui.archive.textContent = c.archived_at ? 'Restore' : 'Archive';
   ui.archive.title = c.archived_at ? 'Put the card back on the board' : 'Hide the card from the board (kept)';
   ui.edit.hidden = st.editing;
@@ -205,6 +236,14 @@ function wire() {
   ui.text.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); ui.save.click(); }
   });
+  const saveDocs = () => {
+    const refs = ui.docInput.value.split(/[,\s]+/).map((v) => v.trim()).filter(Boolean);
+    patch({ docs: refs }, refs.length ? `linked ${refs.length} doc(s)` : 'doc links cleared');
+  };
+  ui.docInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); ui.docInput.blur(); }
+  });
+  ui.docInput.addEventListener('change', saveDocs);
   ui.cancel.addEventListener('click', () => { setEditing(false); setMsg(''); });
   ui.save.addEventListener('click', async () => {
     if (await patch({ body: ui.text.value })) setEditing(false);

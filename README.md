@@ -34,7 +34,9 @@ There are eight views in the sidebar, and a thin telemetry strip runs along the 
 
 ### Ops Board
 
-The board is where the work lives, and most days it is the only view I have open. Lanes are columns and cards are jobs, or the same cards grouped by owner instead: that column layout puts a lane badge on every card and turns drag-and-drop off, because a card moves between lanes, not between people. A card carries an owner, an optional operation name that groups related cards under one label, a markdown body, and a thread of comments. Search is full text and reaches into titles, bodies, comments, owners, and operation names, so a half-remembered phrase from a comment three days ago is enough to find the card.
+The board is where the work lives, and most days it is the only view I have open. A card can also point at Docs: a list of prefixes on the card, rendered as nested links that open the doc itself, so the spec or handoff behind a job is one click from the board.
+
+Lanes are columns and cards are jobs, or the same cards grouped by owner instead: that column layout puts a lane badge on every card and turns drag-and-drop off, because a card moves between lanes, not between people. A card carries an owner, an optional operation name that groups related cards under one label, a markdown body, and a thread of comments. Search is full text and reaches into titles, bodies, comments, owners, and operation names, so a half-remembered phrase from a comment three days ago is enough to find the card.
 
 From my side, I write a card, drop it into To Do, and put the name of the agent that should take it in the owner field. When it reaches Done I archive it with a click, and when the board gets crowded I filter by operation name so that one project's cards are all I see.
 

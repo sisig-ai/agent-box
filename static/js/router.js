@@ -21,15 +21,15 @@ function current() {
   if (h === '#/files') return 'files';
   if (h === '#/shell') return 'shell';
   if (h === '#/progress') return 'progress';
-  if (h === '#/docs') return 'docs';
+  if (h === '#/docs' || h.startsWith('#/docs/')) return 'docs';
   if (h === '#/logs') return 'logs';
   if (h === '#/kanban' || h.startsWith('#/kanban/') || /^#card-\d+/.test(h)) return 'kanban';
   return 'stack'; // default landing tab (also #/ and empty hash)
 }
 const lazy = {};
-const KANBAN = './kanban/board.js?v=owner1';
+const KANBAN = './kanban/board.js?v=docs3';
 const PROGRESS = './progress/bars.js?v=progress7';
-const DOCS = './docs/docs.js?v=tree8';
+const DOCS = './docs/docs.js?v=docs3';
 const LOGS = './logs/logs.js?v=logs1';
 let lastView = null;
 function ensure(v) {
@@ -42,7 +42,8 @@ function ensure(v) {
   } else if (v === 'progress') {
     (lazy.progress ||= import(PROGRESS)).then(m => m.initProgress());
   } else if (v === 'docs') {
-    (lazy.docs ||= import(DOCS)).then(m => m.initDocs());
+    const docPrefix = decodeURIComponent(location.hash.replace(/^#\/docs\/?/, ''));
+    (lazy.docs ||= import(DOCS)).then(m => m.initDocs(docPrefix || ''));
   } else if (v === 'logs') {
     (lazy.logs ||= import(LOGS)).then(m => m.initLogs());
   }
@@ -58,7 +59,10 @@ function apply() {
     lastView = v;
     if (v === 'kanban') (lazy.kanban ||= import(KANBAN)).then(m => m.enterKanban());
     else if (v === 'progress') (lazy.progress ||= import(PROGRESS)).then(m => m.enterProgress());
-    else if (v === 'docs') (lazy.docs ||= import(DOCS)).then(m => m.initDocs());
+    else if (v === 'docs') {
+      const docPrefix = decodeURIComponent(location.hash.replace(/^#\/docs\/?/, ''));
+      (lazy.docs ||= import(DOCS)).then(m => m.initDocs(docPrefix || ''));
+    }
     else if (v === 'logs') (lazy.logs ||= import(LOGS)).then(m => m.initLogs());
   }
 }

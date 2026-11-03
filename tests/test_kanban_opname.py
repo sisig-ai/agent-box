@@ -35,9 +35,9 @@ def test_default_opname_is_null_and_payload_is_additive(client):
     card = make(client, "plain")
     assert card["opname"] is None
     listed = client.get("/api/opsboard/cards").get_json()[0]
-    assert set(listed) == OLD_CARD_KEYS | {"opname", "comment_count"}
+    assert set(listed) == OLD_CARD_KEYS | {"opname", "comment_count", "docs"}
     full = client.get(f"/api/opsboard/cards/{card['id']}").get_json()
-    assert set(full) == OLD_CARD_KEYS | {"opname", "comment_count", "body", "comments"}
+    assert set(full) == OLD_CARD_KEYS | {"opname", "comment_count", "body", "comments", "docs"}
 
 
 def test_create_with_opname_normalises_whitespace(client):

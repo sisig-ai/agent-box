@@ -299,3 +299,37 @@
 .kb-owner-col .kb-lane-name { cursor: default; }
 .kb-owner-col .kb-cards { min-height: 3rem; }
 .kb-badge-lane { color: var(--amber, #ffb000); border: 1px dotted currentColor; }
+
+/* Doc references on cards and in the detail modal */
+.kb-card-docs { display: flex; flex-direction: column; gap: 0.1rem; margin-top: 0.3rem; }
+.kb-doc {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  color: var(--phos, #4ce08a);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kb-doc:hover { color: var(--amber, #ffb000); text-decoration: underline dotted; }
+.kbd-docs { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem; margin: 0.5rem 0 0.2rem; }
+.kbd-doc-list { display: flex; flex-wrap: wrap; gap: 0.35rem; flex: 1 1 auto; }
+.kbd-doc {
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  color: var(--phos, #4ce08a);
+  text-decoration: none;
+  border: 1px solid var(--line, #2b3037);
+  padding: 0.1rem 0.35rem;
+}
+.kbd-doc:hover { color: var(--amber, #ffb000); border-color: var(--amber, #ffb000); }
+.kbd-doc.none { color: var(--dim, var(--muted)); border-style: dotted; }
+.kbd-doc-input {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  color: var(--text, var(--ink));
+  background: #040604;
+  border: 1px solid var(--line, #2b3037);
+  padding: 0.2rem 0.4rem;
+}
