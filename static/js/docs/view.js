@@ -3,9 +3,9 @@
 // both render with one x-for instead of nested createElement calls.
 
 import Alpine from '../alpine.js';
-import { armDelete } from '../kanban/edit.js?v=kanban29';
-import { paintBacklinks } from './backlinks.js?v=alpine6';
-import { docPath, fmtTime, tagLabel } from './format.js?v=alpine6';
+import { api, markedParts } from './lib.js';
+import { editorActions } from './editor.js';
+import { fmtTime, tagLabel } from './format.js?v=alpine8';
 
 const SEARCH_MIN = 2;
 const LIST_LIMIT = 200;
@@ -17,24 +17,10 @@ const SORT_KEY = 'docs.sort';
 const AUTHOR_KEY = 'docs.author';
 const NO_AUTHOR = '__none__';
 
-// Hit snippets carry the server's \x01…\x02 markers; split them into runs.
-export function markedParts(text) {
-  return String(text || '')
-    .split(/\x01|\x02/)
-    .map((part, i) => ({ text: part, mark: i % 2 === 1 }))
-    .filter((part) => part.text);
-}
-
-async function api(path, options = {}) {
-  const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...options });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-  return data;
-}
-
 export function docsView(openPrefix = '') {
   return {
     openPrefix,
+    ...editorActions,
     all: [],
     tree: null,
     folderDocs: {},
@@ -389,116 +375,7 @@ export function docsView(openPrefix = '') {
     },
 
     // ---- editor ----
-    async selectDoc(prefix) {
-      if (this.dirty && this.current && !window.confirm('Discard unsaved changes?')) return;
-      try {
-        const doc = await api(docPath(prefix));
-        this.fillEditor(doc);
-        this.setStatus(`opened ${doc.prefix}`);
-      } catch (err) {
-        this.setStatus(`open failed: ${err.message}`, true);
-      }
-    },
-
-    fillEditor(doc) {
-      this.current = doc;
-      this.form = {
-        prefix: doc ? doc.prefix : '',
-        author: doc?.author || '',
-        tags: (doc?.tags || []).join(', '),
-        content: doc?.content || '',
-      };
-      this.dirty = false;
-      this.editorOpen = true;
-      this.backlinks = doc;
-      this.docStatus = doc
-        ? `rev ${doc.revision} · created ${fmtTime(doc.created_at)} · updated ${fmtTime(doc.updated_at)}`
-        : 'new doc';
-      this.$nextTick(() => {
-        if (doc) paintBacklinks(this.$refs.backlinks, doc, (tag, cls, text) => {
-          const node = document.createElement(tag);
-          if (cls) node.className = cls;
-          if (text !== undefined) node.textContent = text;
-          return node;
-        });
-        else this.$refs.backlinks.replaceChildren();
-      });
-    },
-
-    startNew() {
-      if (this.dirty && this.current && !window.confirm('Discard unsaved changes?')) return;
-      this.fillEditor(null);
-      this.$nextTick(() => this.$refs.prefix?.focus());
-    },
-
-    markDirty() {
-      if (!this.current && !this.form.prefix.trim()) return;
-      if (!this.dirty) {
-        this.dirty = true;
-        this.docStatus = 'unsaved changes';
-      }
-    },
-
-    async save() {
-      const prefix = this.form.prefix.trim().replace(/^\/+|\/+$/g, '');
-      if (!prefix) {
-        this.setStatus('prefix is required', true);
-        this.$refs.prefix?.focus();
-        return;
-      }
-      const body = {
-        content: this.form.content,
-        author: this.form.author.trim() || null,
-        tags: this.form.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
-      };
-      try {
-        const doc = await api(docPath(prefix), { method: 'PUT', body: JSON.stringify(body) });
-        this.fillEditor(doc);
-        this.setStatus(`saved ${doc.prefix} · rev ${doc.revision}`);
-        await this.refresh();
-        if (this.q || this.prefixQ) await this.runSearch();
-      } catch (err) {
-        this.setStatus(`save failed: ${err.message}`, true);
-      }
-    },
-
-    async remove() {
-      if (!this.current) return;
-      const prefix = this.current.prefix;
-      try {
-        await api(docPath(prefix), { method: 'DELETE' });
-        this.current = null;
-        this.editorOpen = false;
-        this.q = '';
-        this.hits = {};
-        this.setStatus(`deleted ${prefix}`);
-        await this.refresh();
-      } catch (err) {
-        this.setStatus(`delete failed: ${err.message}`, true);
-      }
-    },
-
-    armDelete(button) {
-      armDelete(button, () => this.remove());
-    },
-
-    onEditorKey(event) {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
-        event.preventDefault();
-        this.save();
-      }
-    },
-
-    onEscape(event) {
-      if (document.body.dataset.view !== 'docs') return;
-      const active = document.activeElement;
-      if (event.key === 'Escape' && (active === this.$refs.search || active === this.$refs.prefixQ)) {
-        this.clearSearch();
-      }
-    },
-
     markedParts,
-    docPath,
     fmtTime,
     tagLabel,
   };

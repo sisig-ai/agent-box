@@ -129,5 +129,5 @@ def test_renamed_lane_keeps_cards(client):
 def test_kanban_tab_and_docs_served(client):
     page = client.get("/").data
     assert b'id="view-btn-kanban"' in page and b'data-tabpanel="kanban"' in page
-    assert client.get("/static/js/kanban/board.js").status_code == 200
+    assert client.get("/static/js/kanban/view.js").status_code == 200
     assert b"/api/opsboard" in client.get("/llm.txt").data

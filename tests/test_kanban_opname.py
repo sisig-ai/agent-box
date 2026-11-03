@@ -153,7 +153,7 @@ def test_migrates_old_database(env):
 
 
 def test_ui_and_docs_mention_opname(client):
-    assert "opname" in client.get("/static/js/kanban/board.js").data.decode()
+    assert "opname" in client.get("/static/js/kanban/view.js").data.decode()
     assert "opname" in client.get("/static/js/kanban/detail.js").data.decode()
     doc = client.get("/llm.txt").data.decode()
     assert "opname" in doc and "/api/opsboard/opnames" in doc

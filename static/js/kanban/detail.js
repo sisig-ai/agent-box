@@ -1,342 +1,357 @@
-// Trello-style card detail modal: editable title / owner / opname / lane, timestamps,
-// and the markdown body (rendered view, or Write + live Preview editor).
-// Deep-linkable: #/kanban/card-<id> opens it, #/kanban/card-<id>/edit opens
-// straight into the editor (board.js routes the hash here).
-import { api } from './api.js?v=docs4';
+// Card detail modal: editable fields, docs links, markdown body and comments.
+// Alpine component; the markup lives in index.html next to the board.
+
+import Alpine from '../alpine.js';
+import { api } from './api.js';
 import { inlineEdit } from './edit.js?v=kanban20';
 import { loadPurify, renderBody, toggleTask } from './markdown.js?v=kanban20';
-import { buildComments, paintComments, resetComments } from './comments.js?v=kanban28';
+import * as attention from '../attention.js?v=attention7';
 
-const ui = {};
-const st = { card: null, id: null, editing: false, seq: 0, ctx: null, busy: { busy: 0 } };
+const AUTHOR_KEY = 'opsboard.commentAuthor';
+const PAGE = 5;
 
-function el(tag, cls, text) {
-  const n = document.createElement(tag);
-  if (cls) n.className = cls;
-  if (text !== undefined) n.textContent = text;
-  return n;
-}
+let instance = null;
 
 const fmt = (iso) => (iso ? new Date(iso).toLocaleString([], {
   year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
 }) : '—');
 
-function build() {
-  ui.backdrop = el('div', 'kbd-backdrop'); ui.backdrop.hidden = true;
-  const modal = el('div', 'kbd-modal');
-  modal.setAttribute('role', 'dialog');
-  modal.setAttribute('aria-modal', 'true');
-  const head = el('div', 'kbd-head');
-  ui.id = el('span', 'kbd-id');
-  ui.title = el('h3', 'kbd-title kb-card-title');
-  ui.title.id = 'kbd-title';
-  ui.title.title = 'Click to edit the title';
-  modal.setAttribute('aria-labelledby', 'kbd-title');
-  ui.close = el('button', 'kb-icon kbd-close', '×');
-  ui.close.title = 'Close (Esc)';
-  head.append(ui.id, ui.title, ui.close);
+const relStamp = (iso) => {
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return iso;
+  const diff = Math.round((Date.now() - t) / 1000);
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.round(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.round(diff / 3600)}h ago`;
+  return new Date(t).toLocaleDateString([], { month: 'short', day: 'numeric' });
+};
 
-  const meta = el('div', 'kbd-meta');
-  const laneLab = el('label', 'kbd-field', 'Lane');
-  ui.status = el('select', 'kbd-status');
-  laneLab.append(ui.status);
-  const ownerLab = el('label', 'kbd-field', 'Owner');
-  ui.owner = el('input', 'kbd-owner');
-  ui.owner.placeholder = 'unassigned';
-  ui.owner.maxLength = 100;
-  ownerLab.append(ui.owner);
-  const opLab = el('label', 'kbd-field kbd-op-field', 'Op');
-  ui.opname = el('input', 'kbd-opname');
-  ui.opname.placeholder = 'no operation';
-  ui.opname.maxLength = 100;
-  ui.opname.title = 'Operation name, e.g. Operation Valhalla (blank clears)';
-  ui.opname.setAttribute('list', 'kbd-opname-list');
-  ui.opList = el('datalist');
-  ui.opList.id = 'kbd-opname-list';
-  opLab.append(ui.opname, ui.opList);
-  ui.times = el('span', 'kbd-times');
-  ui.archive = el('button', 'kb-archive-btn kbd-archive');
-  meta.append(laneLab, ownerLab, opLab, ui.times, ui.archive);
-
-  const docsSec = el('div', 'kbd-docs');
-  docsSec.append(el('span', 'kbd-section-label', 'Docs'));
-  ui.docList = el('div', 'kbd-doc-list');
-  ui.docInput = el('input', 'kbd-doc-input');
-  ui.docInput.placeholder = 'doc prefixes, comma separated';
-  ui.docInput.title = 'Docs this card points at: handoffs/x.md, specs/y.md (blank clears)';
-  docsSec.append(ui.docList, ui.docInput);
-
-  const sec = el('div', 'kbd-section');
-  sec.append(el('span', 'kbd-section-label', 'Description'));
-  ui.edit = el('button', 'brief-btn kbd-edit-btn', '✎ Edit');
-  ui.previewToggle = el('button', 'brief-btn kbd-preview-toggle toggled', 'Preview');
-  ui.previewToggle.title = 'Show/hide the live preview';
-  sec.append(ui.previewToggle, ui.edit);
-
-  ui.view = el('div', 'kbd-view kbd-md');
-  ui.editor = el('div', 'kbd-editor split');
-  ui.text = el('textarea', 'kbd-text');
-  ui.text.spellcheck = false;
-  ui.text.placeholder = 'Markdown: ## Goal, - [ ] tasks, ```code```, | tables |, [links](https://…)';
-  ui.preview = el('div', 'kbd-preview kbd-md');
-  ui.editor.append(ui.text, ui.preview);
-
-  const foot = el('div', 'kbd-foot');
-  ui.msg = el('span', 'kbd-msg');
-  ui.cancel = el('button', 'brief-btn', 'Cancel');
-  ui.save = el('button', 'brief-btn kbd-save', 'Save');
-  ui.save.title = 'Save (⌘/Ctrl+Enter)';
-  ui.foot = el('div', 'kbd-foot-actions');
-  ui.foot.append(ui.cancel, ui.save);
-  foot.append(ui.msg, ui.foot);
-
-  modal.append(head, meta, docsSec, sec, ui.view, ui.editor, foot, buildComments());
-  ui.backdrop.append(modal);
-  document.body.append(ui.backdrop);
-  wire();
+function html(el, text, interactive) {
+  renderBody(el, text || '', !!interactive);
+  return el.innerHTML;
 }
 
-export function openDoc(prefix) {
-  ui.backdrop.hidden = true;
-  location.hash = `#/docs/${prefix}`;
-}
+export function cardDetail() {
+  return {
+    open: false,
+    id: null,
+    card: null,
+    lanes: [],
+    opnames: [],
+    editing: false,
+    previewOn: true,
+    msg: '',
+    msgError: false,
+    form: { title: '', owner: '', opname: '', status: '', docs: '', body: '' },
+    comments: [],
+    commentsShown: PAGE,
+    newCommentIds: [],
+    commentAuthor: 'Kix',
+    commentBody: '',
+    commentPreview: false,
+    seq: 0,
+    timer: 0,
 
-function paintDocs() {
-  if (!ui.docList) return;
-  const refs = st.card?.docs || [];
-  ui.docList.replaceChildren(...refs.map((prefix) => {
-    const chip = el('a', 'kbd-doc', prefix);
-    chip.href = `#/docs/${prefix}`;
-    chip.title = `Open ${prefix}`;
-    chip.addEventListener('click', (e) => {
-      e.preventDefault();
-      openDoc(prefix);
-    });
-    return chip;
-  }));
-  if (!refs.length) ui.docList.append(el('span', 'kbd-doc none', 'no docs linked'));
-  if (document.activeElement !== ui.docInput) ui.docInput.value = refs.join(', ');
-}
+    init() {
+      instance = this;
+      try { this.commentAuthor = localStorage.getItem(AUTHOR_KEY) || 'Kix'; } catch { /* storage blocked */ }
+      this.timer = setInterval(() => this.sync(), 3000);
+    },
 
-function setMsg(text, isError) {
-  ui.msg.textContent = text || '';
-  ui.msg.classList.toggle('err', !!isError);
-}
+    destroy() {
+      instance = null;
+      clearInterval(this.timer);
+    },
 
-async function patch(changes, okMsg) {
-  try {
-    st.card = await api.patchCard(st.card.id, changes);
-    setMsg(okMsg || `saved ${new Date().toLocaleTimeString([], { hour12: false })}`);
-    st.ctx?.onChange();
-    return true;
-  } catch (e) {
-    setMsg(e.message, true);
-    return false;
-  } finally {
-    paint();
-  }
-}
+    // ---- open / close ----
+    async openCard(id, { edit = false } = {}) {
+      if (this.open && this.id === id) {
+        if (edit && !this.editing) this.setEditing(true);
+        return;
+      }
+      const seq = ++this.seq;
+      this.id = id;
+      this.card = null;
+      this.editing = false;
+      this.previewOn = true;
+      this.msg = '';
+      this.comments = [];
+      this.commentsShown = PAGE;
+      this.commentBody = '';
+      this.open = true;
+      document.body.classList.add('kbd-open');
+      this.$nextTick(() => { this.$el.scrollTop = 0; });
+      this.loadOpnames();
+      try {
+        const [card] = await Promise.all([api.getCard(id), loadPurify()]);
+        if (seq !== this.seq) return;
+        this.paint(card);
+        if (edit) this.setEditing(true);
+        this.loadComments();
+      } catch (err) {
+        if (seq !== this.seq) return;
+        this.msg = err.message;
+        this.msgError = true;
+      }
+    },
 
-function dirty() { return st.editing && st.card && ui.text.value !== (st.card.body || ''); }
+    close() {
+      if (!this.open) return;
+      if (this.editing && this.card && this.form.body !== (this.card.body || '')
+        && !window.confirm('Discard unsaved changes to this card?')) return;
+      this.open = false;
+      this.editing = false;
+      this.id = null;
+      this.seq++;
+      document.body.classList.remove('kbd-open');
+      if (openId() === null && /card-\d+/.test(location.hash)) history.replaceState(null, '', '#/kanban');
+    },
 
-function setEditing(on) {
-  st.editing = on;
-  ui.backdrop.classList.toggle('editing', on);
-  if (on) {
-    ui.text.value = st.card.body || '';
-    renderBody(ui.preview, ui.text.value, false);
-    setTimeout(() => {
-      ui.text.focus();
-      ui.text.setSelectionRange(0, 0);
-      ui.text.scrollTop = 0;
-    }, 0);
-  }
-  paint();
-}
+    closeFromBackdrop(event) {
+      if (event.target === this.$refs.backdrop) this.close();
+    },
 
-// Lane <select>; the board may load after a deep-linked modal, so polls repaint it.
-function paintLanes() {
-  const lanes = st.ctx?.lanes() || [];
-  const sig = JSON.stringify([st.card?.lane_id, lanes.map((l) => [l.id, l.name])]);
-  if (!st.card || document.activeElement === ui.status || sig === ui.status.dataset.sig) return;
-  ui.status.dataset.sig = sig;
-  ui.status.replaceChildren(...lanes.map((l) => {
-    const o = el('option', '', l.name);
-    o.value = l.id;
-    o.selected = l.id === st.card.lane_id;
-    return o;
-  }));
-}
+    setMsg(text, isError) {
+      this.msg = text || '';
+      this.msgError = !!isError;
+    },
 
-function paint() {
-  const c = st.card;
-  if (!c) return;
-  ui.id.textContent = `#${c.id}`;
-  if (!ui.title.dataset.editing) ui.title.textContent = c.title;
-  paintLanes();
-  if (document.activeElement !== ui.owner) ui.owner.value = c.owner || '';
-  if (document.activeElement !== ui.opname) ui.opname.value = c.opname || '';
-  ui.opname.classList.toggle('set', !!c.opname);
-  ui.times.textContent = `created ${fmt(c.created_at)} · updated ${fmt(c.updated_at)}`
-    + (c.archived_at ? ` · archived ${fmt(c.archived_at)}` : '');
-  paintDocs();
-  ui.archive.textContent = c.archived_at ? 'Restore' : 'Archive';
-  ui.archive.title = c.archived_at ? 'Put the card back on the board' : 'Hide the card from the board (kept)';
-  ui.edit.hidden = st.editing;
-  ui.previewToggle.hidden = !st.editing;
-  ui.view.hidden = st.editing;
-  ui.editor.hidden = !st.editing;
-  ui.foot.hidden = !st.editing;
-  paintComments(c);
-  if (!st.editing) {
-    if ((c.body || '').trim()) renderBody(ui.view, c.body, true);
-    else ui.view.replaceChildren(el('p', 'kbd-empty', 'No description yet — click ✎ Edit to add one.'));
-  }
-}
+    paint(card) {
+      this.card = card;
+      this.form = {
+        title: card.title,
+        owner: card.owner || '',
+        opname: card.opname || '',
+        status: String(card.lane_id),
+        docs: (card.docs || []).join(', '),
+        body: card.body || '',
+      };
+      this.lanes = this.currentLanes();
+      if (!this.editing) this.markRead(card);
+    },
 
-function wire() {
-  let downOnBackdrop = false;
-  ui.backdrop.addEventListener('mousedown', (e) => { downOnBackdrop = e.target === ui.backdrop; });
-  ui.backdrop.addEventListener('click', (e) => {
-    if (e.target === ui.backdrop && downOnBackdrop) requestClose();
-  });
-  ui.close.addEventListener('click', () => requestClose());
-  ui.title.addEventListener('click', () => inlineEdit(ui.title, st.card.title, st.busy, (v) =>
-    v && v !== st.card.title && patch({ title: v })));
-  ui.status.addEventListener('change', () => patch({ status: Number(ui.status.value) }));
-  const commitOwner = () => {
-    const v = ui.owner.value.trim();
-    if (st.card && v !== (st.card.owner || '')) patch({ owner: v || null });
+    markRead(card) {
+      const sig = [card.updated_at, card.title, card.owner, card.opname, card.archived_at,
+        card.comment_count || 0, card.body_preview || '',
+        card.body_tasks ? `${card.body_tasks.done}/${card.body_tasks.total}` : ''].join('|');
+      attention.markRead('kanban', card.id, sig, card.lane_id);
+    },
+
+    currentLanes() {
+      const view = document.getElementById('kanban-view')?._x_dataStack?.[0];
+      return view?.data?.lanes || this.lanes || [];
+    },
+
+    loadOpnames() {
+      api.opnames().then((ops) => { this.opnames = ops || []; }).catch(() => {});
+    },
+
+    // ---- fields ----
+    async patch(changes, okMsg) {
+      try {
+        const card = await api.patchCard(this.card.id, changes);
+        this.paint(card);
+        this.setMsg(okMsg || `saved ${new Date().toLocaleTimeString([], { hour12: false })}`);
+        this.refreshBoard();
+        return true;
+      } catch (err) {
+        this.setMsg(err.message, true);
+        return false;
+      }
+    },
+
+    refreshBoard() {
+      const view = document.getElementById('kanban-view')?._x_dataStack?.[0];
+      view?.refresh(true);
+    },
+
+    editTitle(event) {
+      event.stopPropagation();
+      inlineEdit(event.currentTarget, this.card.title, this, (value) => {
+        if (value && value !== this.card.title) this.patch({ title: value });
+      });
+    },
+
+    commitOwner() {
+      const value = this.form.owner.trim();
+      if (this.card && value !== (this.card.owner || '')) this.patch({ owner: value || null });
+    },
+
+    commitOpname() {
+      const value = this.form.opname.replace(/\s+/g, ' ').trim();
+      if (this.card && value !== (this.card.opname || '')) {
+        this.patch({ opname: value || null }, value ? `op: ${value}` : 'op cleared');
+      }
+    },
+
+    commitStatus() {
+      this.patch({ status: Number(this.form.status) });
+    },
+
+    commitDocs() {
+      const refs = this.form.docs.split(/[,\s]+/).map((v) => v.trim()).filter(Boolean);
+      this.patch({ docs: refs }, refs.length ? `linked ${refs.length} doc(s)` : 'doc links cleared');
+    },
+
+    toggleArchive() {
+      this.patch({ archived: !this.card.archived_at });
+    },
+
+    setEditing(on) {
+      this.editing = on;
+      if (on) {
+        this.form.body = this.card.body || '';
+        this.$nextTick(() => {
+          this.$refs.body?.focus();
+          this.$refs.body?.setSelectionRange(0, 0);
+        });
+      }
+    },
+
+    async saveBody() {
+      if (await this.patch({ body: this.form.body })) this.setEditing(false);
+    },
+
+    get dirty() {
+      return this.editing && this.card && this.form.body !== (this.card.body || '');
+    },
+
+    // ---- markdown ----
+    get bodyHtml() {
+      if (!this.card || !(this.card.body || '').trim()) return '';
+      const box = document.createElement('div');
+      return html(box, this.card.body, true);
+    },
+
+    get previewHtml() {
+      if (!this.form.body.trim()) return '';
+      const box = document.createElement('div');
+      return html(box, this.form.body, false);
+    },
+
+    onBodyTask(event) {
+      const cb = event.target;
+      if (!cb.matches?.('input[type="checkbox"][data-task]')) return;
+      const next = toggleTask(this.card.body || '', Number(cb.dataset.task), cb.checked);
+      if (next !== null) this.patch({ body: next }, cb.checked ? 'checked ✓' : 'unchecked');
+    },
+
+    // ---- comments ----
+    loadComments() {
+      if (this.id === null) return;
+      api.comments(this.id).then((list) => {
+        this.newCommentIds = attention.newComments('kanban', this.id, list).map(Number);
+        this.comments = list.slice().sort((a, b) => {
+          const ta = new Date(a.created_at).getTime() || 0;
+          const tb = new Date(b.created_at).getTime() || 0;
+          return tb - ta || b.id - a.id;
+        });
+        this.commentsShown = Math.min(PAGE, this.comments.length);
+      }).catch((err) => this.setMsg(err.message, true));
+    },
+
+    get visibleComments() {
+      return this.comments.slice(0, this.commentsShown);
+    },
+
+    get moreComments() {
+      return Math.max(0, this.comments.length - this.commentsShown);
+    },
+
+    growComments() {
+      this.commentsShown = Math.min(this.comments.length, this.commentsShown + PAGE);
+    },
+
+    commentHtml(comment) {
+      const box = document.createElement('div');
+      return html(box, comment.body, false);
+    },
+
+    rel(iso) { return relStamp(iso); },
+    full(iso) { return fmt(iso); },
+
+    async postComment() {
+      const body = this.commentBody.trim();
+      const author = this.commentAuthor.trim();
+      if (!body || !author) { this.setMsg('author and comment required', true); return; }
+      try {
+        await api.addComment(this.id, { author, body });
+        localStorage.setItem(AUTHOR_KEY, author);
+        this.commentBody = '';
+        this.commentPreview = false;
+        this.setMsg('');
+        this.loadComments();
+        this.refreshBoard();
+      } catch (err) {
+        this.setMsg(err.message, true);
+      }
+    },
+
+    async deleteComment(comment, button) {
+      if (!button.classList.contains('armed')) {
+        button.classList.add('armed');
+        setTimeout(() => button.classList.remove('armed'), 2500);
+        return;
+      }
+      try {
+        await api.deleteComment(this.id, comment.id);
+        this.loadComments();
+      } catch (err) {
+        this.setMsg(err.message, true);
+      }
+    },
+
+    get commentPreviewHtml() {
+      if (!this.commentBody.trim()) return '';
+      const box = document.createElement('div');
+      return html(box, this.commentBody, false);
+    },
+
+    // ---- board sync ----
+    sync() {
+      if (!this.open || this.id === null || !this.card || this.editing) return;
+      const view = document.getElementById('kanban-view')?._x_dataStack?.[0];
+      const fresh = (view?.data?.cards || []).find((c) => c.id === this.id);
+      if (fresh && fresh.updated_at !== this.card.updated_at) {
+        const id = this.id;
+        api.getCard(id).then((card) => {
+          if (this.id === id && !this.editing) this.paint(card);
+        }).catch(() => {});
+      }
+    },
+
+    onEscape(event) {
+      if (event.key !== 'Escape' || !this.open) return;
+      if (event.target.classList?.contains('kb-inline')) return;
+      event.preventDefault();
+      this.close();
+    },
+
+    fmt,
   };
-  ui.owner.addEventListener('blur', commitOwner);
-  ui.owner.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); ui.owner.blur(); }
-    if (e.key === 'Escape') { e.stopPropagation(); ui.owner.value = st.card.owner || ''; ui.owner.blur(); }
-  });
-  const commitOp = () => {
-    const v = ui.opname.value.replace(/\s+/g, ' ').trim();
-    if (st.card && v !== (st.card.opname || '')) patch({ opname: v || null }, v ? `op: ${v}` : 'op cleared');
-  };
-  ui.opname.addEventListener('blur', commitOp);
-  ui.opname.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); ui.opname.blur(); }
-    if (e.key === 'Escape') { e.stopPropagation(); ui.opname.value = st.card.opname || ''; ui.opname.blur(); }
-  });
-  ui.archive.addEventListener('click', () => patch({ archived: !st.card.archived_at }));
-  ui.edit.addEventListener('click', () => setEditing(true));
-  ui.previewToggle.addEventListener('click', () => {
-    const on = ui.editor.classList.toggle('split');
-    ui.previewToggle.classList.toggle('toggled', on);
-  });
-  let t = null;
-  ui.text.addEventListener('input', () => {
-    clearTimeout(t);
-    t = setTimeout(() => renderBody(ui.preview, ui.text.value, false), 120);
-  });
-  ui.text.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); ui.save.click(); }
-  });
-  const saveDocs = () => {
-    const refs = ui.docInput.value.split(/[,\s]+/).map((v) => v.trim()).filter(Boolean);
-    patch({ docs: refs }, refs.length ? `linked ${refs.length} doc(s)` : 'doc links cleared');
-  };
-  ui.docInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); ui.docInput.blur(); }
-  });
-  ui.docInput.addEventListener('change', saveDocs);
-  ui.cancel.addEventListener('click', () => { setEditing(false); setMsg(''); });
-  ui.save.addEventListener('click', async () => {
-    if (await patch({ body: ui.text.value })) setEditing(false);
-  });
-  ui.view.addEventListener('change', (e) => {
-    const cb = e.target;
-    if (!cb.matches?.('input[type="checkbox"][data-task]')) return;
-    const next = toggleTask(st.card.body || '', Number(cb.dataset.task), cb.checked);
-    if (next !== null) patch({ body: next }, cb.checked ? 'checked ✓' : 'unchecked');
-  });
-  document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape' || ui.backdrop.hidden) return;
-    if (e.target.classList?.contains('kb-inline')) return; // title edit handles its own Esc
-    e.preventDefault();
-    requestClose();
-  });
 }
 
-export function setupDetail(ctx) { st.ctx = ctx; }
-
-// Suggestions for the Op input (every opname, archived cards included).
-function loadOpnames() {
-  api.opnames().then((ops) => {
-    ui.opList.replaceChildren(...ops.map((o) => { const n = el('option'); n.value = o.opname; return n; }));
-  }).catch(() => {});
-}
-export const openId = () => (ui.backdrop && !ui.backdrop.hidden ? st.id : null);
-
-export async function openCard(id, { edit = false } = {}) {
-  if (!ui.backdrop) build();
-  if (openId() === id) {
-    if (edit && st.card && !st.editing) setEditing(true);
-    else if (edit) st.wantEdit = true;
-    return;
-  }
-  const seq = ++st.seq;
-  st.wantEdit = edit;
-  st.id = id;
-  st.card = null;
-  st.editing = false;
-  resetComments();
-  ui.backdrop.classList.remove('editing');
-  ui.backdrop.hidden = false;
-  ui.backdrop.scrollTop = 0;
-  document.body.classList.add('kbd-open');
-  ui.id.textContent = `#${id}`;
-  ui.title.textContent = 'loading…';
-  ui.view.replaceChildren();
-  ui.editor.hidden = true;
-  ui.foot.hidden = true;
-  setMsg('');
-  loadOpnames();
-  try {
-    const [card] = await Promise.all([api.getCard(id), loadPurify()]);
-    if (seq !== st.seq) return;
-    st.card = card;
-    st.ctx?.onRead?.(card);
-    if (st.wantEdit) setEditing(true); else paint();
-  } catch (e) {
-    if (seq !== st.seq) return;
-    ui.title.textContent = `card #${id}`;
-    setMsg(e.message, true);
-  }
+export function mount(el) {
+  if (!el || el.dataset.mounted) return;
+  el.dataset.mounted = '1';
+  Alpine.data('cardDetail', cardDetail);
+  Alpine.mutateDom(() => { el.setAttribute('x-data', 'cardDetail'); });
+  Alpine.initTree(el);
 }
 
-export function requestClose() {
-  if (ui.backdrop?.hidden !== false) return;
-  if (dirty() && !window.confirm('Discard unsaved changes to this card?')) return;
-  closeCard();
-  st.ctx?.onClose();
+export const openId = () => (instance?.open ? instance.id : null);
+
+export function openCard(id, opts = {}) {
+  instance?.openCard(id, opts);
 }
 
 export function closeCard() {
-  if (!ui.backdrop || ui.backdrop.hidden) return;
-  if (document.activeElement === ui.owner) ui.owner.blur();
-  if (document.activeElement === ui.opname) ui.opname.blur();
-  ui.backdrop.hidden = true;
-  document.body.classList.remove('kbd-open');
-  st.editing = false;
-  st.id = null;
-  st.seq++;
+  if (instance?.open) instance.close();
 }
 
-// Called after each board poll: pull agent edits into an open, unedited card.
-export function syncFromBoard(cards) {
-  const id = openId();
-  if (id === null || !st.card) return;
-  paintLanes();
-  if (st.editing || ui.title.dataset.editing) return;
-  const fresh = cards.find((c) => c.id === id);
-  if (fresh && fresh.updated_at !== st.card.updated_at) {
-    api.getCard(id).then((card) => {
-      if (openId() === id && !st.editing) { st.card = card; st.ctx?.onRead?.(card); paint(); }
-    }).catch(() => {});
-  }
+// Called after each board poll: refresh the lanes and let the modal re-read.
+export function syncCards(cards) {
+  if (!instance?.open) return;
+  instance.lanes = instance.currentLanes();
+  void cards;
 }

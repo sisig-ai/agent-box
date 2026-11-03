@@ -27,7 +27,7 @@ function current() {
   return 'stack'; // default landing tab (also #/ and empty hash)
 }
 const lazy = {};
-const KANBAN = './kanban/board.js?v=filters1';
+const KANBAN = './kanban/view.js?v=alpine8';
 const PROGRESS = './progress/bars.js?v=alpine3';
 const DOCS = './docs/view.js?v=alpine6';
 const LOGS = './logs/view.js?v=alpine1';
@@ -44,7 +44,7 @@ function ensure(v) {
   } else if (v === 'files') {
     (lazy.files ||= import('./files/view.js?v=alpine4')).then(m => m.mount(document.getElementById('files-view')));
   } else if (v === 'kanban') {
-    (lazy.kanban ||= import(KANBAN)).then(m => m.initKanban());
+    (lazy.kanban ||= import(KANBAN)).then(m => m.mount(document.getElementById('kanban-view')));
   } else if (v === 'progress') {
     (lazy.progress ||= import(PROGRESS)).then(m => m.mount(document.getElementById('progress-view')));
   } else if (v === 'docs') {
@@ -63,7 +63,7 @@ function apply() {
   ensure(v);
   if (v !== lastView) {
     lastView = v;
-    if (v === 'kanban') (lazy.kanban ||= import(KANBAN)).then(m => m.enterKanban());
+    if (v === 'kanban') (lazy.kanban ||= import(KANBAN)).then(m => m.enter());
     else if (v === 'progress') (lazy.progress ||= import(PROGRESS)).then(m => m.enter());
     else if (v === 'docs') {
       const docPrefix = decodeURIComponent(location.hash.replace(/^#\/docs\/?/, ''));
