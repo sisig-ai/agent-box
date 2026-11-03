@@ -1,8 +1,6 @@
 """Cards and Docs are many-to-many: bindings, backlinks, cleanup, migration."""
 
-import sqlite3
-
-from dashboard import config, db
+from dashboard import db
 
 
 def bindings():
@@ -76,23 +74,26 @@ def test_patch_replaces_bindings(client):
     assert client.get("/api/docs/specs/one.md").get_json()["cards"] == []
 
 
-def test_legacy_json_column_is_migrated(client, env):
-    """A database written before the join table keeps its links."""
-    from dashboard import card_docs
+def test_legacy_json_column_is_migrated_then_dropped(client, env):
+    """A database written before the join table keeps its links and loses the column."""
+    from dashboard import card_docs, db
 
     client.put("/api/docs/specs/legacy.md", json={"content": "old"})
     card = client.post("/api/opsboard/cards", json={"title": "legacy"}).get_json()
-    conn = sqlite3.connect(config.DB_PATH)
+    conn = db.connect()
     try:
-        conn.execute(
-            "UPDATE kanban_card SET doc_refs = ? WHERE id = ?",
-            ('["specs/legacy.md"]', card["id"]),
-        )
-        conn.commit()
-        conn.row_factory = sqlite3.Row
+        with conn:
+            conn.execute("ALTER TABLE kanban_card ADD COLUMN doc_refs TEXT NOT NULL DEFAULT '[]'")
+            conn.execute(
+                "UPDATE kanban_card SET doc_refs = ? WHERE id = ?",
+                ('["specs/legacy.md"]', card["id"]),
+            )
         with conn:
             card_docs._migrate_legacy(conn)
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(kanban_card)")}
     finally:
         conn.close()
+
+    assert "doc_refs" not in columns
     assert [row["prefix"] for row in bindings()] == ["specs/legacy.md"]
     assert client.get(f"/api/opsboard/cards/{card['id']}").get_json()["docs"] == ["specs/legacy.md"]

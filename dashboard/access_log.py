@@ -174,11 +174,15 @@ def _append_line(entry):
 
 
 def _prune_db(conn):
-    """Drop table rows older than the retention window."""
-    conn.execute(
-        "DELETE FROM mcp_access_log WHERE julianday(ts) < julianday('now', ?)",
-        (f"-{config.MCP_LOG_RETENTION_DAYS} days",),
-    )
+    """Drop rows older than the retention window.
+
+    Comparing ISO strings keeps mcp_access_log_ts usable; wrapping the column in
+    julianday() forced a full scan on every prune (and every /api/logs read).
+    """
+    cutoff = (
+        datetime.now().astimezone() - timedelta(days=config.MCP_LOG_RETENTION_DAYS)
+    ).isoformat(timespec="seconds")
+    conn.execute("DELETE FROM mcp_access_log WHERE ts < ?", (cutoff,))
 
 
 def rotate():

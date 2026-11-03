@@ -96,6 +96,12 @@ def init_db():
 
             init_card_embed_schema(conn)
             init_card_docs_schema(conn)
+            # A retired trading-brief feature left its table behind; nothing
+            # reads it, and it has never held a row.
+            conn.execute("DROP TABLE IF EXISTS trading_brief")
+            # Refresh planner statistics when something has drifted enough to
+            # matter; a no-op on a settled database.
+            conn.execute("PRAGMA optimize")
             init_progress_schema(conn)
             init_docs_schema(conn)
             init_embed_schema(conn)

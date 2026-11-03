@@ -28,15 +28,13 @@ def init_schema(conn):
 
 
 def _migrate_legacy(conn):
-    """Copy any card.doc_refs JSON into the binding table, once."""
+    """Copy any legacy card.doc_refs JSON into the binding table, then drop it."""
     columns = {row[1] for row in conn.execute("PRAGMA table_info(kanban_card)")}
     if "doc_refs" not in columns:
         return
     rows = conn.execute(
         "SELECT id, doc_refs FROM kanban_card WHERE doc_refs IS NOT NULL AND doc_refs != '[]'"
     ).fetchall()
-    if not rows:
-        return
     import json
 
     stamp = now_iso()
@@ -51,8 +49,8 @@ def _migrate_legacy(conn):
                     "INSERT OR IGNORE INTO card_doc (card_id, prefix, created_at) VALUES (?, ?, ?)",
                     (row["id"], prefix, stamp),
                 )
-    # The column stays for old readers, but the table is the source of truth.
-    conn.execute("UPDATE kanban_card SET doc_refs = '[]'")
+    # The column is gone now that card_doc is the source of truth.
+    conn.execute("ALTER TABLE kanban_card DROP COLUMN doc_refs")
 
 
 def set_refs(conn, card_id, prefixes):

@@ -6,7 +6,6 @@ every write renumbers the affected lanes so positions stay contiguous. Writes
 are serialised with a process lock (gunicorn runs one worker, many threads).
 """
 
-import json
 import threading
 
 from . import card_docs, db, kanban_embed
@@ -54,8 +53,7 @@ def init_schema(conn):
             updated_at TEXT NOT NULL,
             archived_at TEXT,
             body       TEXT NOT NULL DEFAULT '',
-            opname     TEXT,
-            doc_refs   TEXT NOT NULL DEFAULT '[]'
+            opname     TEXT
         )
         """
     )
@@ -84,9 +82,6 @@ def migrate(conn):
     if "opname" not in columns:
         # Optional operation name ("Operation Valhalla"); nullable, so old rows stay valid.
         conn.execute("ALTER TABLE kanban_card ADD COLUMN opname TEXT")
-    if "doc_refs" not in columns:
-        # JSON array of Docs prefixes this card points at.
-        conn.execute("ALTER TABLE kanban_card ADD COLUMN doc_refs TEXT NOT NULL DEFAULT '[]'")
 
 
 # ---------------- reads ----------------
@@ -260,19 +255,9 @@ def create_card(title, owner=None, status=None, position=None, body="", opname=N
         stamp = now_iso()
         cur = conn.execute(
             "INSERT INTO kanban_card"
-            " (title, owner, lane_id, position, created_at, updated_at, body, opname, doc_refs)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                title,
-                owner,
-                lane["id"],
-                1 << 30,
-                stamp,
-                stamp,
-                body or "",
-                opname,
-                json.dumps(docs or []),
-            ),
+            " (title, owner, lane_id, position, created_at, updated_at, body, opname)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (title, owner, lane["id"], 1 << 30, stamp, stamp, body or "", opname),
         )
         new_id = cur.lastrowid
         ids = _place(_lane_card_ids(conn, lane["id"], exclude=new_id), new_id, position)
