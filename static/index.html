@@ -38,7 +38,7 @@
   <link rel="stylesheet" href="/static/css/ascii-board.css?v=filters1">
   <link rel="stylesheet" href="/static/css/ascii-progress.css?v=progress1">
   <link rel="stylesheet" href="/static/css/docs.css?v=author1">
-  <link rel="stylesheet" href="/static/css/logs.css?v=logs1">
+  <link rel="stylesheet" href="/static/css/logs.css?v=alpine1">
   <link rel="stylesheet" href="/static/css/ascii-attention.css?v=attention8">
   <link rel="stylesheet" href="/static/css/tui.css?v=tui80b">
   <link rel="stylesheet" href="/static/css/pwa.css?v=pwa1">
@@ -438,19 +438,22 @@
           </div>
           <div class="logs-actions">
             <label class="logs-filter">tool
-              <select id="logs-tool" aria-label="Filter by tool"><option value="">all tools</option></select>
+              <select id="logs-tool" aria-label="Filter by tool" x-model="tool" @change="refresh()" :class="{ active: !!tool }">
+                <option value="">all tools</option>
+                <template x-for="name in tools" :key="name"><option :value="name" x-text="name"></option></template>
+              </select>
             </label>
             <label class="logs-filter">result
-              <select id="logs-ok" aria-label="Filter by outcome">
+              <select id="logs-ok" aria-label="Filter by outcome" x-model="ok" @change="refresh()" :class="{ active: !!ok }">
                 <option value="">all</option>
                 <option value="1">ok</option>
                 <option value="0">error</option>
               </select>
             </label>
-            <button class="brief-btn" id="logs-refresh" title="Reload the log">⟳ refresh</button>
+            <button class="brief-btn" id="logs-refresh" title="Reload the log" @click="refresh()">⟳ refresh</button>
           </div>
         </div>
-        <div class="logs-body">
+        <div class="logs-body" x-ref="body">
           <table class="logs-table">
             <thead>
               <tr>
@@ -462,13 +465,24 @@
                 <th class="lg-args">request</th>
               </tr>
             </thead>
-            <tbody id="logs-rows"></tbody>
+            <tbody id="logs-rows">
+              <template x-for="(entry, index) in rows" :key="index">
+                <tr :class="entry.ok ? 'lg-ok' : 'lg-err'" :title="rowTitle(entry)">
+                  <td class="lg-time"><span class="lg-clock" x-text="clock(entry.ts)"></span><span class="lg-day" x-text="day(entry.ts)"></span></td>
+                  <td class="lg-action" x-text="entry.tool"></td>
+                  <td class="lg-entity" x-text="entry.entity || '—'"></td>
+                  <td class="lg-ms" x-text="entry.ms"></td>
+                  <td class="lg-status"><span class="lg-pill" :class="entry.ok ? 'ok' : 'err'" x-text="entry.ok ? 'ok' : 'err'"></span></td>
+                  <td class="lg-args" x-text="entry.error ? 'error: ' + entry.error : (entry.args || '')"></td>
+                </tr>
+              </template>
+            </tbody>
           </table>
-          <p class="logs-empty" id="logs-empty" hidden>no calls logged yet</p>
+          <p class="logs-empty" id="logs-empty" x-show="!rows.length">no calls logged yet</p>
         </div>
         <div class="logs-status">
-          <span id="logs-status">loading…</span>
-          <span id="logs-count"></span>
+          <span id="logs-status" :class="{ err: failed }" x-text="status"></span>
+          <span id="logs-count" x-text="summary"></span>
         </div>
       </section>
 
@@ -541,6 +555,6 @@
   </div>
 
   <script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}))}</script>
-  <script type="module" src="/static/js/main.js?v=author2"></script>
+  <script type="module" src="/static/js/main.js?v=alpine1"></script>
 </body>
 </html>

@@ -7,6 +7,11 @@ import './router.js?v=author2';
 import './notes/brief.js?v=sitrep2';
 import './notes/schedule.js';
 import './hotkeys.js?v=ascii2';
+import Alpine from './alpine.js?v=alpine1';
+
+// One Alpine instance owns every x-data node. Views register and mount
+// themselves from the router, so nothing waits on this call.
+Alpine.start();
 
 // The retired GMGN PWA registered a service worker; drop any leftover one.
 if ('serviceWorker' in navigator && window.isSecureContext) {

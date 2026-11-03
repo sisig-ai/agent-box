@@ -30,7 +30,7 @@ const lazy = {};
 const KANBAN = './kanban/board.js?v=filters1';
 const PROGRESS = './progress/bars.js?v=progress7';
 const DOCS = './docs/docs.js?v=author2';
-const LOGS = './logs/logs.js?v=logs1';
+const LOGS = './logs/view.js?v=alpine1';
 let lastView = null;
 function ensure(v) {
   if (v === 'shell') {
@@ -45,7 +45,7 @@ function ensure(v) {
     const docPrefix = decodeURIComponent(location.hash.replace(/^#\/docs\/?/, ''));
     (lazy.docs ||= import(DOCS)).then(m => m.initDocs(docPrefix || ''));
   } else if (v === 'logs') {
-    (lazy.logs ||= import(LOGS)).then(m => m.initLogs());
+    (lazy.logs ||= import(LOGS)).then(m => m.mount(document.getElementById('logs-view')));
   }
 }
 function apply() {
@@ -63,7 +63,6 @@ function apply() {
       const docPrefix = decodeURIComponent(location.hash.replace(/^#\/docs\/?/, ''));
       (lazy.docs ||= import(DOCS)).then(m => m.initDocs(docPrefix || ''));
     }
-    else if (v === 'logs') (lazy.logs ||= import(LOGS)).then(m => m.initLogs());
   }
 }
 window.addEventListener('hashchange', apply);
