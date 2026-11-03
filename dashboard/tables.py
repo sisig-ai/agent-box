@@ -302,9 +302,11 @@ def update_column(
             fail(f"a column named “{name}” already exists", 409)
         fields["name"] = name
     if column_type is not None or subtype is not None or config is not None:
-        kind, sub = clean_type(
-            column_type or row["type"], subtype if subtype is not None else row["subtype"]
-        )
+        kind = column_type or row["type"]
+        # A new type without a subtype takes that type's default, not the old
+        # column's subtype (string/select -> number/text would be rejected).
+        sub = subtype if subtype is not None else (row["subtype"] if kind == row["type"] else None)
+        kind, sub = clean_type(kind, sub)
         cfg = clean_config(
             kind, sub, config if config is not None else _json(row["config"], {}), conn
         )

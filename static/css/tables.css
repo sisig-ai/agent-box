@@ -111,3 +111,23 @@
 .tbl-status { font-family: var(--mono); font-size: 0.6rem; color: var(--dim, var(--muted)); }
 .tbl-status.err { color: var(--bad, #ff6b5e); }
 .tbl-dialog-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.6rem; }
+.tbl-th-edit {
+  margin-left: 0.35rem; color: var(--dim, var(--muted));
+  background: none; border: 0; cursor: pointer;
+}
+.tbl-th-edit:hover { color: var(--amber, #ffb000); }
+.tbl-th-input, .tbl-name-input {
+  font-family: var(--mono); font-size: 0.68rem; color: var(--ink);
+  background: #050805; border: 1px solid var(--amber, #ffb000); padding: 0.05rem 0.2rem;
+}
+.tbl-name-input { min-width: 12rem; font-size: 0.9rem; }
+#tables-column-dialog, #tables-new-dialog { width: min(34rem, 92vw); }
+#tables-column-dialog form, #tables-new-dialog form { display: flex; flex-direction: column; gap: 0.45rem; }
+#tables-column-dialog label, #tables-new-dialog label {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-family: var(--mono); font-size: 0.66rem; color: var(--dim, var(--muted));
+}
+#tables-column-dialog label input[type="text"],
+#tables-column-dialog label select,
+#tables-new-dialog label input[type="text"],
+#tables-new-dialog label textarea { flex: 1 1 auto; min-width: 0; }

@@ -144,8 +144,9 @@ def _rollup(conn, column, columns, cells):
 
 
 def _values_for(conn, table, columns, row, cells):
-    """Stored values plus computed formula/rollup values, with a cycle guard."""
-    values = dict(cells)
+    """Every column as a value (null when empty), plus computed columns."""
+    values = {column["name"]: None for column in columns if column["type"] not in COMPUTED}
+    values.update(cells)
     cache, visiting = {}, set()
 
     def computed(column):

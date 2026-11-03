@@ -280,3 +280,75 @@ def test_llm_txt_documents_tables(client):
     text = client.get("/llm.txt").data.decode()
     assert "/api/tables" in text
     assert "rollup" in text and "formula" in text
+
+
+def test_column_rename_and_reconfigure(client):
+    new_table(client, columns=[{"name": "Title", "type": "string"}])
+    client.post(
+        "/api/tables/Tasks/columns",
+        json={
+            "name": "Status",
+            "type": "string",
+            "subtype": "select",
+            "config": {"options": ["todo", "done"]},
+        },
+    )
+    renamed = client.patch("/api/tables/Tasks/columns/Status", json={"name": "Stage"}).get_json()
+    assert renamed["name"] == "Stage"
+    wider = client.patch(
+        "/api/tables/Tasks/columns/Stage",
+        json={"config": {"options": ["todo", "doing", "done"]}},
+    ).get_json()
+    assert wider["config"]["options"] == ["todo", "doing", "done"]
+    assert (
+        client.patch("/api/tables/Tasks/columns/Stage", json={"name": "Title"}).status_code == 409
+    )  # name clash with the existing Title column
+
+
+def test_column_type_change_requires_clear_values(client):
+    new_table(client, columns=[{"name": "Note", "type": "string"}])
+    record = client.post("/api/tables/Tasks/records", json={"values": {"Note": "hello"}}).get_json()
+    blocked = client.patch("/api/tables/Tasks/columns/Note", json={"type": "number"})
+    assert blocked.status_code == 409
+    assert "clear_values" in blocked.get_json()["error"]
+    changed = client.patch(
+        "/api/tables/Tasks/columns/Note", json={"type": "number", "clear_values": True}
+    ).get_json()
+    assert changed["type"] == "number"
+    assert (
+        client.get(f"/api/tables/Tasks/records/{record['id']}").get_json()["values"]["Note"] is None
+    )
+
+
+def test_mcp_update_column(client):
+    def rpc(name, arguments):
+        body = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {"name": name, "arguments": arguments},
+        }
+        result = client.post("/mcp", json=body).get_json()["result"]
+        assert "isError" not in result, result["content"][0]["text"]
+        return result["structuredContent"]
+
+    rpc("create_table", {"name": "Marks", "columns": [{"name": "Score", "type": "string"}]})
+    record = rpc("create_record", {"table": "Marks", "values": {"Score": "7"}})
+    renamed = rpc(
+        "update_column",
+        {
+            "table": "Marks",
+            "column": "Score",
+            "name": "Points",
+            "type": "number",
+            "subtype": "int",
+            "clear_values": True,
+        },
+    )
+    assert renamed["name"] == "Points" and renamed["type"] == "number"
+    fetched = rpc("get_record", {"table": "Marks", "record_id": record["id"]})
+    assert fetched["values"]["Points"] is None
+    again = rpc(
+        "update_record", {"table": "Marks", "record_id": record["id"], "values": {"Points": 9}}
+    )
+    assert again["values"]["Points"] == 9
