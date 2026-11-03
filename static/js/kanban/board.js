@@ -4,25 +4,28 @@
 // card opens the detail modal (detail.js); #/kanban/card-<id> deep-links it.
 // Cards may carry an `opname` (operation name): shown as a chip; the header
 // "op" filter (or clicking a chip) narrows the board to one operation.
-import { api } from './api.js?v=kanban31';
+import { api } from './api.js?v=owner1';
 import { inlineEdit, armDelete } from './edit.js?v=kanban20';
 import { closeCard, openCard, openId, setupDetail, syncFromBoard } from './detail.js?v=kanban28';
-import * as search from './search.js?v=kanban31';
+import * as search from './search.js?v=owner1';
 import * as attention from '../attention.js?v=attention7';
+import { createGrouping } from './group.js?v=owner1';
 
 const POLL_MS = 3000;
 const $ = (id) => document.getElementById(id);
+const GROUP_KEY = 'opsboard.group';
 const OP_KEY = 'opsboard.opname';
 const OWNER_KEY = 'opsboard.owner';
 const UPDATED_KEY = 'opsboard.updated'; // '' | 'today' | 'YYYY-MM-DD'
 const NO_OP = '__none__'; // filter value for cards without an opname
 const NO_OWNER = '__none__'; // filter value for cards without an owner
-const state = { data: null, archived: null, archivedLoad: null, sig: '', searchSig: '', searchQ: '', busy: 0, dragId: null, dragEnd: 0, started: false, op: '', owner: '', updated: '' };
+const state = { data: null, archived: null, archivedLoad: null, sig: '', searchSig: '', searchQ: '', busy: 0, dragId: null, dragEnd: 0, started: false, op: '', owner: '', updated: '', group: 'lane', laneNames: {} };
 let attentionPending = false;
 let unreadCards = new Set();
 try { state.op = localStorage.getItem(OP_KEY) || ''; } catch { /* storage blocked */ }
 try { state.owner = localStorage.getItem(OWNER_KEY) || ''; } catch { /* storage blocked */ }
 try { state.updated = localStorage.getItem(UPDATED_KEY) || ''; } catch { /* storage blocked */ }
+try { state.group = localStorage.getItem(GROUP_KEY) === 'owner' ? 'owner' : 'lane'; } catch { /* storage blocked */ }
 const opKey = (v) => (v || '').trim().toLowerCase();
 
 function el(tag, cls, text) {
@@ -255,6 +258,8 @@ function paintOpFilter(cards) {
   list.replaceChildren(...boardOps(cards).map((o) => { const n = el('option'); n.value = o; return n; }));
 }
 
+const grouping = createGrouping({ el, state, $, render: () => render(), renderCard });
+
 function render() {
   const { lanes, cards: all } = state.data;
   unreadCards = attention.unreadIds('kanban', (all || [])
@@ -285,7 +290,14 @@ function render() {
   board.querySelectorAll('.kb-cards').forEach((list) => {
     if (list.scrollTop) laneScroll.set(String(list.dataset.laneId), list.scrollTop);
   });
-  board.replaceChildren(...lanes.map((lane) => renderLane(lane, cards.filter((c) => laneOf(c) === lane.id))));
+  state.laneNames = Object.fromEntries(lanes.map((lane) => [lane.id, lane.name]));
+  if (state.group === 'owner') {
+    board.classList.add('by-owner');
+    board.replaceChildren(...grouping.ownerColumns(cards).map(grouping.renderOwnerColumn));
+  } else {
+    board.classList.remove('by-owner');
+    board.replaceChildren(...lanes.map((lane) => renderLane(lane, cards.filter((c) => laneOf(c) === lane.id))));
+  }
   if (laneScroll.size) {
     board.querySelectorAll('.kb-cards').forEach((list) => {
       const y = laneScroll.get(String(list.dataset.laneId));
@@ -295,7 +307,10 @@ function render() {
   const archivedCount = lanes.reduce((n, l) => n + (l.archived_count || 0), 0);
   const total = pool.length;
   const shown = cards.length === total ? `${total}` : `${cards.length}/${total}`;
-  $('kanban-count').textContent = `${shown} card${total === 1 ? '' : 's'} · ${lanes.length} lanes`
+  const unit = state.group === 'owner'
+    ? `${grouping.ownerColumns(cards).length} owners`
+    : `${lanes.length} lanes`;
+  $('kanban-count').textContent = `${shown} card${total === 1 ? '' : 's'} · ${unit}`
     + (archivedCount ? ` · ${archivedCount} archived` : '')
     + (state.op ? ` · op: ${state.op === NO_OP ? 'none' : state.op}` : '')
     + (state.owner ? ` · author: ${state.owner === NO_OWNER ? 'none' : state.owner}` : '')
@@ -402,7 +417,8 @@ function renderArchiveDone(count) {
 
 function renderCard(card) {
   const n = el('div', 'kb-card');
-  n.draggable = !search.active() && !card.archived_at; // filtered or archived cards are not in the live order
+  // Dragging moves a card between lanes, so it is off while grouping by owner.
+  n.draggable = state.group !== 'owner' && !search.active() && !card.archived_at;
   n.dataset.id = card.id;
   n.tabIndex = 0;
   n.title = card.archived_at ? 'Open archived card' : 'Open card';
@@ -418,6 +434,11 @@ function renderCard(card) {
       v !== (card.owner || '') && mutate(() => api.patchCard(card.id, { owner: v || null })));
   });
   meta.append(owner, ...bodyBadges(card));
+  if (state.group === 'owner') {
+    const lane = el('span', 'kb-badge kb-badge-lane', state.laneNames[card.lane_id] || '?');
+    lane.title = 'Lane this card sits in';
+    meta.append(lane);
+  }
   if (card.archived_at) meta.append(el('span', 'kb-badge kb-badge-archived', 'archived'));
   const id = el('span', 'kb-id', `#${card.id}`);
   const del = el('button', 'kb-icon kb-del', '×');
@@ -642,6 +663,9 @@ export function initKanban() {
   });
   window.addEventListener('hashchange', syncHash);
   $('kanban-refresh').addEventListener('click', () => refresh(true));
+  $('kanban-group-lane').addEventListener('click', () => grouping.setGroup('lane'));
+  $('kanban-group-owner').addEventListener('click', () => grouping.setGroup('owner'));
+  grouping.paintGroup();
   $('kanban-add-lane').addEventListener('click', addLane);
   search.init(async () => {
     if (!state.data) return;

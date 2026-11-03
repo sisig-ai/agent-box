@@ -281,3 +281,21 @@
   border: 1px dotted currentColor;
   padding: 0 0.2rem;
 }
+
+/* Group toggle + owner columns */
+.kb-group { display: inline-flex; gap: 0.2rem; }
+.kb-group-btn {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  background: none;
+  border: 1px solid transparent;
+  padding: 0.1rem 0.35rem;
+  cursor: pointer;
+}
+.kb-group-btn:hover { color: var(--amber, #ffb000); border-color: var(--line, #2b3037); }
+.kb-group-btn.active { color: #050805; background: var(--phos, #4ce08a); border-color: var(--phos, #4ce08a); font-weight: 700; }
+.kb-owner-col .kb-lane-name { cursor: default; }
+.kb-owner-col .kb-cards { min-height: 3rem; }
+.kb-badge-lane { color: var(--amber, #ffb000); border: 1px dotted currentColor; }

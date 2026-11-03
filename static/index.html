@@ -28,7 +28,7 @@
   <link rel="stylesheet" href="/static/css/shell.css?v=ascii13">
   <link rel="stylesheet" href="/static/css/files.css">
   <link rel="stylesheet" href="/static/css/editor.css">
-  <link rel="stylesheet" href="/static/css/kanban.css?v=kanban30">
+  <link rel="stylesheet" href="/static/css/kanban.css?v=owner1">
   <link rel="stylesheet" href="/static/css/kanban-search.css?v=kanban20">
   <link rel="stylesheet" href="/static/css/kanban-detail.css?v=kanban20">
   <link rel="stylesheet" href="/static/css/modal.css?v=clockpill1">
@@ -332,6 +332,10 @@
             <span class="kanban-sub">drag cards between lanes · click a card to open · agents: /api/opsboard</span>
           </div>
           <div class="kanban-actions">
+            <div class="kb-group" role="group" aria-label="Group cards">
+              <button type="button" class="kb-group-btn active" id="kanban-group-lane" aria-pressed="true" title="Group by lane (swimlane)">[by lane]</button>
+              <button type="button" class="kb-group-btn" id="kanban-group-owner" aria-pressed="false" title="Group by owner, with the lane on each card">[by owner]</button>
+            </div>
             <div class="kb-search" role="search">
               <input id="kanban-search" type="search" placeholder="search board…" autocomplete="off" spellcheck="false" aria-label="Full-text search over cards, bodies and comments" title="Search titles, bodies, comments, opnames and owners — Esc clears">
               <button type="button" id="kanban-search-clear" class="kb-search-clear" title="Clear search" hidden>×</button>
@@ -535,6 +539,6 @@
   </div>
 
   <script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}))}</script>
-  <script type="module" src="/static/js/main.js?v=kanban31"></script>
+  <script type="module" src="/static/js/main.js?v=owner1"></script>
 </body>
 </html>
