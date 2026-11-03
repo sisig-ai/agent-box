@@ -4,7 +4,7 @@ import pathlib
 
 import pytest
 
-PANELS = ("brief", "stack", "shell", "files", "kanban", "progress", "docs", "logs")
+PANELS = ("brief", "stack", "shell", "files", "kanban", "progress", "docs", "tables", "logs")
 
 
 def test_page_serves_every_panel(client):

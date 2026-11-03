@@ -13,6 +13,7 @@ const btns = {
   kanban: document.getElementById('view-btn-kanban'),
   progress: document.getElementById('view-btn-progress'),
   docs: document.getElementById('view-btn-docs'),
+  tables: document.getElementById('view-btn-tables'),
   logs: document.getElementById('view-btn-logs'),
 };
 function current() {
@@ -22,6 +23,7 @@ function current() {
   if (h === '#/shell') return 'shell';
   if (h === '#/progress') return 'progress';
   if (h === '#/docs' || h.startsWith('#/docs/')) return 'docs';
+  if (h === '#/tables') return 'tables';
   if (h === '#/logs') return 'logs';
   if (h === '#/kanban' || h.startsWith('#/kanban/') || /^#card-\d+/.test(h)) return 'kanban';
   return 'stack'; // default landing tab (also #/ and empty hash)
@@ -30,6 +32,7 @@ const lazy = {};
 const KANBAN = './kanban/view.js?v=alpine8';
 const PROGRESS = './progress/bars.js?v=alpine3';
 const DOCS = './docs/view.js?v=alpine6';
+const TABLES = './tables/view.js?v=tables1';
 const LOGS = './logs/view.js?v=alpine1';
 const STACK = './stack/view.js?v=alpine2';
 const BRIEF = './notes/brief.js?v=alpine5';
@@ -47,6 +50,8 @@ function ensure(v) {
     (lazy.kanban ||= import(KANBAN)).then(m => m.mount(document.getElementById('kanban-view')));
   } else if (v === 'progress') {
     (lazy.progress ||= import(PROGRESS)).then(m => m.mount(document.getElementById('progress-view')));
+  } else if (v === 'tables') {
+    (lazy.tables ||= import(TABLES)).then(m => m.mount(document.getElementById('tables-view')));
   } else if (v === 'docs') {
     const docPrefix = decodeURIComponent(location.hash.replace(/^#\/docs\/?/, ''));
     (lazy.docs ||= import(DOCS)).then(m => m.mount(document.getElementById('docs-view'), docPrefix || ''));

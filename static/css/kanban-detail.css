@@ -195,3 +195,8 @@ body.kbd-open { overflow: hidden; }
 .kbc-author { width: 120px; font-family: var(--mono); font-size: 0.75rem; }
 .kbc-msg { flex: 1; }
 .kb-badge-comments { white-space: nowrap; }
+
+/* The card modal markup ships inside the (lazily mounted) board panel. Until
+   Alpine takes it over, the author display rule above would beat the UA
+   [hidden] rule, so keep it hidden explicitly. */
+.kbd-backdrop[hidden] { display: none; }

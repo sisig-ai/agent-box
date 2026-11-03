@@ -29,6 +29,8 @@ from .procs_api import router as procs_router
 from .progress import ProgressError
 from .progress_api import router as progress_router
 from .shell.api import router as shell_router
+from .table_types import TableError
+from .tables_api import router as tables_router
 from .telemetry_api import router as telemetry_router
 
 
@@ -77,7 +79,7 @@ def create_app() -> FastAPI:
             content={"error": getattr(exc, "message", str(exc))},
         )
 
-    for error_cls in (LogError, DocsError, FsError, KanbanError, ProgressError):
+    for error_cls in (LogError, DocsError, FsError, KanbanError, ProgressError, TableError):
         app.add_exception_handler(error_cls, domain_error)
 
     app.include_router(telemetry_router)
@@ -92,6 +94,7 @@ def create_app() -> FastAPI:
     app.include_router(docs_router)
     app.include_router(fs_router)
     app.include_router(shell_router)
+    app.include_router(tables_router)
 
     @app.get("/")
     @app.get("/index.html")

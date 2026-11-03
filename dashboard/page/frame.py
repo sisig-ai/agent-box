@@ -31,6 +31,7 @@ VIEWS = [
     ("kanban", "#/kanban", "Ops Board (k)", "[ops board]"),
     ("progress", "#/progress", "Progress Bars (p)", "[progress]"),
     ("docs", "#/docs", "Docs (d)", "[docs]"),
+    ("tables", "#/tables", "Tables (a)", "[tables]"),
     ("logs", "#/logs", "Access logs (l)", "[logs]"),
 ]
 
@@ -110,8 +111,9 @@ def keys_dialog() -> object:
             "\n b   sitrep        s   stack\n"
             " f   files         t   shell\n"
             " k   ops board     p   progress\n"
-            " d   docs          l   access logs\n"
-            " /   search        ?   this panel\n"
+            " d   docs          a   tables\n"
+            " l   access logs   /   search\n"
+            " ?   this panel    esc close / clear / read"
             " esc close / clear / read"
         ],
         form(method="dialog")[button(".brief-btn")["close"]],
@@ -122,7 +124,7 @@ def tui_bar() -> object:
     return div(".tui-bar", **{"aria-hidden": "true"})[
         span(".tui-bar-id")["macmini@tty"],
         span(".tui-bar-keys")[
-            "b sitrep · s stack · f files · t shell · k ops · p progress · ? keys"
+            "b sitrep · s stack · f files · t shell · k ops · p progress · a tables · ? keys"
         ],
         span(".tui-bar-cursor")["█"],
     ]

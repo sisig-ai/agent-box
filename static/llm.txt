@@ -270,3 +270,33 @@ new code. Cards carry `opname`, `body`, `has_body`, `body_preview`,
 listings. Storage: SQLite at
 `/Users/kixpanganiban/quick-arr-stack/arr-dashboard/data/briefs.db` (host mount,
 survives rebuilds).
+
+**Tables** — Airtable-shaped stores: typed columns, JSON records, formulas,
+refs and rollups. Records are plain objects keyed by column name.
+
+| Method | Path |
+|--------|------|
+| GET/POST | `/api/tables` (`?include_archived=1` lists archives) |
+| GET/PATCH/DELETE | `/api/tables/:table` (`:table` = name or id) |
+| GET/POST | `/api/tables/:table/columns` |
+| PATCH/DELETE | `/api/tables/:table/columns/:column` |
+| GET/POST | `/api/tables/:table/records` (`?limit=`, `?offset=`, `?include_archived=1`) |
+| GET/PATCH/DELETE | `/api/tables/:table/records/:record` |
+
+Column types: `bool`; `string` (`subtype` `text`, `select`, `multi_select`);
+`timestamp` (ISO 8601); `number` (`subtype` `int`, `float`); `url` (absolute
+http(s), `config.require_https`); `formula` (`config.expression`); `ref`
+(`config.table_id`, `config.multiple`); `rollup` (`config.table_id`,
+`config.ref_column`, `config.target_column`, `config.aggregate` =
+`count|sum|avg|min|max|concat|list`).
+
+Records: `{"values": {"Title": "Dune", "Read": true, "Status": "done"}}`.
+Formula and rollup columns are computed on read and refuse writes. Formulas use
+`{Column Name}` references, arithmetic and comparisons, `&&`/`||`/`!`, strings,
+and the functions `IF, AND, OR, NOT, CONCAT, LEN, UPPER, LOWER, TRIM, ROUND,
+ABS, MIN, MAX, SUM, AVG, COUNT, ISEMPTY, TODAY, NOW, YEAR, MONTH, DAY, LOOKUP`.
+
+MCP tools: `list_tables`, `describe_table`, `create_table` (accepts a `columns`
+array), `update_table`, `delete_table`, `add_column`, `update_column`,
+`delete_column`, `list_records`, `get_record`, `create_record`,
+`update_record`, `delete_record`.

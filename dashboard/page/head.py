@@ -24,6 +24,7 @@ STYLES = [
     ("ascii-board.css", "filters1"),
     ("ascii-progress.css", "progress1"),
     ("docs.css", "author1"),
+    ("tables.css", "tables1"),
     ("logs.css", "alpine1"),
     ("ascii-attention.css", "attention8"),
     ("tui.css", "tui80b"),

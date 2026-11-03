@@ -100,6 +100,7 @@ def _comments() -> object:
 def card_modal() -> object:
     return div(
         ".kbd-backdrop",
+        hidden=True,
         **{
             "x-data": "cardDetail",
             "x-ref": "backdrop",

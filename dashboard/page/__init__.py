@@ -13,6 +13,7 @@ from .panels_logs import logs
 from .panels_notes import sitrep
 from .panels_progress import progress
 from .panels_stack_shell import shell, stack
+from .panels_tables import tables
 from .panels_telemetry import telemetry
 
 
@@ -26,5 +27,6 @@ def render_page() -> str:
         board(),
         progress(),
         docs(),
+        tables(),
         logs(),
     )

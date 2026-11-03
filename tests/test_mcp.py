@@ -95,6 +95,19 @@ def test_tools_list_covers_board_comments_lanes_and_notes(client):
         "list_access_logs",
         "semantic_search_cards",
         "reindex_cards",
+        "list_tables",
+        "describe_table",
+        "create_table",
+        "update_table",
+        "delete_table",
+        "add_column",
+        "update_column",
+        "delete_column",
+        "list_records",
+        "get_record",
+        "create_record",
+        "update_record",
+        "delete_record",
     }
     for tool in tools:
         assert tool["description"]
