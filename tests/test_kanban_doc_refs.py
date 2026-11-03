@@ -53,3 +53,15 @@ def test_mcp_create_and_update_accept_docs(client):
     updated = call("update_card", {"id": card["id"], "docs": ["specs/y.md"]})
     assert updated["docs"] == ["specs/y.md"]
     assert call("get_card", {"id": card["id"]})["docs"] == ["specs/y.md"]
+
+
+def test_update_card_tool_advertises_docs(client):
+    tools = {
+        tool["name"]: tool
+        for tool in client.post(
+            "/mcp", json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"}
+        ).get_json()["result"]["tools"]
+    }
+    props = tools["update_card"]["inputSchema"]["properties"]
+    assert "docs" in props
+    assert "Docs prefixes" in props["docs"]["description"]

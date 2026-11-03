@@ -357,6 +357,7 @@ TOOLS = {
                     "type": "boolean",
                     "description": "true archives the card, false restores it to its lane.",
                 },
+                "docs": DOCS,
             },
             ["id"],
         ),
