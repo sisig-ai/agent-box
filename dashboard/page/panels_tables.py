@@ -7,6 +7,7 @@ from htpy import (
     h2,
     h3,
     input,
+    label,
     option,
     p,
     section,
@@ -230,6 +231,7 @@ def tables() -> object:
         ],
         table_dialog(),
         column_dialog(),
+        view_dialog(),
     ]
 
 
@@ -266,6 +268,42 @@ def main_block() -> object:
                     "x-text": "table ? (records.length + ' rows · ' + columns.length + ' columns') : ''"
                 },
             )[""],
+            label(".tbl-view-pick", title="Saved views: filters and ordering only")[
+                "view",
+                select(
+                    **{"x-model": "view", "@change": "applyView(view)"},
+                    **{"aria-label": "Saved view"},
+                )[
+                    option(value="")["all rows"],
+                    template(**{"x-for": "item in views", ":key": "item.id"})[
+                        option(
+                            **{
+                                ":value": "item.name",
+                                ":selected": "item.name === view",
+                                "x-text": "item.name",
+                            },
+                        )[""],
+                    ],
+                ],
+            ],
+            button(
+                ".brief-btn",
+                type="button",
+                title="Save the current filter and ordering as a view",
+                **{"@click": "openViewDialog()"},
+            )["+ view"],
+            button(
+                ".brief-btn",
+                type="button",
+                title="Edit this view",
+                **{"x-show": "!!currentView()", "@click": "openViewDialog(currentView())"},
+            )["edit"],
+            button(
+                ".brief-btn",
+                type="button",
+                title="Delete this view (rows stay)",
+                **{"x-show": "!!currentView()", "@click": "deleteView(currentView())"},
+            )["del"],
             div(".tbl-title-actions")[
                 button(
                     ".brief-btn",
@@ -306,4 +344,4 @@ def main_block() -> object:
     ]
 
 
-from .panels_tables_dialogs import column_dialog, table_dialog  # noqa: E402
+from .panels_tables_dialogs import column_dialog, table_dialog, view_dialog  # noqa: E402

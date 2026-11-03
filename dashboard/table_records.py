@@ -219,22 +219,43 @@ def _order_by(conn, table_id, order_by, order):
 
 
 def list_records(
-    table_ref, include_archived=False, limit=100, offset=0, order_by=None, order="asc"
+    table_ref,
+    include_archived=False,
+    limit=100,
+    offset=0,
+    order_by=None,
+    order="asc",
+    view=None,
 ):
+    """One page, optionally narrowed and sorted by a saved view."""
+    from . import table_views
+
     conn = db.get_db()
     table = resolve_table(conn, table_ref)
     columns = _columns(conn, table["id"])
     size, start = max(1, int(limit)), max(0, int(offset))
+    filters = []
+    if view:
+        filters, view_order_by, view_order = table_views.apply_view(conn, table["id"], view)
+        if order_by is None:
+            order_by, order = view_order_by, view_order
+    filter_join, filter_where, filter_join_args, filter_where_args = table_views.build_filters(
+        conn, table["id"], filters
+    )
     join, clause, join_args, ordered = _order_by(conn, table["id"], order_by, order)
-    where = "r.table_id = ?" + ("" if include_archived else " AND r.archived_at IS NULL")
+    where = (
+        "r.table_id = ?" + ("" if include_archived else " AND r.archived_at IS NULL") + filter_where
+    )
     rows = conn.execute(
-        f"SELECT r.* FROM db_row r {join} WHERE {where} ORDER BY {clause} LIMIT ? OFFSET ?",
-        (*join_args, table["id"], size, start),
+        f"SELECT r.* FROM db_row r {filter_join} {join}"
+        f" WHERE {where} ORDER BY {clause} LIMIT ? OFFSET ?",
+        (*filter_join_args, *join_args, table["id"], *filter_where_args, size, start),
     ).fetchall()
     cells = _cells_by_row(conn, rows, columns)
-    total = conn.execute("SELECT count(*) FROM db_row r WHERE " + where, (table["id"],)).fetchone()[
-        0
-    ]
+    total = conn.execute(
+        f"SELECT count(*) FROM db_row r {filter_join} WHERE {where}",
+        (*filter_join_args, table["id"], *filter_where_args),
+    ).fetchone()[0]
     return {
         "records": [
             _record(row, _values_for(conn, table, columns, row, cells[row["id"]])) for row in rows
@@ -246,6 +267,7 @@ def list_records(
         "has_more": start + len(rows) < total,
         "order_by": ordered,
         "order": "desc" if str(order).lower() == "desc" else "asc",
+        "view": view,
         "columns": columns,
     }
 

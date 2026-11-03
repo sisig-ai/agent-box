@@ -4,9 +4,9 @@ Records are plain JSON objects keyed by column name, so an agent can send
 ``{"Title": "Dune", "Read": true}`` without any DDL or cell ids.
 """
 
-from .. import table_records, tables
+from .. import table_records, table_views, tables
 from ..table_types import TableError
-from .protocol import ToolError, tool_spec
+from .protocol import ToolError
 
 TABLE_REF = {"type": "string", "description": "Table name (case-insensitive) or numeric id."}
 COLUMN_REF = {"type": "string", "description": "Column name (case-insensitive) or numeric id."}
@@ -19,6 +19,21 @@ VALUES = {
         "the column allows multiple). Formula and rollup columns are read-only."
     ),
     "additionalProperties": True,
+}
+VIEW_REF = {"type": "string", "description": "View name (case-insensitive) or numeric id."}
+VIEW_CONFIG = {
+    "type": "object",
+    "description": (
+        "A saved filter + ordering. filters is a list of {column, op, value} ANDed "
+        "together; op = eq|neq|contains|starts_with|gt|gte|lt|lte|is_empty|"
+        "is_not_empty. order_by is a stored column name (or position|id|"
+        "created_at|updated_at) and order is asc|desc. A view never changes rows."
+    ),
+    "properties": {
+        "filters": {"type": "array", "items": {"type": "object"}},
+        "order_by": {"type": "string"},
+        "order": {"type": "string", "enum": ["asc", "desc"]},
+    },
 }
 COLUMN_SPEC = {
     "type": "object",
@@ -159,6 +174,7 @@ def list_records(args):
         offset=offset,
         order_by=args.get("order_by") or None,
         order=args.get("order") or "asc",
+        view=args.get("view") or None,
     )
 
 
@@ -201,195 +217,36 @@ def delete_record(args):
     return _wrap(table_records.delete_record, args["table"], args["record_id"])
 
 
-TOOLS = {
-    "list_tables": {
-        "spec": tool_spec(
-            "list_tables",
-            "List tables",
-            "Every table with column and record counts. Archives excluded unless asked. "
-            "order_by = name | updated | created | records.",
-            {
-                "include_archived": {"type": "boolean"},
-                "order_by": {
-                    "type": "string",
-                    "enum": ["name", "updated", "created", "records"],
-                },
-                "order": ORDER,
-            },
-            read_only=True,
-        ),
-        "handler": list_tables,
-    },
-    "describe_table": {
-        "spec": tool_spec(
-            "describe_table",
-            "Describe table",
-            "One table with its columns, their types, config (select options, formulas) "
-            "and counts.",
-            {"table": TABLE_REF},
-            ["table"],
-            read_only=True,
-        ),
-        "handler": describe_table,
-    },
-    "create_table": {
-        "spec": tool_spec(
-            "create_table",
-            "Create table",
-            "Create a table, optionally with columns in the same call.",
-            {
-                "name": {"type": "string"},
-                "description": {"type": "string"},
-                "columns": {"type": "array", "items": COLUMN_SPEC},
-            },
-            ["name"],
-        ),
-        "handler": create_table,
-    },
-    "update_table": {
-        "spec": tool_spec(
-            "update_table",
-            "Update table",
-            "Rename, describe, archive or restore a table.",
-            {
-                "table": TABLE_REF,
-                "name": {"type": "string"},
-                "description": {"type": "string"},
-                "archived": {"type": "boolean"},
-            },
-            ["table"],
-        ),
-        "handler": update_table,
-    },
-    "delete_table": {
-        "spec": tool_spec(
-            "delete_table",
-            "Delete table",
-            "Delete a table and every column, row and cell in it. Irreversible.",
-            {"table": TABLE_REF},
-            ["table"],
-            destructive=True,
-        ),
-        "handler": delete_table,
-    },
-    "add_column": {
-        "spec": tool_spec(
-            "add_column",
-            "Add column",
-            "Add one typed column; see the columns description for config shapes.",
-            {
-                "table": TABLE_REF,
-                "name": {"type": "string"},
-                "type": {"type": "string"},
-                "subtype": {"type": "string"},
-                "config": {"type": "object"},
-                "position": {"type": "integer", "minimum": 0},
-            },
-            ["table", "name", "type"],
-        ),
-        "handler": add_column,
-    },
-    "update_column": {
-        "spec": tool_spec(
-            "update_column",
-            "Update column",
-            "Rename, retype, reconfigure or move a column. A type change clears its "
-            "values unless clear_values is true.",
-            {
-                "table": TABLE_REF,
-                "column": COLUMN_REF,
-                "name": {"type": "string"},
-                "type": {"type": "string"},
-                "subtype": {"type": "string"},
-                "config": {"type": "object"},
-                "position": {"type": "integer", "minimum": 0},
-                "clear_values": {"type": "boolean"},
-            },
-            ["table", "column"],
-        ),
-        "handler": update_column,
-    },
-    "delete_column": {
-        "spec": tool_spec(
-            "delete_column",
-            "Delete column",
-            "Remove a column and every cell in it. Irreversible.",
-            {"table": TABLE_REF, "column": COLUMN_REF},
-            ["table", "column"],
-            destructive=True,
-        ),
-        "handler": delete_column,
-    },
-    "list_records": {
-        "spec": tool_spec(
-            "list_records",
-            "List records",
-            "One page of rows with values keyed by column name; computed columns are "
-            "included. Returns total, count, has_more, limit and offset, so page with "
-            "offset += limit.",
-            {
-                "table": TABLE_REF,
-                "limit": {"type": "integer", "minimum": 1, "maximum": 500, "default": 100},
-                "offset": {"type": "integer", "minimum": 0, "default": 0},
-                "order_by": {
-                    "type": "string",
-                    "description": (
-                        "Column name to sort by, or position | id | created_at | updated_at."
-                    ),
-                },
-                "order": ORDER,
-                "include_archived": {"type": "boolean"},
-            },
-            ["table"],
-            read_only=True,
-        ),
-        "handler": list_records,
-    },
-    "get_record": {
-        "spec": tool_spec(
-            "get_record",
-            "Get record",
-            "One row by id, values keyed by column name.",
-            {"table": TABLE_REF, "record_id": {"type": "integer"}},
-            ["table", "record_id"],
-            read_only=True,
-        ),
-        "handler": get_record,
-    },
-    "create_record": {
-        "spec": tool_spec(
-            "create_record",
-            "Create record",
-            "Add a row. values is an object keyed by column name.",
-            {"table": TABLE_REF, "values": VALUES},
-            ["table", "values"],
-        ),
-        "handler": create_record,
-    },
-    "update_record": {
-        "spec": tool_spec(
-            "update_record",
-            "Update record",
-            "Patch cells by column name and/or archive the row.",
-            {
-                "table": TABLE_REF,
-                "record_id": {"type": "integer"},
-                "values": VALUES,
-                "archived": {"type": "boolean"},
-            },
-            ["table", "record_id"],
-        ),
-        "handler": update_record,
-    },
-    "delete_record": {
-        "spec": tool_spec(
-            "delete_record",
-            "Delete record",
-            "Remove a row and its cells. Irreversible.",
-            {"table": TABLE_REF, "record_id": {"type": "integer"}},
-            ["table", "record_id"],
-            destructive=True,
-        ),
-        "handler": delete_record,
-    },
-}
+def list_views(args):
+    if not args.get("table"):
+        raise ToolError("table is required")
+    return _wrap(table_views.list_views, args["table"])
+
+
+def create_view(args):
+    if not args.get("table") or not args.get("name"):
+        raise ToolError("table and name are required")
+    return _wrap(table_views.create_view, args["table"], args["name"], args.get("config"))
+
+
+def update_view(args):
+    if not args.get("table") or not args.get("view"):
+        raise ToolError("table and view are required")
+    if "name" not in args and "config" not in args:
+        raise ToolError("nothing to update: pass name and/or config")
+    return _wrap(
+        table_views.update_view,
+        args["table"],
+        args["view"],
+        name=args.get("name"),
+        config=args.get("config") if "config" in args else None,
+    )
+
+
+def delete_view(args):
+    if not args.get("table") or not args.get("view"):
+        raise ToolError("table and view are required")
+    return _wrap(table_views.delete_view, args["table"], args["view"])
+
+
+from .tools_tables_specs import TOOLS  # noqa: E402,F401  (needs the handlers above)

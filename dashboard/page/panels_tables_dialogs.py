@@ -1,4 +1,4 @@
-"""Dialogs for the Tables panel: new table and new/edit column."""
+"""Dialogs for the Tables panel: table, column and view editors."""
 
 from htpy import button, dialog, div, form, h3, input, label, option, select, template, textarea
 
@@ -136,6 +136,98 @@ def column_dialog() -> object:
                 ],
                 button(
                     ".brief-btn", type="submit", **{"x-text": "columnEditing ? 'save' : 'create'"}
+                )["create"],
+            ],
+        ],
+    ]
+
+
+def view_dialog() -> object:
+    return dialog(
+        ".ascii-dialog",
+        id="tables-view-dialog",
+        **{"x-ref": "viewDialog", "@close": "viewOpen = false"},
+    )[
+        h3(**{"x-text": "viewEditing ? 'edit view' : 'new view'"})["new view"],
+        form(**{"@submit.prevent": "saveView()"})[
+            label[
+                "name",
+                input(
+                    type="text",
+                    **{"x-model": "viewDraft.name", "x-ref": "viewName"},
+                    maxlength="60",
+                    placeholder="e.g. Open items",
+                ),
+            ],
+            label[
+                "order by",
+                select(**{"x-model": "viewDraft.orderBy"})[
+                    option(value="")["insertion order"],
+                    template(**{"x-for": "column in columns", ":key": "column.id"})[
+                        option(
+                            **{
+                                ":value": "column.name",
+                                ":disabled": "column.computed",
+                                "x-text": "column.name",
+                            },
+                        )[""],
+                    ],
+                ],
+            ],
+            label[
+                "direction",
+                select(**{"x-model": "viewDraft.order"})[
+                    option(value="asc")["asc"],
+                    option(value="desc")["desc"],
+                ],
+            ],
+            div(".tbl-filters")[
+                template(**{"x-for": "(filter, index) in viewDraft.filters", ":key": "index"})[
+                    div(".tbl-filter-row")[
+                        select(**{"x-model": "filter.column"})[
+                            template(**{"x-for": "column in columns", ":key": "column.id"})[
+                                option(
+                                    **{
+                                        ":value": "column.name",
+                                        ":disabled": "column.computed",
+                                        "x-text": "column.name",
+                                    },
+                                )[""],
+                            ],
+                        ],
+                        select(**{"x-model": "filter.op"})[
+                            template(**{"x-for": "pair in ops", ":key": "pair[0]"})[
+                                option(**{":value": "pair[0]", "x-text": "pair[1]"})[""],
+                            ],
+                        ],
+                        input(
+                            type="text",
+                            **{
+                                "x-model": "filter.value",
+                                "x-show": "filter.op !== 'is_empty' && filter.op !== 'is_not_empty'",
+                                "placeholder": "value",
+                            },
+                        ),
+                        button(
+                            ".tbl-icon.danger",
+                            type="button",
+                            title="Remove this filter",
+                            **{"@click": "removeFilter(index)"},
+                        )["×"],
+                    ],
+                ],
+            ],
+            div(".tbl-dialog-actions")[
+                button(".brief-btn", type="button", **{"@click": "addFilter()"})["+ filter"],
+                button(
+                    ".brief-btn",
+                    type="button",
+                    **{"@click": "$refs.viewDialog.close()"},
+                )["cancel"],
+                button(
+                    ".brief-btn",
+                    type="submit",
+                    **{"x-text": "viewEditing ? 'save' : 'create'"},
                 )["create"],
             ],
         ],

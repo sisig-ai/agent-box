@@ -32,7 +32,7 @@ const lazy = {};
 const KANBAN = './kanban/view.js?v=alpine8';
 const PROGRESS = './progress/bars.js?v=alpine3';
 const DOCS = './docs/view.js?v=alpine6';
-const TABLES = './tables/view.js?v=tables5';
+const TABLES = './tables/view.js?v=tables8';
 const LOGS = './logs/view.js?v=alpine1';
 const STACK = './stack/view.js?v=alpine2';
 const BRIEF = './notes/brief.js?v=alpine5';

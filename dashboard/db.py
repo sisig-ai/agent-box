@@ -103,6 +103,7 @@ def init_db():
             from .docs_embed import init_schema as init_embed_schema
             from .kanban import init_schema as init_kanban_schema
             from .progress import init_schema as init_progress_schema
+            from .table_views import init_schema as init_view_schema
             from .tables import init_schema as init_tables_schema
 
             init_kanban_schema(conn)
@@ -112,6 +113,7 @@ def init_db():
             init_card_embed_schema(conn)
             init_card_docs_schema(conn)
             init_tables_schema(conn)
+            init_view_schema(conn)
             # A retired trading-brief feature left its table behind; nothing
             # reads it, and it has never held a row.
             conn.execute("DROP TABLE IF EXISTS trading_brief")

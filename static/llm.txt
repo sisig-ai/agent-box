@@ -282,7 +282,9 @@ refs and rollups. Records are plain objects keyed by column name.
 | PATCH/DELETE | `/api/tables/:table` (`:table` = name or id) |
 | GET/POST | `/api/tables/:table/columns` (`?order_by=position\|name\|type\|created`) |
 | PATCH/DELETE | `/api/tables/:table/columns/:column` |
-| GET/POST | `/api/tables/:table/records` (`?limit=`, `?offset=`, `?order_by=`, `?order=`, `?include_archived=1`) |
+| GET/POST | `/api/tables/:table/records` (`?limit=`, `?offset=`, `?order_by=`, `?order=`, `?view=`, `?include_archived=1`) |
+| GET/POST | `/api/tables/:table/views` |
+| PATCH/DELETE | `/api/tables/:table/views/:view` |
 | GET/PATCH/DELETE | `/api/tables/:table/records/:record` |
 
 Column types: `bool`; `string` (`subtype` `text`, `select`, `multi_select`);
@@ -298,6 +300,18 @@ Formula and rollup columns are computed on read and refuse writes. Formulas use
 and the functions `IF, AND, OR, NOT, CONCAT, LEN, UPPER, LOWER, TRIM, ROUND,
 ABS, MIN, MAX, SUM, AVG, COUNT, ISEMPTY, TODAY, NOW, YEAR, MONTH, DAY, LOOKUP`.
 
+Views are saved filters + ordering; applying one never changes rows:
+
+```json
+{"filters": [{"column": "Done", "op": "eq", "value": false}],
+ "order_by": "Rank", "order": "desc"}
+```
+
+`op` is `eq|neq|contains|starts_with|gt|gte|lt|lte|is_empty|is_not_empty`; filters
+AND together and apply to stored columns (computed columns refuse). Pass
+`?view=<name or id>` to `/records` or `/api/tables/:table`; an explicit
+`order_by` overrides the view's ordering.
+
 Records paginate: every listing returns `total`, `count`, `limit`, `offset` and
 `has_more`; page with `offset += limit`. Order by any stored column
 (`order_by=Name&order=desc`, nulls last) or `position`/`id`/`created_at`/
@@ -306,4 +320,5 @@ Records paginate: every listing returns `total`, `count`, `limit`, `offset` and
 MCP tools: `list_tables` (`order_by`, `order`), `describe_table`, `create_table`
 (accepts a `columns` array), `update_table`, `delete_table`, `add_column`,
 `update_column`, `delete_column`, `list_records` (`limit`, `offset`, `order_by`,
-`order`), `get_record`, `create_record`, `update_record`, `delete_record`.
+`order`, `view`), `get_record`, `create_record`, `update_record`,
+`delete_record`, `list_views`, `create_view`, `update_view`, `delete_view`.

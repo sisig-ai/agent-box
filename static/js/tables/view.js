@@ -3,9 +3,10 @@
 
 import Alpine from '../alpine.js';
 import { openModal } from '../modal.js';
-import { api } from './api.js?v=tables5';
-import { cellActions } from './cells.js?v=tables5';
-import { columnActions } from './columns.js?v=tables5';
+import { api } from './api.js?v=tables8';
+import { cellActions } from './cells.js?v=tables8';
+import { columnActions } from './columns.js?v=tables8';
+import { viewActions } from './views.js?v=tables8';
 
 const TYPES = [
   ['string', 'string'],
@@ -53,6 +54,12 @@ export function tablesView() {
 
     ...cellActions,
     ...columnActions,
+    ...viewActions,
+    views: [],
+    view: '',
+    viewOpen: false,
+    viewEditing: null,
+    viewDraft: { name: '', orderBy: '', order: 'asc', filters: [] },
 
     init() {
       this.load();
@@ -82,6 +89,11 @@ export function tablesView() {
 
     async openTable(ref, announce = true) {
       try {
+        if (String(ref) !== String(this.current)) {
+          this.view = '';
+          this.orderBy = null;
+          this.order = 'asc';
+        }
         const data = await this.fetchPage(ref, 0);
         this.current = data.id;
         this.columns = data.columns || [];
@@ -93,6 +105,7 @@ export function tablesView() {
           loading: false,
         };
         this.menuColumn = null;
+        await this.loadViews();
         if (announce) this.status = `opened ${data.name}`;
       } catch (err) {
         this.failed = true;
@@ -108,6 +121,7 @@ export function tablesView() {
         order: this.order,
       });
       if (this.orderBy) params.set('order_by', this.orderBy);
+      if (this.view) params.set('view', this.view);
       if (this.showArchived) params.set('include_archived', '1');
       return api(`/api/tables/${encodeURIComponent(ref)}?${params}`);
     },

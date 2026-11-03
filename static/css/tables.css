@@ -139,3 +139,19 @@
 .tbl-th-sort.active { color: var(--amber, #ffb000); }
 .tbl-th-sort:disabled { opacity: 0.25; cursor: default; }
 .tbl-page { margin-left: auto; font-family: var(--mono); font-size: 0.6rem; color: var(--dim, var(--muted)); }
+.tbl-view-pick {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  font-family: var(--mono); font-size: 0.62rem; color: var(--dim, var(--muted));
+}
+.tbl-view-pick select {
+  font-family: var(--mono); font-size: 0.66rem; color: var(--text);
+  background: #050805; border: 1px solid var(--line, #2b3037); padding: 0.1rem 0.2rem;
+}
+.tbl-filters { display: flex; flex-direction: column; gap: 0.35rem; }
+.tbl-filter-row { display: flex; align-items: center; gap: 0.35rem; }
+.tbl-filter-row select, .tbl-filter-row input {
+  font-family: var(--mono); font-size: 0.66rem; color: var(--text);
+  background: #050805; border: 1px solid var(--line, #2b3037); padding: 0.1rem 0.2rem;
+}
+.tbl-filter-row input { flex: 1 1 auto; min-width: 4rem; }
+#tables-view-dialog { width: min(38rem, 94vw); }

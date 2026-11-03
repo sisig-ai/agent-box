@@ -108,6 +108,10 @@ def test_tools_list_covers_board_comments_lanes_and_notes(client):
         "create_record",
         "update_record",
         "delete_record",
+        "list_views",
+        "create_view",
+        "update_view",
+        "delete_view",
     }
     for tool in tools:
         assert tool["description"]

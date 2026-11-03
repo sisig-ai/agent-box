@@ -8,7 +8,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
-from . import table_records, tables
+from . import table_records, table_views, tables
 from .table_types import TableError
 
 router = APIRouter()
@@ -54,6 +54,7 @@ async def get_table(
     order_by: str | None = None,
     order: str = "asc",
     include_archived: str = "",
+    view: str | None = None,
 ):
     """One table for direct clients: schema, columns and the first records page.
 
@@ -73,6 +74,7 @@ async def get_table(
         offset=max(0, start),
         order_by=order_by,
         order=order,
+        view=view,
     )
     return {**schema, **page}
 
@@ -152,6 +154,7 @@ async def list_records(
     order_by: str | None = None,
     order: str = "asc",
     include_archived: str = "",
+    view: str | None = None,
 ):
     try:
         size, start = int(limit), int(offset)
@@ -165,6 +168,7 @@ async def list_records(
         offset=max(0, start),
         order_by=order_by,
         order=order,
+        view=view,
     )
 
 
@@ -196,3 +200,38 @@ async def update_record(table_ref: str, record_id: str, request: Request):
 @router.delete("/api/tables/{table_ref}/records/{record_id}")
 async def delete_record(table_ref: str, record_id: str):
     return await run_in_threadpool(table_records.delete_record, table_ref, record_id)
+
+
+# ---------------- views ----------------
+
+
+@router.get("/api/tables/{table_ref}/views")
+async def list_views(table_ref: str):
+    return await run_in_threadpool(table_views.list_views, table_ref)
+
+
+@router.post("/api/tables/{table_ref}/views")
+async def create_view(table_ref: str, request: Request):
+    body = await _body(request)
+    view = await run_in_threadpool(
+        table_views.create_view, table_ref, body.get("name"), body.get("config")
+    )
+    return JSONResponse(status_code=201, content=view)
+
+
+@router.patch("/api/tables/{table_ref}/views/{view_ref}")
+async def update_view(table_ref: str, view_ref: str, request: Request):
+    body = await _body(request)
+    return await run_in_threadpool(
+        table_views.update_view,
+        table_ref,
+        view_ref,
+        name=body.get("name"),
+        config=body.get("config") if "config" in body else None,
+        position=body.get("position"),
+    )
+
+
+@router.delete("/api/tables/{table_ref}/views/{view_ref}")
+async def delete_view(table_ref: str, view_ref: str):
+    return await run_in_threadpool(table_views.delete_view, table_ref, view_ref)
