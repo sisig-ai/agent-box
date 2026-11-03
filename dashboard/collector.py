@@ -1,7 +1,7 @@
 """Native telemetry sampler loop: macmon -> latest-stats.json + telemetry table.
 
 Run by the telemetry LaunchDaemon via the thin root ``telemetry_collector.py``.
-Deliberately imports no Flask: the DB schema is created explicitly through
+Deliberately imports no web framework: the DB schema is created explicitly through
 ``dashboard.db.init_db()`` because importing the web app used to do that as a
 side effect (M2 decoupling, known-issue #5).
 """

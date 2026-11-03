@@ -2,7 +2,7 @@
 
 Written once per second by the standalone collector (``telemetry_collector.py``)
 and read by the ``/api/stats*`` endpoints. The collector calls into this module
-outside any Flask context, so nothing here may require an app context.
+outside the request path, so nothing here may require an app context.
 """
 
 import json

@@ -1,21 +1,21 @@
-"""HTTP blueprint for the Daily Sitrep (formerly Daily Brief) and Weekly Schedule endpoints.
+"""Daily Sitrep and Weekly Schedule API (FastAPI).
 
-Canonical: /api/sitrep[/list]. /api/brief[/list] are deprecated aliases bound to
-the same view functions.
-
-No auth: local stack, exposed only over the tailnet.
+Canonical: /api/sitrep[/list]; /api/brief[/list] stay as deprecated aliases on
+the same handlers.
 """
 
-from flask import Blueprint, jsonify, request
+from fastapi import APIRouter, Request
+from starlette.concurrency import run_in_threadpool
 
 from . import notes
+from .api_kit import error
 from .dates import normalize_date, normalize_week
 
-bp = Blueprint("notes", __name__)
+router = APIRouter()
 
 
 def parse_limit(raw, default, maximum):
-    """Parse a ?limit= query value. None means non-numeric garbage (400)."""
+    """Parse a ?limit= value. None means non-numeric garbage (400)."""
     if raw is None:
         return default
     try:
@@ -24,102 +24,102 @@ def parse_limit(raw, default, maximum):
         return None
 
 
-# ---------------- Daily Sitrep API (/api/sitrep; /api/brief = deprecated alias) ----------------
-
-
-@bp.get("/api/sitrep")
-@bp.get("/api/brief")
-def brief_get():
-    """GET /api/brief?date=YYYY-MM-DD (defaults to today)."""
-    date = normalize_date(request.args.get("date"))
-    if date is None:
-        return jsonify({"error": "date must be YYYY-MM-DD"}), 400
-    row = notes.fetch_brief(date)
+@router.get("/api/sitrep")
+@router.get("/api/brief")
+async def brief_get(date: str | None = None):
+    """The day's entry (defaults to today)."""
+    day = normalize_date(date)
+    if day is None:
+        return error("date must be YYYY-MM-DD")
+    row = await run_in_threadpool(notes.fetch_brief, day)
     if row is None:
-        return jsonify({"date": date, "content": ""}), 200
-    return jsonify(row)
+        return {"date": day, "content": ""}
+    return row
 
 
-@bp.get("/api/sitrep/list")
-@bp.get("/api/brief/list")
-def brief_list():
-    """GET /api/brief/list?limit=N — most recent days first."""
-    limit = parse_limit(request.args.get("limit"), 30, 365)
-    if limit is None:
-        return jsonify({"error": "limit must be a number"}), 400
-    return jsonify(notes.list_briefs(limit))
+@router.get("/api/sitrep/list")
+@router.get("/api/brief/list")
+async def brief_list(limit: str | None = None):
+    """Most recent days first."""
+    size = parse_limit(limit, 30, 365)
+    if size is None:
+        return error("limit must be a number")
+    return await run_in_threadpool(notes.list_briefs, size)
 
 
-@bp.put("/api/sitrep")
-@bp.put("/api/brief")
-@bp.post("/api/sitrep")
-@bp.post("/api/brief")
-def brief_upsert():
-    """PUT /api/brief with JSON {"date"?, "content"} — create or replace that day's entry."""
-    body = request.get_json(silent=True) or {}
+@router.put("/api/sitrep")
+@router.put("/api/brief")
+@router.post("/api/sitrep")
+@router.post("/api/brief")
+async def brief_upsert(request: Request):
+    """Create or replace that day's entry."""
+    body = await _json(request)
     if "content" not in body:
-        return jsonify({"error": "content is required"}), 400
-    date = normalize_date(body.get("date"))
-    if date is None:
-        return jsonify({"error": "date must be YYYY-MM-DD"}), 400
-    return jsonify(notes.upsert_brief(date, body["content"]))
+        return error("content is required")
+    day = normalize_date(body.get("date"))
+    if day is None:
+        return error("date must be YYYY-MM-DD")
+    return await run_in_threadpool(notes.upsert_brief, day, body["content"])
 
 
-@bp.delete("/api/sitrep")
-@bp.delete("/api/brief")
-def brief_delete():
-    """DELETE /api/brief?date=YYYY-MM-DD — remove that day's entry."""
-    date = normalize_date(request.args.get("date"))
-    if date is None:
-        return jsonify({"error": "date must be YYYY-MM-DD"}), 400
-    if not notes.delete_brief(date):
-        return jsonify({"error": "no entry for that date"}), 404
-    return jsonify({"deleted": date}), 200
+@router.delete("/api/sitrep")
+@router.delete("/api/brief")
+async def brief_delete(date: str | None = None):
+    """Remove that day's entry."""
+    day = normalize_date(date)
+    if day is None:
+        return error("date must be YYYY-MM-DD")
+    if not await run_in_threadpool(notes.delete_brief, day):
+        return error("no entry for that date", 404)
+    return {"deleted": day}
 
 
-# ---------------- Weekly Schedule API ----------------
-
-
-@bp.get("/api/schedule")
-def schedule_get():
-    """GET /api/schedule?week=YYYY-MM-DD — week_start coerces to that week's Monday."""
-    week = normalize_week(request.args.get("week"))
-    if week is None:
-        return jsonify({"error": "week must be YYYY-MM-DD"}), 400
-    row = notes.fetch_schedule(week)
+@router.get("/api/schedule")
+async def schedule_get(week: str | None = None):
+    """The week's entry; week_start coerces to that week's Monday."""
+    start = normalize_week(week)
+    if start is None:
+        return error("week must be YYYY-MM-DD")
+    row = await run_in_threadpool(notes.fetch_schedule, start)
     if row is None:
-        return jsonify({"week_start": week, "content": ""}), 200
-    return jsonify(row)
+        return {"week_start": start, "content": ""}
+    return row
 
 
-@bp.get("/api/schedule/list")
-def schedule_list():
-    """GET /api/schedule/list?limit=N — most recent weeks first."""
-    limit = parse_limit(request.args.get("limit"), 20, 104)
-    if limit is None:
-        return jsonify({"error": "limit must be a number"}), 400
-    return jsonify(notes.list_schedules(limit))
+@router.get("/api/schedule/list")
+async def schedule_list(limit: str | None = None):
+    """Most recent weeks first."""
+    size = parse_limit(limit, 20, 104)
+    if size is None:
+        return error("limit must be a number")
+    return await run_in_threadpool(notes.list_schedules, size)
 
 
-@bp.put("/api/schedule")
-@bp.post("/api/schedule")
-def schedule_upsert():
-    """PUT/POST /api/schedule with JSON {"week"?, "content"} — upsert that week's entry."""
-    body = request.get_json(silent=True) or {}
+@router.put("/api/schedule")
+@router.post("/api/schedule")
+async def schedule_upsert(request: Request):
+    body = await _json(request)
     if "content" not in body:
-        return jsonify({"error": "content is required"}), 400
-    week = normalize_week(body.get("week"))
-    if week is None:
-        return jsonify({"error": "week must be YYYY-MM-DD"}), 400
-    return jsonify(notes.upsert_schedule(week, body["content"]))
+        return error("content is required")
+    start = normalize_week(body.get("week"))
+    if start is None:
+        return error("week must be YYYY-MM-DD")
+    return await run_in_threadpool(notes.upsert_schedule, start, body["content"])
 
 
-@bp.delete("/api/schedule")
-def schedule_delete():
-    """DELETE /api/schedule?week=YYYY-MM-DD — remove that week's entry."""
-    week = normalize_week(request.args.get("week"))
-    if week is None:
-        return jsonify({"error": "week must be YYYY-MM-DD"}), 400
-    if not notes.delete_schedule(week):
-        return jsonify({"error": "no entry for that week"}), 404
-    return jsonify({"deleted": week}), 200
+@router.delete("/api/schedule")
+async def schedule_delete(week: str | None = None):
+    start = normalize_week(week)
+    if start is None:
+        return error("week must be YYYY-MM-DD")
+    if not await run_in_threadpool(notes.delete_schedule, start):
+        return error("no entry for that week", 404)
+    return {"deleted": start}
+
+
+async def _json(request: Request) -> dict:
+    try:
+        body = await request.json()
+    except ValueError:
+        return {}
+    return body if isinstance(body, dict) else {}

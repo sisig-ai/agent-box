@@ -8,7 +8,8 @@ stream, so GET and DELETE answer 405 as the spec allows for such a server.
 import json
 import time
 
-from flask import Blueprint, Response, request
+from fastapi import APIRouter, Request, Response
+from starlette.concurrency import run_in_threadpool
 
 from .. import access_log
 from ..docs import DocsError
@@ -17,7 +18,7 @@ from ..progress import ProgressError
 from . import protocol, registry
 from .protocol import INVALID_PARAMS, RpcError, ToolError
 
-bp = Blueprint("mcp", __name__)
+router = APIRouter()
 
 SERVER_INFO = {
     "name": "macmini-control",
@@ -44,7 +45,7 @@ INSTRUCTIONS = (
 
 def _json(payload, status=200):
     body = json.dumps(payload, ensure_ascii=False)
-    return Response(body, status=status, mimetype="application/json")
+    return Response(content=body, status_code=status, media_type="application/json")
 
 
 def _error_content(message):
@@ -137,10 +138,11 @@ def _reply(message):
         return exc.payload(request_id)
 
 
-@bp.post("/mcp")
-def mcp_post():
-    payload = request.get_json(silent=True)
-    if payload is None:
+@router.post("/mcp")
+async def mcp_post(request: Request):
+    try:
+        payload = json.loads(await request.body())
+    except ValueError:
         error = RpcError(protocol.PARSE_ERROR, "body must be JSON-RPC (application/json)")
         return _json(error.payload(None), 400)
     if isinstance(payload, list):
@@ -149,22 +151,22 @@ def mcp_post():
             return _json(error.payload(None), 400)
         replies = [reply for reply in (_reply(item) for item in payload) if reply is not None]
         if not replies:
-            return Response(status=202)
+            return Response(status_code=202)
         return _json(replies)
     if not isinstance(payload, dict):
         error = RpcError(protocol.INVALID_REQUEST, "message must be a JSON object")
         return _json(error.payload(None), 400)
-    reply = _reply(payload)
+    reply = await run_in_threadpool(_reply, payload)
     if reply is None:
-        return Response(status=202)
+        return Response(status_code=202)
     return _json(reply)
 
 
-@bp.get("/mcp")
-def mcp_get():
+@router.get("/mcp")
+async def mcp_get():
     return _json({"error": "stateless MCP server: POST JSON-RPC to /mcp"}, 405)
 
 
-@bp.delete("/mcp")
-def mcp_delete():
+@router.delete("/mcp")
+async def mcp_delete():
     return _json({"error": "no MCP sessions to delete"}, 405)

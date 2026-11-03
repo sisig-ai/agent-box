@@ -1,191 +1,221 @@
-"""HTTP blueprint for Docs: an S3-ish text store keyed by prefix (path).
+"""Docs API (FastAPI): a prefix-keyed text store.
 
-Canonical: ``/api/docs``. The prefix is the object key, so reads and writes
-address it directly: ``PUT /api/docs/notes/handoff.md`` creates or replaces,
-``GET`` reads, ``DELETE`` removes. Listings return metadata only unless
-``?content=1`` is passed, and ``/api/docs/search`` runs the FTS5 index.
-
-No auth: local stack, exposed only over the tailnet.
+Canonical: ``/api/docs``. The prefix is the object key, so ``PUT
+/api/docs/notes/handoff.md`` creates or replaces. Listings return metadata
+unless ``?content=1``; ``/api/docs/search`` runs the FTS5 index.
 """
 
-from flask import Blueprint, jsonify, request
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 
 from . import docs, docs_embed
+from .api_kit import error
 from .docs import DocsError
 from .docs_embed import EmbedError
 
-bp = Blueprint("docs", __name__)
+router = APIRouter()
 
 FIELDS = ("prefix", "content", "author", "tags")
+TRUTHY = ("1", "true", "yes")
 
 
-@bp.errorhandler(DocsError)
-def docs_error(exc):
-    return jsonify({"error": exc.message}), exc.status
-
-
-@bp.get("/api/docs")
-def docs_list():
-    """Metadata for every doc, newest update first. ``?prefix=`` filters a path."""
-    prefix = request.args.get("prefix") or None
-    author = request.args.get("author")
-    limit = docs.clean_limit(request.args.get("limit"))
+@router.get("/api/docs")
+async def docs_list(
+    prefix: str | None = None,
+    author: str | None = None,
+    limit: str | None = None,
+    offset: str = "0",
+    content: str = "",
+):
+    """Metadata for every doc, newest update first; ``prefix`` filters a path."""
     try:
-        offset = int(request.args.get("offset", 0))
+        start = int(offset)
     except (TypeError, ValueError):
-        raise DocsError("offset must be a number") from None
-    with_content = str(request.args.get("content", "")).lower() in ("1", "true", "yes")
-    return jsonify(
-        docs.listing(
-            prefix,
+        return error("offset must be a number")
+    try:
+        return await run_in_threadpool(
+            docs.listing,
+            prefix or None,
             author=author,
-            limit=limit,
-            offset=offset,
-            with_content=with_content,
+            limit=docs.clean_limit(limit),
+            offset=start,
+            with_content=str(content).lower() in TRUTHY,
         )
-    )
+    except DocsError as exc:
+        return error(exc.message, exc.status)
 
 
-@bp.get("/api/docs/tree")
-def docs_tree():
-    """Folders with counts and at most ``?per=`` docs each, plus the remainder sizes."""
+@router.get("/api/docs/tree")
+async def docs_tree(per: str = "5", author: str | None = None):
+    """Folders with counts and at most ``per`` docs each, plus remainder sizes."""
     try:
-        per_folder = int(request.args.get("per", 5))
+        per_folder = int(per)
     except (TypeError, ValueError):
-        raise DocsError("per must be a number") from None
-    author = request.args.get("author")
-    return jsonify(docs.tree(per_folder=per_folder, author=author))
+        return error("per must be a number")
+    return await run_in_threadpool(docs.tree, per_folder, author)
 
 
-@bp.get("/api/docs/authors")
-def docs_authors():
-    """Authors in use with doc counts, alphabetical ('' = no author)."""
-    return jsonify({"authors": docs.authors()})
+@router.get("/api/docs/authors")
+async def docs_authors():
+    return {"authors": await run_in_threadpool(docs.authors)}
 
 
-@bp.get("/api/docs/prefixes")
-def docs_prefixes():
-    """Directories that hold docs, with direct and recursive counts."""
-    return jsonify({"prefixes": docs.prefixes(), "tags": docs.tags()})
+@router.get("/api/docs/prefixes")
+async def docs_prefixes():
+    prefixes = await run_in_threadpool(docs.prefixes)
+    tags = await run_in_threadpool(docs.tags)
+    return {"prefixes": prefixes, "tags": tags}
 
 
-@bp.get("/api/docs/search")
-def docs_search():
-    """GET /api/docs/search?q=...&prefix=...&limit=N — FTS5 with snippets."""
-    return jsonify(
-        docs.search(
-            request.args.get("q", ""),
-            prefix=request.args.get("prefix") or None,
-            prefix_q=docs.clean_prefix_query(request.args.get("prefix_q")),
-            author=request.args.get("author"),
-            limit=docs.clean_limit(request.args.get("limit")),
-        )
-    )
-
-
-@bp.get("/api/docs/semantic")
-def docs_semantic():
-    """GET /api/docs/semantic?q=...&prefix=...&limit=N — cosine over local vectors."""
+@router.get("/api/docs/search")
+async def docs_search(
+    q: str = "",
+    prefix: str | None = None,
+    prefix_q: str | None = None,
+    author: str | None = None,
+    limit: str | None = None,
+):
+    """FTS5 over prefixes, content and tags, with snippets."""
     try:
-        result = docs_embed.search(
-            request.args.get("q", ""),
-            prefix=(
-                docs.clean_prefix(request.args["prefix"]) if request.args.get("prefix") else None
-            ),
-            prefix_q=docs.clean_prefix_query(request.args.get("prefix_q")),
-            author=request.args.get("author"),
-            limit=docs.clean_limit(request.args.get("limit"), default=10),
-            sort=request.args.get("sort") or "blend",
+        return await run_in_threadpool(
+            docs.search,
+            q,
+            prefix=prefix or None,
+            prefix_q=docs.clean_prefix_query(prefix_q),
+            author=author,
+            limit=docs.clean_limit(limit),
+        )
+    except DocsError as exc:
+        return error(exc.message, exc.status)
+
+
+@router.get("/api/docs/semantic")
+async def docs_semantic(
+    q: str = "",
+    prefix: str | None = None,
+    prefix_q: str | None = None,
+    author: str | None = None,
+    limit: str | None = None,
+    sort: str = "blend",
+):
+    """Cosine over the local vectors; 503 when the embedder is unavailable."""
+    try:
+        cleaned = docs.clean_prefix(prefix) if prefix else None
+        return await run_in_threadpool(
+            docs_embed.search,
+            q,
+            prefix=cleaned,
+            prefix_q=docs.clean_prefix_query(prefix_q),
+            author=author,
+            limit=docs.clean_limit(limit, default=10),
+            sort=sort or "blend",
         )
     except EmbedError as exc:
-        return jsonify({"error": str(exc), "available": False}), 503
-    return jsonify(result)
+        return JSONResponse(status_code=503, content={"error": str(exc), "available": False})
+    except DocsError as exc:
+        return error(exc.message, exc.status)
 
 
-@bp.get("/api/docs/index")
-def docs_index_status():
+@router.get("/api/docs/index")
+async def docs_index_status():
     """How much of the corpus carries vectors for the configured model."""
-    total = docs.listing(limit=1)["total"]
-    return jsonify(
-        {
-            "model": docs_embed.config.EMBED_MODEL,
-            "ollama": docs_embed.config.OLLAMA_URL,
-            "pending": docs_embed.pending_count(),
-            "total": total,
-            "available": True,
-        }
-    )
+    total = (await run_in_threadpool(docs.listing, limit=1))["total"]
+    return {
+        "model": docs_embed.config.EMBED_MODEL,
+        "ollama": docs_embed.config.OLLAMA_URL,
+        "pending": await run_in_threadpool(docs_embed.pending_count),
+        "total": total,
+        "available": True,
+    }
 
 
-@bp.post("/api/docs/reindex")
-def docs_reindex():
+@router.post("/api/docs/reindex")
+async def docs_reindex():
     """Queue every doc whose vectors are missing, stale, or from another model."""
-    queued = docs_embed.reindex_all()
-    return jsonify({"queued": queued, "model": docs_embed.config.EMBED_MODEL})
+    queued = await run_in_threadpool(docs_embed.reindex_all)
+    return {"queued": queued, "model": docs_embed.config.EMBED_MODEL}
 
 
-@bp.get("/api/docs/<path:prefix>")
-def docs_get(prefix):
-    doc = docs.fetch(prefix)
+@router.get("/api/docs/{prefix:path}")
+async def docs_get(prefix: str):
+    doc = await run_in_threadpool(docs.fetch, prefix)
     if doc is None:
-        raise DocsError(f"no doc at prefix {docs.clean_prefix(prefix)}", 404)
-    return jsonify(doc)
+        return error(f"no doc at prefix {docs.clean_prefix(prefix)}", 404)
+    return doc
 
 
-@bp.put("/api/docs/<path:prefix>")
-def docs_put(prefix):
-    """Create or replace one doc. Body: {"content", "author", "tags"}."""
-    body = request.get_json(silent=True)
+@router.put("/api/docs/{prefix:path}")
+async def docs_put(prefix: str, request: Request):
+    """Create or replace one doc. Body: content, author, tags."""
+    body = await _object(request, FIELDS)
     if body is None:
-        body = {}
-    if not isinstance(body, dict):
-        raise DocsError("request body must be a JSON object")
-    unknown = sorted(set(body) - set(FIELDS))
-    if unknown:
-        raise DocsError(f"unknown field(s): {', '.join(unknown)}; allowed: {', '.join(FIELDS)}")
-    doc, created = docs.put(
-        prefix,
-        content=body.get("content"),
-        author=body.get("author"),
-        tags=body.get("tags"),
-    )
-    return jsonify(doc), 201 if created else 200
+        return error("request body must be a JSON object")
+    try:
+        doc, created = await run_in_threadpool(
+            docs.put,
+            prefix,
+            content=body.get("content"),
+            author=body.get("author"),
+            tags=body.get("tags"),
+        )
+    except DocsError as exc:
+        return error(exc.message, exc.status)
+    return JSONResponse(status_code=201 if created else 200, content=doc)
 
 
-@bp.post("/api/docs")
-def docs_create():
-    """Create a doc from a JSON body that carries its own prefix."""
-    body = request.get_json(silent=True)
-    if not isinstance(body, dict):
-        raise DocsError("request body must be a JSON object")
-    unknown = sorted(set(body) - set(FIELDS))
-    if unknown:
-        raise DocsError(f"unknown field(s): {', '.join(unknown)}; allowed: {', '.join(FIELDS)}")
+@router.post("/api/docs")
+async def docs_create(request: Request):
+    """Create a doc from a body that carries its own prefix."""
+    body = await _object(request, FIELDS)
+    if body is None:
+        return error("request body must be a JSON object")
     if "prefix" not in body:
-        raise DocsError("prefix is required")
-    doc, created = docs.put(
-        body["prefix"],
-        content=body.get("content"),
-        author=body.get("author"),
-        tags=body.get("tags"),
-        create_only=True,
-    )
-    return jsonify(doc), 201 if created else 200
+        return error("prefix is required")
+    try:
+        doc, created = await run_in_threadpool(
+            docs.put,
+            body["prefix"],
+            content=body.get("content"),
+            author=body.get("author"),
+            tags=body.get("tags"),
+            create_only=True,
+        )
+    except DocsError as exc:
+        return error(exc.message, exc.status)
+    return JSONResponse(status_code=201 if created else 200, content=doc)
 
 
-@bp.patch("/api/docs/<path:prefix>")
-def docs_patch(prefix):
-    """Update only the fields present in the body (content, author, tags)."""
-    body = request.get_json(silent=True)
+@router.patch("/api/docs/{prefix:path}")
+async def docs_patch(prefix: str, request: Request):
+    """Update only the fields present in the body."""
+    body = await _object(request, ("content", "author", "tags"), label="content, author, tags")
+    if body is None:
+        return error("request body must be a JSON object")
+    try:
+        return await run_in_threadpool(docs.patch, prefix, body)
+    except DocsError as exc:
+        return error(exc.message, exc.status)
+
+
+@router.delete("/api/docs/{prefix:path}")
+async def docs_delete(prefix: str):
+    try:
+        return {"deleted": await run_in_threadpool(docs.delete, prefix)}
+    except DocsError as exc:
+        return error(exc.message, exc.status)
+
+
+async def _object(request: Request, allowed: tuple[str, ...], label: str | None = None):
+    try:
+        body = await request.json()
+    except ValueError:
+        return None
     if not isinstance(body, dict):
-        raise DocsError("request body must be a JSON object")
-    unknown = sorted(set(body) - {"content", "author", "tags"})
+        return None
+    unknown = sorted(set(body) - set(allowed))
     if unknown:
-        raise DocsError(f"unknown field(s): {', '.join(unknown)}; allowed: content, author, tags")
-    return jsonify(docs.patch(prefix, body))
-
-
-@bp.delete("/api/docs/<path:prefix>")
-def docs_delete(prefix):
-    deleted = docs.delete(prefix)
-    return jsonify({"deleted": deleted})
+        raise DocsError(
+            f"unknown field(s): {', '.join(unknown)}; allowed: {label or ', '.join(allowed)}"
+        )
+    return body

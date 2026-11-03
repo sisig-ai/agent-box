@@ -1,13 +1,13 @@
-"""HTTP blueprint for the web-shell endpoints (routes only).
+"""Shell endpoints (FastAPI).
 
-Interactive shell tab: each browser session owns a tmux session on the host
-(started with cwd ~). Flask stays stateless — any gunicorn worker can proxy any
-shell session, since persistence lives in host tmux, not in this process. The
-backend lives in ``dashboard.shell.tmux`` (shared with the websocket gateway).
-No extra deps: stdlib subprocess + local tmux process under the dashboard user.
+Each browser session owns a tmux session on the host; persistence lives in
+tmux, not in this process. The tmux helpers block on subprocess, so each call
+runs in the threadpool.
 """
 
-from flask import Blueprint, jsonify, request
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 
 from dashboard.shell.tmux import (
     capture_pane,
@@ -22,102 +22,106 @@ from dashboard.shell.tmux import (
     send_key,
 )
 
-bp = Blueprint("shell", __name__)
+router = APIRouter()
 
 
-@bp.post("/api/shell/new")
-def shell_new():
-    """Create (or attach to) a host tmux session starting in ~. JSON {id?, cols?, rows?}."""
-    body = request.get_json(silent=True) or {}
+def error(message: str, status: int) -> JSONResponse:
+    return JSONResponse(status_code=status, content={"error": message})
+
+
+async def _body(request: Request) -> dict:
+    try:
+        body = await request.json()
+    except ValueError:
+        return {}
+    return body if isinstance(body, dict) else {}
+
+
+@router.post("/api/shell/new")
+async def shell_new(request: Request):
+    """Create (or attach to) a host tmux session starting in ~."""
+    body = await _body(request)
     sid = check_shell_id(body.get("id")) or new_shell_id()
     dims = parse_dims(body.get("cols", 80), body.get("rows", 24)) or (80, 24)
-    status, payload = ensure_session(sid, *dims)
+    status, payload = await run_in_threadpool(ensure_session, sid, *dims)
     if status != "ok":
-        return jsonify({"error": payload}), 500
-    return jsonify(payload)
+        return error(payload, 500)
+    return payload
 
 
-@bp.get("/api/shell/pane")
-def shell_pane():
-    """Snapshot of the visible pane: {text, cursor_x, cursor_y, cols, rows, cmd, alive}."""
-    sid = check_shell_id(request.args.get("id"))
+@router.get("/api/shell/pane")
+async def shell_pane(id: str | None = None):
+    """Snapshot of the visible pane."""
+    sid = check_shell_id(id)
     if sid is None:
-        return jsonify({"error": "unknown shell id"}), 404
-    snap = capture_pane(sid)
+        return error("unknown shell id", 404)
+    snap = await run_in_threadpool(capture_pane, sid)
     if snap.get("error"):
-        return jsonify({"error": snap["error"]}), 504
+        return error(snap["error"], 504)
     if not snap["alive"]:
-        return jsonify({"id": sid, "alive": False}), 404
-    return jsonify(snap)
+        return JSONResponse(status_code=404, content={"id": sid, "alive": False})
+    return snap
 
 
-@bp.post("/api/shell/input")
-def shell_input():
-    """Type literal text (stdin-piped, no shell quoting). JSON {id, text}."""
-    body = request.get_json(silent=True) or {}
+@router.post("/api/shell/input")
+async def shell_input(request: Request):
+    """Type literal text (stdin-piped, no shell quoting)."""
+    body = await _body(request)
     sid = check_shell_id(body.get("id"))
     if sid is None:
-        return jsonify({"error": "id and non-empty text required"}), 400
-    status, msg = paste_text(sid, body.get("text", ""))
+        return error("id and non-empty text required", 400)
+    status, msg = await run_in_threadpool(paste_text, sid, body.get("text", ""))
     if status == "ok":
-        return jsonify({"ok": True})
-    if status == "gone":
-        return jsonify({"error": msg}), 404
-    if status == "bad":
-        return jsonify({"error": msg}), 400
-    return jsonify({"error": msg}), 500
+        return {"ok": True}
+    return error(msg, {"gone": 404, "bad": 400}.get(status, 500))
 
 
-@bp.post("/api/shell/key")
-def shell_key():
-    """Send one allowlisted special key (Enter, arrows, Ctrl-C, …). JSON {id, key}."""
-    body = request.get_json(silent=True) or {}
+@router.post("/api/shell/key")
+async def shell_key(request: Request):
+    """Send one allowlisted special key (Enter, arrows, Ctrl-C, …)."""
+    body = await _body(request)
     sid = check_shell_id(body.get("id"))
     if sid is None:
-        return jsonify({"error": "unknown shell id or key"}), 400
-    status, msg = send_key(sid, body.get("key", ""))
+        return error("unknown shell id or key", 400)
+    status, msg = await run_in_threadpool(send_key, sid, body.get("key", ""))
     if status == "ok":
-        return jsonify({"ok": True})
-    if status == "gone":
-        return jsonify({"error": msg}), 404
-    if status == "bad":
-        return jsonify({"error": msg}), 400
-    return jsonify({"error": msg}), 500
+        return {"ok": True}
+    return error(msg, {"gone": 404, "bad": 400}.get(status, 500))
 
 
-@bp.post("/api/shell/resize")
-def shell_resize():
-    """Resize the pty. JSON {id, cols, rows}."""
-    body = request.get_json(silent=True) or {}
+@router.post("/api/shell/resize")
+async def shell_resize(request: Request):
+    """Resize the pty."""
+    body = await _body(request)
     sid = check_shell_id(body.get("id"))
     if sid is None:
-        return jsonify({"error": "unknown shell id"}), 400
+        return error("unknown shell id", 400)
     dims = parse_dims(body.get("cols", 80), body.get("rows", 24))
     if dims is None:
-        return jsonify({"error": "cols/rows must be numbers"}), 400
-    status, payload = resize_session(sid, *dims)
+        return error("cols/rows must be numbers", 400)
+    status, payload = await run_in_threadpool(resize_session, sid, *dims)
     if status != "ok":
-        return jsonify({"error": payload}), 404
-    return jsonify({"ok": True, "cols": payload["cols"], "rows": payload["rows"]})
+        return error(payload, 404)
+    return {"ok": True, "cols": payload["cols"], "rows": payload["rows"]}
 
 
-@bp.post("/api/shell/kill")
-def shell_kill():
-    """Destroy the host tmux session. JSON {id}."""
-    body = request.get_json(silent=True) or {}
+@router.post("/api/shell/kill")
+async def shell_kill(request: Request):
+    """Destroy the host tmux session."""
+    body = await _body(request)
     sid = check_shell_id(body.get("id"))
     if sid is None:
-        return jsonify({"error": "unknown shell id"}), 400
-    status, payload = kill_session(sid)
+        return error("unknown shell id", 400)
+    status, payload = await run_in_threadpool(kill_session, sid)
     if status != "ok":
-        return jsonify({"error": payload}), 504
-    return jsonify({"ok": True, "id": sid})
+        return error(payload, 504)
+    return {"ok": True, "id": sid}
 
 
-@bp.get("/api/shell/list")
-def shell_list():
+@router.get("/api/shell/list")
+async def shell_list():
     """List dashboard-owned host shell sessions."""
-    data = list_sessions()
+    data = await run_in_threadpool(list_sessions)
     if data is None:
-        return jsonify({"error": "host command timed out"}), 504
-    return jsonify(data)
+        return error("host command timed out", 504)
+    return data

@@ -7,8 +7,6 @@ Write is in place, so file mode and ownership are kept.
 
 import os
 
-from flask import jsonify
-
 from .fs_paths import fs_error, fs_norm
 
 # One editable file ceiling; larger files fall back to download.
@@ -39,9 +37,7 @@ def read_text_file(path_raw):
         text = data.decode("utf-8")
     except UnicodeDecodeError:
         return fs_error("binary file", 415)
-    return jsonify(
-        {"path": str(p), "name": p.name, "text": text, "size": len(data), "mtime": mtime}
-    )
+    return {"path": str(p), "name": p.name, "text": text, "size": len(data), "mtime": mtime}
 
 
 def write_text_file(body):
@@ -62,4 +58,4 @@ def write_text_file(body):
         st = p.stat()
     except OSError as exc:
         return fs_error(f"could not save file ({exc.strerror or exc})", 500)
-    return jsonify({"path": str(p), "size": st.st_size, "mtime": st.st_mtime})
+    return {"path": str(p), "size": st.st_size, "mtime": st.st_mtime}

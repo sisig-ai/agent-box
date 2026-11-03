@@ -31,7 +31,7 @@ class Response:
 class Client:
     def __init__(self, app):
         self._client = TestClient(app)
-        self.application = getattr(app.state, "legacy", None)
+        self.application = app
 
     def _request(self, method, path, **kwargs):
         # httpx collapses ".." before sending; Flask's client did not. Encode the

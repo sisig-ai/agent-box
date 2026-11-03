@@ -1,18 +1,18 @@
-"""HTTP blueprint for the Ops Board (formerly Kanban): lanes + cards.
+"""Ops Board API (FastAPI): lanes + cards.
 
-Canonical routes live under /api/opsboard; /api/kanban/* are deprecated
-aliases bound to the same view functions (other bots still call them).
-
-No auth, same as the rest of the dashboard: local stack, tailnet only.
-Errors are JSON ``{"error": "..."}`` with a 400 / 404 / 409 status.
+Canonical routes live under /api/opsboard; /api/kanban/* stay as deprecated
+aliases on the same handlers. Errors are ``{"error": "..."}`` with 400/404/409,
+produced by the app-level KanbanError handler. SQLite work runs in the pool.
 """
 
-from flask import Blueprint, jsonify, request
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 
 from . import db, kanban, kanban_embed, kanban_lanes
 from .kanban import KanbanError
 
-bp = Blueprint("kanban", __name__)
+router = APIRouter()
 
 TITLE_MAX = 500
 OWNER_MAX = 100
@@ -22,14 +22,12 @@ LANE_NAME_MAX = 60
 TRUTHY = {"1", "true", "yes", "on", ""}
 
 
-@bp.errorhandler(KanbanError)
-def kanban_error(exc):
-    return jsonify({"error": exc.message}), exc.status
-
-
-def json_body(allowed):
+async def json_body(request: Request, allowed: tuple[str, ...]) -> dict:
     """The request's JSON object, rejecting non-objects and unknown keys."""
-    body = request.get_json(silent=True)
+    try:
+        body = await request.json()
+    except ValueError:
+        body = None
     if not isinstance(body, dict):
         raise KanbanError("request body must be a JSON object (Content-Type: application/json)")
     unknown = sorted(set(body) - set(allowed))
@@ -60,8 +58,6 @@ def clean_owner(raw):
 
 
 def clean_opname(raw):
-    """Optional operation name ("Operation Valhalla"); null or blank clears it.
-    Inner whitespace is collapsed so filters match predictably."""
     if raw is None:
         return None
     if not isinstance(raw, str):
@@ -73,7 +69,7 @@ def clean_opname(raw):
 
 
 def clean_body(raw):
-    """Markdown body; null clears it. Stored verbatim (only \r\n -> \n)."""
+    """Markdown body; null clears it. Stored verbatim (only \\r\\n -> \\n)."""
     if raw is None:
         return ""
     if not isinstance(raw, str):
@@ -88,11 +84,7 @@ DOCS_MAX = 20
 
 
 def clean_docs(raw):
-    """List of doc prefixes this card points at; null/[] clears them.
-
-    Format is checked here; existence is not, so an agent can link a doc it is
-    about to write. The UI marks missing targets instead.
-    """
+    """Doc prefixes this card points at; format checked, existence not."""
     if raw is None:
         return []
     if not isinstance(raw, list):
@@ -148,121 +140,116 @@ def parse_card_id(raw):
         raise KanbanError("card not found", 404) from None
 
 
-def flag(name):
-    raw = request.args.get(name)
+def flag(params: dict, name: str) -> bool:
+    raw = params.get(name)
     return raw is not None and raw.strip().lower() in TRUTHY
 
 
-def filtered_board(archived=None):
-    """kanban.board() with the shared ?status= / ?owner= / ?opname= /
-    ?include_archived= / ?include_body= filters."""
-    status = request.args.get("status")
-    owner = request.args.get("owner")
-    opname = request.args.get("opname")
+def filtered_board(params: dict, archived=None):
+    """kanban.board() with the shared status/owner/opname/archived/body filters."""
+    status = params.get("status")
+    owner = params.get("owner")
+    opname = params.get("opname")
     if archived is None:
-        archived = "include" if flag("include_archived") else "exclude"
+        archived = "include" if flag(params, "include_archived") else "exclude"
     owner = owner.strip() if owner is not None else None
     opname = " ".join(opname.split()) if opname is not None else None
-    return kanban.board(status or None, owner, archived, flag("include_body"), opname)
+    return kanban.board(status or None, owner, archived, flag(params, "include_body"), opname)
 
 
-# ---------------- board ----------------
+async def _params(request: Request) -> dict:
+    return dict(request.query_params)
 
 
-@bp.get("/api/opsboard")
-@bp.get("/api/kanban")
-def board_get():
-    """GET /api/kanban?status=&owner=&opname=&include_archived=&include_body= — lanes + cards.
-
-    Cards carry ``has_body`` / ``body_preview`` / ``body_tasks``; the full
-    markdown ``body`` only with ``?include_body=1`` (or GET /api/kanban/cards/:id)."""
-    return jsonify(filtered_board())
+@router.get("/api/opsboard")
+@router.get("/api/kanban")
+async def board_get(request: Request):
+    """Lanes + cards; full markdown bodies only with include_body=1."""
+    params = await _params(request)
+    return await run_in_threadpool(filtered_board, params)
 
 
-# ---------------- cards ----------------
+@router.get("/api/opsboard/cards")
+@router.get("/api/kanban/cards")
+async def cards_list(request: Request):
+    params = await _params(request)
+    return (await run_in_threadpool(filtered_board, params))["cards"]
 
 
-@bp.get("/api/opsboard/cards")
-@bp.get("/api/kanban/cards")
-def cards_list():
-    """GET /api/kanban/cards — the cards array alone (same filters)."""
-    return jsonify(filtered_board()["cards"])
+@router.get("/api/opsboard/archived")
+@router.get("/api/kanban/archived")
+async def archived_list(request: Request):
+    params = await _params(request)
+    return (await run_in_threadpool(filtered_board, params, "only"))["cards"]
 
 
-@bp.get("/api/opsboard/archived")
-@bp.get("/api/kanban/archived")
-def archived_list():
-    """GET /api/kanban/archived?status=&owner= — archived cards, newest first."""
-    return jsonify(filtered_board("only")["cards"])
-
-
-@bp.get("/api/opsboard/semantic")
-@bp.get("/api/kanban/semantic")
-def opsboard_semantic():
-    """Meaning-based card search: embed the query, cosine-rank stored card vectors."""
-    query = (request.args.get("q") or "").strip()
+def _semantic(params: dict):
+    query = (params.get("q") or "").strip()
     if not query:
         raise KanbanError("q is required")
-    archived = request.args.get("archived") or "exclude"
+    archived = params.get("archived") or "exclude"
     if archived not in ("exclude", "include", "only"):
         raise KanbanError("archived must be one of: exclude, include, only")
     try:
-        limit = max(1, min(int(request.args.get("limit", 15)), 200))
+        limit = max(1, min(int(params.get("limit", 15)), 200))
     except (TypeError, ValueError):
         raise KanbanError("limit must be a number") from None
     with db.get_db() as conn:
-        status = request.args.get("status")
+        status = params.get("status")
         lane_id = kanban.require_lane(conn, status)["id"] if status else None
         try:
-            return jsonify(
-                kanban_embed.search(
-                    query,
-                    limit=limit,
-                    archived=archived,
-                    lane_id=lane_id,
-                    owner=request.args.get("owner") or None,
-                    opname=request.args.get("opname") or None,
-                    sort=request.args.get("sort") or "blend",
-                    conn=conn,
-                )
+            return kanban_embed.search(
+                query,
+                limit=limit,
+                archived=archived,
+                lane_id=lane_id,
+                owner=params.get("owner") or None,
+                opname=params.get("opname") or None,
+                sort=params.get("sort") or "blend",
+                conn=conn,
             )
         except kanban_embed.EmbedError as exc:
-            return jsonify({"error": str(exc), "available": False}), 503
+            return JSONResponse(status_code=503, content={"error": str(exc), "available": False})
 
 
-@bp.post("/api/opsboard/reindex")
-@bp.post("/api/kanban/reindex")
-def opsboard_reindex():
-    """Queue every card whose vectors are missing, stale or from another model."""
-    return jsonify({"queued": kanban_embed.reindex_all(), "model": kanban_embed.config.EMBED_MODEL})
+@router.get("/api/opsboard/semantic")
+@router.get("/api/kanban/semantic")
+async def opsboard_semantic(request: Request):
+    """Meaning-based card search over the stored vectors."""
+    return await run_in_threadpool(_semantic, await _params(request))
 
 
-@bp.get("/api/opsboard/opnames")
-@bp.get("/api/kanban/opnames")
-def opnames_list():
-    """GET /api/opsboard/opnames?include_archived= — distinct opnames with counts.
+@router.post("/api/opsboard/reindex")
+@router.post("/api/kanban/reindex")
+async def opsboard_reindex():
+    queued = await run_in_threadpool(kanban_embed.reindex_all)
+    return {"queued": queued, "model": kanban_embed.config.EMBED_MODEL}
 
-    Archived cards count by default (``include_archived=0`` limits to the board)."""
-    from . import db
 
-    raw = request.args.get("include_archived")
+@router.get("/api/opsboard/opnames")
+@router.get("/api/kanban/opnames")
+async def opnames_list(request: Request):
+    """Distinct opnames with counts; archived cards count by default."""
+    raw = (await _params(request)).get("include_archived")
     archived = "exclude" if raw is not None and raw.strip().lower() not in TRUTHY else "include"
-    return jsonify(kanban.opnames(db.get_db(), archived))
+    return await run_in_threadpool(kanban.opnames, db.get_db(), archived)
 
 
-@bp.post("/api/opsboard/archive-done")
-@bp.post("/api/kanban/archive-done")
-def archive_done():
-    """POST /api/kanban/archive-done — archive every visible card in the Done lane."""
-    return jsonify(kanban.archive_lane("Done"))
+@router.post("/api/opsboard/archive-done")
+@router.post("/api/kanban/archive-done")
+async def archive_done():
+    return await run_in_threadpool(kanban.archive_lane, "Done")
 
 
-@bp.post("/api/opsboard/cards")
-@bp.post("/api/kanban/cards")
-def card_create():
-    body = json_body(("title", "owner", "status", "position", "body", "opname", "docs"))
+@router.post("/api/opsboard/cards")
+@router.post("/api/kanban/cards")
+async def card_create(request: Request):
+    body = await json_body(
+        request, ("title", "owner", "status", "position", "body", "opname", "docs")
+    )
     status = clean_status(body["status"]) if body.get("status") not in (None, "") else None
-    card = kanban.create_card(
+    card = await run_in_threadpool(
+        kanban.create_card,
         clean_title(body.get("title")),
         clean_owner(body.get("owner")),
         status,
@@ -271,24 +258,29 @@ def card_create():
         clean_opname(body.get("opname")),
         clean_docs(body.get("docs")),
     )
-    return jsonify(card), 201
+    return JSONResponse(status_code=201, content=card)
 
 
-@bp.get("/api/opsboard/cards/<card_id>")
-@bp.get("/api/kanban/cards/<card_id>")
-def card_get(card_id):
-    from . import db
+def _card_with_comments(raw_id):
     from .kanban_comments import comments
 
-    conn, card_id = db.get_db(), parse_card_id(card_id)
-    return jsonify({**kanban.card(conn, card_id), "comments": comments(conn, card_id)})
+    conn, card_id = db.get_db(), parse_card_id(raw_id)
+    return {**kanban.card(conn, card_id), "comments": comments(conn, card_id)}
 
 
-@bp.patch("/api/opsboard/cards/<card_id>")
-@bp.patch("/api/kanban/cards/<card_id>")
-def card_patch(card_id):
+@router.get("/api/opsboard/cards/{card_id}")
+@router.get("/api/kanban/cards/{card_id}")
+async def card_get(card_id: str):
+    return await run_in_threadpool(_card_with_comments, card_id)
+
+
+@router.patch("/api/opsboard/cards/{card_id}")
+@router.patch("/api/kanban/cards/{card_id}")
+async def card_patch(card_id: str, request: Request):
     card_id = parse_card_id(card_id)
-    body = json_body(("title", "owner", "body", "opname", "status", "position", "archived", "docs"))
+    body = await json_body(
+        request, ("title", "owner", "body", "opname", "status", "position", "archived", "docs")
+    )
     if not body:
         raise KanbanError(
             "nothing to update; send any of title, owner, body, opname, status, position, archived"
@@ -312,62 +304,55 @@ def card_patch(card_id):
         if not isinstance(body["archived"], bool):
             raise KanbanError("archived must be true or false")
         changes["archived"] = body["archived"]
-    return jsonify(kanban.update_card(card_id, changes))
+    return await run_in_threadpool(kanban.update_card, card_id, changes)
 
 
-@bp.delete("/api/opsboard/cards/<card_id>")
-@bp.delete("/api/kanban/cards/<card_id>")
-def card_delete(card_id):
-    card = kanban.delete_card(parse_card_id(card_id))
-    return jsonify({"deleted": card["id"], "card": card})
+@router.delete("/api/opsboard/cards/{card_id}")
+@router.delete("/api/kanban/cards/{card_id}")
+async def card_delete(card_id: str):
+    card = await run_in_threadpool(kanban.delete_card, parse_card_id(card_id))
+    return {"deleted": card["id"], "card": card}
 
 
-# ---------------- lanes ----------------
+@router.get("/api/opsboard/lanes")
+@router.get("/api/kanban/lanes")
+async def lanes_list():
+    return await run_in_threadpool(kanban.lanes, db.get_db())
 
 
-@bp.get("/api/opsboard/lanes")
-@bp.get("/api/kanban/lanes")
-def lanes_list():
-    from . import db
-
-    return jsonify(kanban.lanes(db.get_db()))
-
-
-@bp.post("/api/opsboard/lanes")
-@bp.post("/api/kanban/lanes")
-def lane_create():
-    body = json_body(("name", "position"))
-    lane = kanban_lanes.create_lane(
-        clean_lane_name(body.get("name")), clean_position(body.get("position"))
+@router.post("/api/opsboard/lanes")
+@router.post("/api/kanban/lanes")
+async def lane_create(request: Request):
+    body = await json_body(request, ("name", "position"))
+    lane = await run_in_threadpool(
+        kanban_lanes.create_lane,
+        clean_lane_name(body.get("name")),
+        clean_position(body.get("position")),
     )
-    return jsonify(lane), 201
+    return JSONResponse(status_code=201, content=lane)
 
 
-@bp.patch("/api/opsboard/lanes/<lane_ref>")
-@bp.patch("/api/kanban/lanes/<lane_ref>")
-def lane_patch(lane_ref):
-    body = json_body(("name", "position"))
+@router.patch("/api/opsboard/lanes/{lane_ref}")
+@router.patch("/api/kanban/lanes/{lane_ref}")
+async def lane_patch(lane_ref: str, request: Request):
+    body = await json_body(request, ("name", "position"))
     if not body:
         raise KanbanError("nothing to update; send name and/or position")
     name = clean_lane_name(body["name"]) if "name" in body else None
-    return jsonify(kanban_lanes.update_lane(lane_ref, name, clean_position(body.get("position"))))
-
-
-@bp.delete("/api/opsboard/lanes/<lane_ref>")
-@bp.delete("/api/kanban/lanes/<lane_ref>")
-def lane_delete(lane_ref):
-    force = request.args.get("force")
-    target = request.args.get("target") or request.args.get("move_to")
-    return jsonify(
-        kanban_lanes.delete_lane(
-            lane_ref,
-            force=force is not None and force.lower() in TRUTHY,
-            target=target or None,
-        )
+    return await run_in_threadpool(
+        kanban_lanes.update_lane, lane_ref, name, clean_position(body.get("position"))
     )
 
 
-from . import (  # noqa: E402
-    kanban_comments_api,  # noqa: F401  (registers comment routes on bp)
-    kanban_search_api,  # noqa: F401  (registers search route on bp)
-)
+@router.delete("/api/opsboard/lanes/{lane_ref}")
+@router.delete("/api/kanban/lanes/{lane_ref}")
+async def lane_delete(lane_ref: str, request: Request):
+    params = await _params(request)
+    force = params.get("force")
+    target = params.get("target") or params.get("move_to")
+    return await run_in_threadpool(
+        kanban_lanes.delete_lane,
+        lane_ref,
+        force=force is not None and force.lower() in TRUTHY,
+        target=target or None,
+    )

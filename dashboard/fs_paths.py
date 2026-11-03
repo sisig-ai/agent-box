@@ -9,8 +9,6 @@ import stat
 import tempfile
 from pathlib import Path
 
-from flask import jsonify
-
 from .config import FS_HOME
 
 
@@ -89,8 +87,17 @@ def fs_places():
     return places
 
 
+class FsError(Exception):
+    """A filesystem refusal the router turns into {"error": ...} + status."""
+
+    def __init__(self, message, status=400):
+        super().__init__(message)
+        self.message = message
+        self.status = status
+
+
 def fs_error(msg, code):
-    return jsonify({"error": msg}), code
+    raise FsError(msg, code)
 
 
 def fs_body_path(body):

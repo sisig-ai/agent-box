@@ -1,8 +1,8 @@
 """Host filesystem operations: list, stat, download, upload, create, delete.
 
 Classic SFTP-style browser over the host filesystem. Every operation takes
-plain Python values and returns a Flask response; the blueprint in ``fs_api``
-only pulls those values off the request. Path helpers live in ``fs_paths``.
+plain Python values and raise ``FsError`` on refusal; the router in ``fs_api``
+returns them. Path helpers live in ``fs_paths``.
 """
 
 import contextlib
@@ -10,8 +10,6 @@ import mimetypes
 import os
 import shutil
 from datetime import datetime
-
-from flask import jsonify, send_file
 
 from .config import FS_HOME
 from .fs_paths import fs_body_path, fs_entry, fs_error, fs_norm, fs_places, fs_safe_name
@@ -50,18 +48,16 @@ def list_directory(path_raw):
     if truncated:
         entries = entries[:FS_LIST_MAX]
     parent = None if p.parent == p else str(p.parent)
-    return jsonify(
-        {
-            "path": str(p),
-            "name": p.name or "/",
-            "parent": parent,
-            "home": str(FS_HOME),
-            "places": fs_places(),
-            "entries": entries,
-            "total": len(entries),
-            "truncated": truncated,
-        }
-    )
+    return {
+        "path": str(p),
+        "name": p.name or "/",
+        "parent": parent,
+        "home": str(FS_HOME),
+        "places": fs_places(),
+        "entries": entries,
+        "total": len(entries),
+        "truncated": truncated,
+    }
 
 
 def stat_path(path_raw):
@@ -105,7 +101,7 @@ def stat_path(path_raw):
                     info["group"] = _grp.getgrgid(st.st_gid).gr_name
         except OSError:
             pass
-    return jsonify(info)
+    return info
 
 
 def download_file(path_raw):
@@ -117,7 +113,7 @@ def download_file(path_raw):
         return fs_error("cannot download a directory", 400)
     if not os.access(p, os.R_OK):
         return fs_error("permission denied", 403)
-    return send_file(p, as_attachment=True, download_name=p.name, conditional=True)
+    return p
 
 
 def upload_files(target_raw, overwrite_raw, files):
@@ -145,11 +141,11 @@ def upload_files(target_raw, overwrite_raw, files):
     try:
         for name, f in incoming:
             dest = target / name
-            f.save(dest)
+            dest.write_bytes(f.file.read())
             saved.append(str(dest))
     except OSError as exc:
         return fs_error(f"upload failed: {exc.strerror or exc}", 500)
-    return jsonify({"saved": saved, "count": len(saved)})
+    return {"saved": saved, "count": len(saved)}
 
 
 def make_dir(body):
@@ -169,7 +165,7 @@ def make_dir(body):
         return fs_error("permission denied", 403)
     except OSError as exc:
         return fs_error(f"could not create folder: {exc.strerror or exc}", 500)
-    return jsonify(fs_entry(p))
+    return fs_entry(p)
 
 
 def touch_file(body):
@@ -190,7 +186,7 @@ def touch_file(body):
         return fs_error("permission denied", 403)
     except OSError as exc:
         return fs_error(f"could not create file: {exc.strerror or exc}", 500)
-    return jsonify(fs_entry(p))
+    return fs_entry(p)
 
 
 def rename_entry(body):
@@ -203,7 +199,7 @@ def rename_entry(body):
         return fs_error("a valid new name is required", 400)
     dest = src.parent / name
     if dest == src:
-        return jsonify(fs_entry(src))
+        return fs_entry(src)
     if dest.exists():
         return fs_error("already exists", 409)
     try:
@@ -212,7 +208,7 @@ def rename_entry(body):
         return fs_error("permission denied", 403)
     except OSError as exc:
         return fs_error(f"could not rename: {exc.strerror or exc}", 500)
-    return jsonify(fs_entry(dest))
+    return fs_entry(dest)
 
 
 def delete_entry(path_raw):
@@ -237,4 +233,4 @@ def delete_entry(path_raw):
         return fs_error("permission denied", 403)
     except OSError as exc:
         return fs_error(f"could not delete: {exc.strerror or exc}", 500)
-    return jsonify({"deleted": str(p)})
+    return {"deleted": str(p)}

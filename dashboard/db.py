@@ -1,8 +1,8 @@
 """SQLite access: schema, request-scoped connection reuse, WAL settings.
 
 The request connection lives in a context variable, so the same helper works
-inside an async FastAPI request and inside the Flask sub-app that still serves
-the unconverted routes (the WSGI bridge copies the context into its thread).
+in an ASGI request: the middleware opens it, routers reuse it from the event
+loop or a threadpool worker, and the middleware closes it.
 Outside a request (collector, CLI, tests) each call returns a fresh connection.
 """
 
@@ -56,10 +56,6 @@ def get_db():
     if session.conn is None:
         session.conn = connect()
     return session.conn
-
-
-def close_db(_error=None):
-    """Flask teardown hook: the ASGI middleware owns the session now."""
 
 
 def init_db():

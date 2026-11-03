@@ -29,19 +29,14 @@
 	<string>Interactive</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/path/to/agent-box/.venv/bin/gunicorn</string>
+		<string>/path/to/agent-box/.venv/bin/uvicorn</string>
 		<string>--workers</string>
 		<string>1</string>
-		<string>--threads</string>
-		<string>8</string>
-		<string>--bind</string>
+		<string>--host</string>
 		<string>HOST:5555</string>
 		<string>--timeout</string>
 		<string>45</string>
-		<string>--access-logfile</string>
-		<string>-</string>
-		<string>--error-logfile</string>
-		<string>-</string>
+
 		<string>app:app</string>
 	</array>
 	<key>RunAtLoad</key>

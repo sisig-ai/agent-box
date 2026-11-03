@@ -1,71 +1,90 @@
-"""HTTP blueprint for the filesystem explorer endpoints."""
+"""Filesystem explorer API (FastAPI).
 
-from flask import Blueprint, request
+Blocking work (scandir, stat, read/write, shutil) runs in the threadpool; the
+download path streams through FileResponse instead of reading into memory.
+"""
+
+from fastapi import APIRouter, File, Form, Request, UploadFile
+from fastapi.responses import FileResponse
+from starlette.concurrency import run_in_threadpool
 
 from . import fs, fs_text
 
-bp = Blueprint("fs", __name__)
+router = APIRouter()
 
 
-@bp.get("/api/fs/list")
-def fs_list():
-    """GET /api/fs/list?path=… — directory contents (defaults to ~)."""
-    return fs.list_directory(request.args.get("path"))
+@router.get("/api/fs/list")
+async def fs_list(path: str | None = None):
+    """Directory contents (defaults to ~)."""
+    return await run_in_threadpool(fs.list_directory, path)
 
 
-@bp.get("/api/fs/stat")
-def fs_stat():
-    """GET /api/fs/stat?path=… — one entry plus owner/permissions/mime detail."""
-    return fs.stat_path(request.args.get("path"))
+@router.get("/api/fs/stat")
+async def fs_stat(path: str | None = None):
+    """One entry plus owner/permissions/mime detail."""
+    return await run_in_threadpool(fs.stat_path, path)
 
 
-@bp.get("/api/fs/download")
-def fs_download():
-    """GET /api/fs/download?path=… — stream one file as an attachment."""
-    return fs.download_file(request.args.get("path"))
+@router.get("/api/fs/download")
+async def fs_download(path: str | None = None):
+    """Stream one file as an attachment."""
+    target = await run_in_threadpool(fs.download_file, path)
+    return FileResponse(target, filename=target.name)
 
 
-@bp.get("/api/fs/read")
-def fs_read():
-    """GET /api/fs/read?path=… — one UTF-8 text file for the inline editor."""
-    return fs_text.read_text_file(request.args.get("path"))
+@router.get("/api/fs/read")
+async def fs_read(path: str | None = None):
+    """One UTF-8 text file for the inline editor."""
+    return await run_in_threadpool(fs_text.read_text_file, path)
 
 
-@bp.put("/api/fs/write")
-def fs_write():
-    """PUT /api/fs/write — JSON {path, content}: overwrite one text file."""
-    return fs_text.write_text_file(request.get_json(silent=True) or {})
+@router.put("/api/fs/write")
+async def fs_write(request: Request):
+    """JSON {path, content}: overwrite one text file."""
+    try:
+        body = await request.json()
+    except ValueError:
+        body = {}
+    return await run_in_threadpool(fs_text.write_text_file, body if isinstance(body, dict) else {})
 
 
-@bp.post("/api/fs/upload")
-def fs_upload():
-    """POST /api/fs/upload — multipart {path: target dir, file: […], overwrite?}."""
-    return fs.upload_files(
-        request.form.get("path"),
-        request.form.get("overwrite", ""),
-        request.files.getlist("file"),
-    )
+@router.post("/api/fs/upload")
+async def fs_upload(
+    path: str = Form(...),
+    overwrite: str = Form(""),
+    file: list[UploadFile] | None = File(None),  # noqa: B008
+):
+    """Multipart {path: target dir, file: [...], overwrite?}."""
+    return await run_in_threadpool(fs.upload_files, path, overwrite, file or [])
 
 
-@bp.post("/api/fs/mkdir")
-def fs_mkdir():
-    """POST /api/fs/mkdir — JSON {path} or {parent, name}."""
-    return fs.make_dir(request.get_json(silent=True) or {})
+@router.post("/api/fs/mkdir")
+async def fs_mkdir(request: Request):
+    """JSON {path} or {parent, name}."""
+    return await run_in_threadpool(fs.make_dir, await _json(request))
 
 
-@bp.post("/api/fs/touch")
-def fs_touch():
-    """POST /api/fs/touch — JSON {path} or {parent, name}: create an empty file."""
-    return fs.touch_file(request.get_json(silent=True) or {})
+@router.post("/api/fs/touch")
+async def fs_touch(request: Request):
+    """JSON {path} or {parent, name}: create an empty file."""
+    return await run_in_threadpool(fs.touch_file, await _json(request))
 
 
-@bp.post("/api/fs/rename")
-def fs_rename():
-    """POST /api/fs/rename — JSON {path, name}: rename within the same folder."""
-    return fs.rename_entry(request.get_json(silent=True) or {})
+@router.post("/api/fs/rename")
+async def fs_rename(request: Request):
+    """JSON {path, name}: rename within the same folder."""
+    return await run_in_threadpool(fs.rename_entry, await _json(request))
 
 
-@bp.delete("/api/fs")
-def fs_delete():
-    """DELETE /api/fs?path=… — remove a file, symlink, or folder (recursive)."""
-    return fs.delete_entry(request.args.get("path"))
+@router.delete("/api/fs")
+async def fs_delete(path: str | None = None):
+    """Remove a file, symlink, or folder (recursive)."""
+    return await run_in_threadpool(fs.delete_entry, path)
+
+
+async def _json(request: Request) -> dict:
+    try:
+        body = await request.json()
+    except ValueError:
+        return {}
+    return body if isinstance(body, dict) else {}

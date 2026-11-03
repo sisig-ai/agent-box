@@ -1,6 +1,6 @@
 """Native macOS shell backend: local tmux, rooted in ~.
 
-Used by both the Flask HTTP API (dashboard.shell.api) and the websocket
+Used by both the HTTP API (dashboard.shell.api) and the websocket
 gateway (dashboard.ws) so the two transports behave identically. Stdlib only —
 no third-party deps: subprocess against the local tmux server.
 

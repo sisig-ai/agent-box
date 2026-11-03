@@ -217,9 +217,11 @@ def test_upload_target_not_a_directory_is_400(client, home):
     assert r.get_json() == {"error": "upload target is not a directory"}
 
 
-def test_upload_over_max_content_length_is_413(client, home):
-    client.application.config["MAX_CONTENT_LENGTH"] = 8
-    r = _upload(client, home, "big.bin", b"x" * 64)
+def test_upload_over_max_content_length_is_413(client, home, monkeypatch):
+    from dashboard import config
+
+    monkeypatch.setattr(config, "MAX_UPLOAD_MB", 1 / 1024)
+    r = _upload(client, home, "big.bin", b"x" * 4096)
     assert r.status_code == 413
     assert "upload too large" in r.get_json()["error"]
 
