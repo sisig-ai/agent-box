@@ -102,6 +102,15 @@ export function mount(el) {
   if (!el || el.dataset.mounted) return;
   el.dataset.mounted = '1';
   Alpine.data('logsView', logsView);
-  el.setAttribute('x-data', 'logsView');
+  // mutateDom stops Alpine's observer for the attribute write, so the subtree
+  // is initialised once, here, instead of twice (observer + initTree).
+  // x-ignore also sets an in-memory flag during the first walk; clear both or
+  // the walker keeps skipping the subtree.
+  delete el._x_ignore;
+  delete el._x_ignoreSelf;
+  Alpine.mutateDom(() => {
+    el.removeAttribute('x-ignore');
+    el.setAttribute('x-data', 'logsView');
+  });
   Alpine.initTree(el);
 }

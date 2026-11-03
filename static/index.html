@@ -44,10 +44,10 @@
   <link rel="stylesheet" href="/static/css/pwa.css?v=pwa1">
 </head>
 <body data-view="stack">
-  <div class="container">
+  <div class="container" x-data="chrome">
     <aside class="side">
       <a class="home" href="#/">macmini</a>
-      <p class="by" id="count">loading…</p>
+      <p class="by" id="count" x-text="count">loading…</p>
       <nav class="view-tabs" aria-label="Views">
         <a class="view-btn" id="view-btn-brief" href="#/brief" title="Daily Sitrep (b)">[sitrep]</a>
         <a class="view-btn" id="view-btn-stack" href="#/" title="Stack (s)">[stack]</a>
@@ -60,7 +60,7 @@
       </nav>
       <div class="side-foot">
         <p class="dim">host</p>
-        <p id="host">—</p>
+        <p id="host" x-text="host">—</p>
         <button type="button" class="linkbtn" id="keys-btn">[keys]</button>
       </div>
     </aside>
@@ -68,12 +68,12 @@
     <main class="page">
       <header>
         <div class="brand">
-          <h1 id="title">macmini</h1>
-          <p class="subtitle" id="greeting">all systems standing by.</p>
+          <h1 id="title" x-text="title">macmini</h1>
+          <p class="subtitle" id="greeting" x-text="greeting">all systems standing by.</p>
         </div>
         <div class="readout" aria-label="Local time">
-          <span class="readout-time" id="readout-time">--:--</span>
-          <span class="readout-meta"><span id="readout-date"></span> <span class="readout-tz" id="readout-tz"></span></span>
+          <span class="readout-time" id="readout-time" x-text="time">--:--</span>
+          <span class="readout-meta"><span id="readout-date" x-text="date"></span> <span class="readout-tz" id="readout-tz" x-text="tz"></span></span>
         </div>
       </header>
 
@@ -143,7 +143,7 @@
       </section>
 
       <!-- ---------- Daily Sitrep + Weekly Schedule ---------- -->
-      <section class="brief" data-tabpanel="brief" id="brief" aria-label="Daily Sitrep and weekly schedule">
+      <section class="brief" data-tabpanel="brief" x-ignore id="brief" aria-label="Daily Sitrep and weekly schedule">
         <div class="brief-main">
           <div class="brief-head">
             <div class="brief-title">
@@ -214,17 +214,33 @@
       </section>
 
       <!-- ---------- Stack (service grid) ---------- -->
-      <div data-tabpanel="stack">
+      <div data-tabpanel="stack" id="stack-view" x-ignore x-on:keydown.window="onKey($event)">
         <div class="scanner">
           <span class="glyph">&gt;</span>
-          <input id="search" type="text" placeholder="scan for a system…" autocomplete="off" spellcheck="false" aria-label="Search services">
+          <input id="search" type="text" placeholder="scan for a system…" autocomplete="off" spellcheck="false" aria-label="Search services"
+                 x-ref="search" x-model="query" @keydown.escape="query = ''; $event.target.blur()" @keydown.enter="openFirst()">
           <span class="kbd">/</span>
         </div>
-        <div class="grid" id="services"></div>
+        <div class="grid" id="services">
+          <template x-for="(service, index) in visible" :key="service.name">
+            <a class="card" :href="service.url" target="_blank" rel="noopener" :style="cardStyle(service, index)" :data-search="service.search">
+              <span class="pod mono" x-text="service.glyph"></span>
+              <span class="info">
+                <span class="name" x-text="service.name"></span>
+                <span class="meta">
+                  <span class="description" x-text="service.description || ''"></span>
+                  <template x-if="service.port"><span class="port" x-text="':' + service.port"></span></template>
+                </span>
+              </span>
+              <span class="chevron">→</span>
+            </a>
+          </template>
+          <p class="empty" id="stack-empty" x-show="!visible.length" x-text="emptyText"></p>
+        </div>
       </div>
 
       <!-- ---------- Shell (host tty, starts in ~) ---------- -->
-      <section class="shell" data-tabpanel="shell" id="shell-view" aria-label="Host shell">
+      <section class="shell" data-tabpanel="shell" x-ignore id="shell-view" aria-label="Host shell">
         <div class="shell-head">
           <div class="shell-title">
             <span class="shell-dot" id="shell-dot"></span>
@@ -261,7 +277,7 @@
       </section>
 
       <!-- ---------- Files (host filesystem explorer, opens at ~) ---------- -->
-      <section class="files" data-tabpanel="files" id="files-view" aria-label="Filesystem explorer">
+      <section class="files" data-tabpanel="files" x-ignore id="files-view" aria-label="Filesystem explorer">
         <div class="files-head">
           <div class="files-title">
             <h2>Files</h2>
@@ -325,7 +341,7 @@
       </section>
 
       <!-- ---------- Ops Board ---------- -->
-      <section class="kanban" data-tabpanel="kanban" id="kanban-view" aria-label="Ops Board">
+      <section class="kanban" data-tabpanel="kanban" x-ignore id="kanban-view" aria-label="Ops Board">
         <div class="kanban-head">
           <div class="kanban-title">
             <h2>Ops Board</h2>
@@ -352,7 +368,7 @@
       </section>
 
       <!-- ---------- Progress Bars ---------- -->
-      <section class="progress" data-tabpanel="progress" id="progress-view" aria-label="Progress Bars">
+      <section class="progress" data-tabpanel="progress" x-ignore id="progress-view" aria-label="Progress Bars">
         <div class="progress-head">
           <div class="progress-title">
             <h2>Progress Bars</h2>
@@ -373,7 +389,7 @@
 
 
       <!-- ---------- Docs ---------- -->
-      <section class="docs" data-tabpanel="docs" id="docs-view" aria-label="Docs">
+      <section class="docs" data-tabpanel="docs" x-ignore id="docs-view" aria-label="Docs">
         <div class="docs-head">
           <div class="docs-title">
             <h2>Docs</h2>
@@ -430,7 +446,7 @@
 
 
       <!-- ---------- Access logs ---------- -->
-      <section class="logs" data-tabpanel="logs" id="logs-view" aria-label="Access logs">
+      <section class="logs" data-tabpanel="logs" x-ignore id="logs-view" aria-label="Access logs">
         <div class="logs-head">
           <div class="logs-title">
             <h2>Access Logs</h2>
@@ -555,6 +571,6 @@
   </div>
 
   <script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}))}</script>
-  <script type="module" src="/static/js/main.js?v=alpine1"></script>
+  <script type="module" src="/static/js/main.js?v=alpine2"></script>
 </body>
 </html>

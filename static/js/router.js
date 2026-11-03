@@ -31,9 +31,12 @@ const KANBAN = './kanban/board.js?v=filters1';
 const PROGRESS = './progress/bars.js?v=progress7';
 const DOCS = './docs/docs.js?v=author2';
 const LOGS = './logs/view.js?v=alpine1';
+const STACK = './stack/view.js?v=alpine2';
 let lastView = null;
 function ensure(v) {
-  if (v === 'shell') {
+  if (v === 'stack') {
+    (lazy.stack ||= import(STACK)).then(m => m.mount(document.getElementById('stack-view')));
+  } else if (v === 'shell') {
     (lazy.shell ||= import('./shell/shell.js')).then(m => m.initShell());
   } else if (v === 'files') {
     (lazy.files ||= import('./files/actions.js')).then(m => m.initFiles());
