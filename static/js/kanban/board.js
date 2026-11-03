@@ -11,6 +11,8 @@ import * as search from './search.js?v=owner1';
 import * as attention from '../attention.js?v=attention7';
 import { createGrouping } from './group.js?v=docs4';
 import { appendDocRefs } from './docrefs.js?v=docs4';
+import { laneMatch, paintLaneFilter, restoreLane, storeLane } from './lanefilter.js?v=lanefilter1';
+import { paintUpdatedFilter, updatedLabel, updatedMatch } from './updatedfilter.js?v=updatedfilter1';
 
 const POLL_MS = 3000;
 const $ = (id) => document.getElementById(id);
@@ -20,12 +22,13 @@ const OWNER_KEY = 'opsboard.owner';
 const UPDATED_KEY = 'opsboard.updated'; // '' | 'today' | 'YYYY-MM-DD'
 const NO_OP = '__none__'; // filter value for cards without an opname
 const NO_OWNER = '__none__'; // filter value for cards without an owner
-const state = { data: null, archived: null, archivedLoad: null, sig: '', searchSig: '', searchQ: '', busy: 0, dragId: null, dragEnd: 0, started: false, op: '', owner: '', updated: '', group: 'lane', laneNames: {} };
+const state = { data: null, archived: null, archivedLoad: null, sig: '', searchSig: '', searchQ: '', busy: 0, dragId: null, dragEnd: 0, started: false, op: '', owner: '', updated: '', lane: '', group: 'lane', laneNames: {} };
 let attentionPending = false;
 let unreadCards = new Set();
 try { state.op = localStorage.getItem(OP_KEY) || ''; } catch { /* storage blocked */ }
 try { state.owner = localStorage.getItem(OWNER_KEY) || ''; } catch { /* storage blocked */ }
 try { state.updated = localStorage.getItem(UPDATED_KEY) || ''; } catch { /* storage blocked */ }
+state.lane = restoreLane();
 try { state.group = localStorage.getItem(GROUP_KEY) === 'owner' ? 'owner' : 'lane'; } catch { /* storage blocked */ }
 const opKey = (v) => (v || '').trim().toLowerCase();
 
@@ -112,78 +115,16 @@ function setOwner(owner) {
   if (state.data) render();
 }
 
+function setLane(lane) {
+  state.lane = lane ? String(lane) : '';
+  storeLane(state.lane);
+  if (state.data) render();
+}
+
 function setUpdated(value) {
   state.updated = value || '';
   try { if (state.updated) localStorage.setItem(UPDATED_KEY, state.updated); else localStorage.removeItem(UPDATED_KEY); } catch { /* ignore */ }
   if (state.data) render();
-}
-
-// Local calendar day of an ISO timestamp; '' when the value cannot be parsed.
-function dayOf(iso) {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function today() { return dayOf(new Date().toISOString()); }
-
-function updatedMatch(card) {
-  if (!state.updated) return true;
-  const day = dayOf(card.updated_at);
-  if (!day) return false;
-  return state.updated === 'today' ? day === today() : day === state.updated;
-}
-
-function updatedLabel() {
-  if (!state.updated) return '';
-  return state.updated === 'today' ? 'today' : state.updated;
-}
-
-// Header "Updated" filter: all time / today / one calendar day (last update).
-function paintUpdatedFilter() {
-  let sel = $('kanban-updated');
-  let date = $('kanban-updated-date');
-  if (!sel) {
-    const wrap = el('label', 'kb-op-filter kb-updated-filter');
-    wrap.title = 'Show cards by the day they were last updated';
-    wrap.append(el('span', 'kb-op-filter-lbl', 'Updated'));
-    sel = el('select');
-    sel.id = 'kanban-updated';
-    for (const [value, label] of [['', 'all time'], ['today', 'today'], ['date', 'date…']]) {
-      const o = el('option', '', label);
-      o.value = value;
-      sel.append(o);
-    }
-    date = el('input');
-    date.type = 'date';
-    date.id = 'kanban-updated-date';
-    date.title = 'Last updated on this day';
-    date.hidden = true;
-    sel.addEventListener('change', () => {
-      if (sel.value === 'date') {
-        if (!date.value) date.value = today();
-        date.hidden = false;
-        setUpdated(date.value);
-        if (typeof date.showPicker === 'function') { try { date.showPicker(); } catch { /* needs a user gesture */ } }
-      } else {
-        date.hidden = true;
-        setUpdated(sel.value);
-      }
-    });
-    date.addEventListener('change', () => setUpdated(date.value));
-    wrap.append(sel, date);
-    const opFilter = $('kanban-opname');
-    if (opFilter) opFilter.closest('label').before(wrap);
-    else $('kanban-add-lane').before(wrap);
-  }
-  const mode = state.updated === 'today' ? 'today' : (state.updated ? 'date' : '');
-  if (document.activeElement !== sel) sel.value = mode;
-  if (document.activeElement !== date) {
-    date.hidden = mode !== 'date';
-    if (state.updated && state.updated !== 'today') date.value = state.updated;
-  }
-  sel.classList.toggle('active', !!mode);
-  date.classList.toggle('active', mode === 'date');
 }
 
 function boardOwners(cards) {
@@ -274,14 +215,17 @@ function render() {
     if (openCardData && unreadCards.has(opened)) markCardRead(openCardData);
   }
   const pool = state.archived ? all.concat(state.archived) : all;
-  paintUpdatedFilter();
-  paintOpFilter(pool);
-  paintOwnerFilter(pool);
-  const cards = search.filter(pool.filter(opMatch).filter(ownerMatch).filter(updatedMatch));
-  // live matches first; a stable sort keeps the server's relevance order inside each group
-  cards.sort((a, b) => (a.archived_at ? 1 : 0) - (b.archived_at ? 1 : 0));
   const done = lanes.find((lane) => lane.name.toLowerCase() === 'done');
   const laneOf = (card) => (card.archived_at && done ? done.id : card.lane_id);
+  paintUpdatedFilter({ el, $, state, onChange: setUpdated });
+  paintOpFilter(pool);
+  paintOwnerFilter(pool);
+  paintLaneFilter({ el, $, state, lanes, onChange: setLane });
+  const cards = search
+    .filter(pool.filter(opMatch).filter(ownerMatch).filter((card) => updatedMatch(state, card)))
+    .filter((card) => laneMatch(state, card, done ? done.id : null));
+  // live matches first; a stable sort keeps the server's relevance order inside each group
+  cards.sort((a, b) => (a.archived_at ? 1 : 0) - (b.archived_at ? 1 : 0));
   const board = $('kanban-board');
   board.classList.toggle('op-filtered', !!state.op);
   board.classList.toggle('searching', search.active());
@@ -315,7 +259,8 @@ function render() {
     + (archivedCount ? ` · ${archivedCount} archived` : '')
     + (state.op ? ` · op: ${state.op === NO_OP ? 'none' : state.op}` : '')
     + (state.owner ? ` · author: ${state.owner === NO_OWNER ? 'none' : state.owner}` : '')
-    + (state.updated ? ` · updated: ${updatedLabel()}` : '')
+    + (state.lane ? ` · lane: ${state.laneNames[state.lane] || state.lane}` : '')
+    + (state.updated ? ` · updated: ${updatedLabel(state)}` : '')
     + (search.active() ? ` · ${search.note()}` : '');
   if (!lanes.length) board.append(el('div', 'kb-empty', 'No lanes yet — add one with + Lane.'));
   else if (search.active() && !cards.length) board.append(el('div', 'kb-empty', `No cards match “${search.query()}”.`));

@@ -27,7 +27,7 @@ function current() {
   return 'stack'; // default landing tab (also #/ and empty hash)
 }
 const lazy = {};
-const KANBAN = './kanban/board.js?v=docs4';
+const KANBAN = './kanban/board.js?v=lanefilter1';
 const PROGRESS = './progress/bars.js?v=progress7';
 const DOCS = './docs/docs.js?v=author2';
 const LOGS = './logs/logs.js?v=logs1';
