@@ -1,31 +1,30 @@
-"""HTTP blueprint for the native telemetry endpoints."""
+"""Telemetry endpoints (FastAPI). File reads run off the event loop."""
 
-from flask import Blueprint, jsonify, request
+from fastapi import APIRouter
+from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 
 from . import config, telemetry_store
 
-bp = Blueprint("telemetry", __name__)
+router = APIRouter()
 
 
-@bp.get("/api/stats")
-def stats():
-    snapshot, reason = telemetry_store.read_latest_stats()
-    if reason == "reconnecting":
-        return jsonify({"error": "Telemetry sampler is reconnecting", "stale": True}), 503
-    if reason == "starting":
-        return jsonify({"error": "Telemetry sampler is starting", "stale": True}), 503
-    return jsonify(snapshot)
+@router.get("/api/stats")
+async def stats():
+    snapshot, reason = await run_in_threadpool(telemetry_store.read_latest_stats)
+    if reason in ("reconnecting", "starting"):
+        return JSONResponse(
+            status_code=503,
+            content={"error": f"Telemetry sampler is {reason}", "stale": True},
+        )
+    return snapshot
 
 
-@bp.get("/api/stats/history")
-def stats_history():
-    """GET /api/stats/history?seconds=3600 — dense per-second series for the graphs.
-
-    Returns {start, step, count} plus one array per metric; null = no sample
-    (tab hidden, dashboard restarted). max 3900s (retention window).
-    """
+@router.get("/api/stats/history")
+async def stats_history(seconds: str = "3600"):
+    """Dense per-second series for the graphs; null means no sample."""
     try:
-        seconds = max(60, min(int(request.args.get("seconds", 3600)), config.TELEMETRY_RETENTION_S))
+        wanted = max(60, min(int(seconds), config.TELEMETRY_RETENTION_S))
     except (TypeError, ValueError):
-        seconds = 3600
-    return jsonify(telemetry_store.history_series(seconds))
+        wanted = 3600
+    return await run_in_threadpool(telemetry_store.history_series, wanted)

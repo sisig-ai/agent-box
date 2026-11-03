@@ -1,44 +1,48 @@
-"""HTTP blueprint for the MCP access log.
+"""MCP access log endpoints (FastAPI).
 
-Canonical: ``/api/logs``. One row per ``tools/call``: timestamp, tool (action),
-entity id, outcome, duration and a trimmed argument summary.
+One row per ``tools/call``: timestamp, tool, entity, outcome, duration and a
+trimmed argument summary. SQLite work runs in the threadpool.
 """
 
-from flask import Blueprint, jsonify, request
+from fastapi import APIRouter, HTTPException
+from starlette.concurrency import run_in_threadpool
 
 from . import access_log
 from .access_log import LogError
 
-bp = Blueprint("logs", __name__)
+router = APIRouter()
 
 
-@bp.errorhandler(LogError)
-def log_error(exc):
-    return jsonify({"error": exc.message}), exc.status
+def _fail(exc: LogError):
+    raise HTTPException(status_code=exc.status, detail=exc.message)
 
 
-@bp.get("/api/logs")
-def logs_list():
-    """GET /api/logs?limit=200&tool=&entity=&ok=1 — newest first."""
-    ok_param = request.args.get("ok")
-    ok = None
-    if ok_param in ("0", "1"):
-        ok = ok_param == "1"
+@router.get("/api/logs")
+async def logs_list(
+    limit: str = "200",
+    tool: str | None = None,
+    entity: str | None = None,
+    ok: str | None = None,
+):
+    """Newest first; ``ok`` is 0 or 1, anything else means both."""
     try:
-        limit = int(request.args.get("limit", 200))
+        size = int(limit)
     except (TypeError, ValueError):
-        raise LogError("limit must be a number") from None
-    return jsonify(
-        access_log.list_entries(
-            limit=limit,
-            tool=request.args.get("tool") or None,
-            entity=request.args.get("entity") or None,
-            ok=ok,
+        raise HTTPException(status_code=400, detail="limit must be a number") from None
+    outcome = None if ok not in ("0", "1") else ok == "1"
+    try:
+        return await run_in_threadpool(
+            access_log.list_entries,
+            limit=size,
+            tool=tool or None,
+            entity=entity or None,
+            ok=outcome,
         )
-    )
+    except LogError as exc:
+        _fail(exc)
 
 
-@bp.post("/api/logs/rotate")
-def logs_rotate():
+@router.post("/api/logs/rotate")
+async def logs_rotate():
     """Force a new daily file and sweep anything past the retention window."""
-    return jsonify(access_log.rotate())
+    return await run_in_threadpool(access_log.rotate)

@@ -2,15 +2,6 @@
 
 import json
 
-import pytest
-
-from dashboard import create_app
-
-
-@pytest.fixture
-def client():
-    return create_app().test_client()
-
 
 def rpc(client, method, params=None, request_id=1):
     payload = {"jsonrpc": "2.0", "id": request_id, "method": method}

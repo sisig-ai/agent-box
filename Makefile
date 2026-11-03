@@ -7,7 +7,7 @@
 PYTHON     ?= .venv/bin/python
 RUFF       ?= .venv/bin/ruff
 PYTEST     ?= .venv/bin/pytest
-GUNICORN   ?= .venv/bin/gunicorn
+UVICORN    ?= .venv/bin/uvicorn
 SLOC_LIMIT ?= 400
 SLOC_STRICT ?= 1
 # Files that predate the budget get an explicit ceiling instead of an exclusion,
@@ -49,7 +49,7 @@ test:
 
 # Run the same way the LaunchDaemon does.
 run:
-	$(GUNICORN) --workers 1 --threads 8 --bind 0.0.0.0:5555 app:app
+	$(UVICORN) app:app --host 0.0.0.0 --port 5555 --workers 1
 
 # Kept as an alias for old muscle memory; the load-bearing gate is `make check`.
 verify: test

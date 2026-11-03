@@ -1,4 +1,4 @@
-"""Gunicorn entry point: the LaunchDaemon runs ``gunicorn app:app`` from here."""
+"""ASGI entry point: the LaunchDaemon runs ``uvicorn app:app`` from here."""
 
 from dashboard import create_app
 

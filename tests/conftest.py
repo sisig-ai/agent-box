@@ -15,6 +15,7 @@ import pytest
 
 from dashboard import access_log, config, docs_embed, fs_paths, kanban_embed, telemetry_store
 from dashboard import fs as fs_module
+from dashboard.testing import Client
 
 
 def _now_iso(age_seconds=0.0):
@@ -55,14 +56,14 @@ def schema(env):
 
 @pytest.fixture
 def app(env):
-    from dashboard import create_app
+    from dashboard.asgi import create_app
 
     return create_app()
 
 
 @pytest.fixture
 def client(app):
-    return app.test_client()
+    return Client(app)
 
 
 @pytest.fixture

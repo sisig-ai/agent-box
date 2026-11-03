@@ -11,7 +11,7 @@
 		<key>PYTHONUNBUFFERED</key>
 		<string>1</string>
 		<key>SHELL_WS_HOST</key>
-		<string>100.64.149.91</string>
+		<string>macmini.tail0799a3.ts.net</string>
 		<key>SHELL_WS_PORT</key>
 		<string>5556</string>
 		<key>TZ</key>
@@ -29,20 +29,18 @@
 	<string>Interactive</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/Users/kixpanganiban/quick-arr-stack/arr-dashboard/.venv/bin/gunicorn</string>
+		<string>/Users/kixpanganiban/quick-arr-stack/arr-dashboard/.venv/bin/uvicorn</string>
+		<string>app:app</string>
+		<string>--host</string>
+		<string>macmini.tail0799a3.ts.net</string>
+		<string>--port</string>
+		<string>5555</string>
 		<string>--workers</string>
 		<string>1</string>
-		<string>--threads</string>
-		<string>8</string>
-		<string>--bind</string>
-		<string>100.64.149.91:5555</string>
-		<string>--timeout</string>
+		<string>--timeout-keep-alive</string>
 		<string>45</string>
-		<string>--access-logfile</string>
-		<string>-</string>
-		<string>--error-logfile</string>
-		<string>-</string>
-		<string>app:app</string>
+		<string>--log-level</string>
+		<string>info</string>
 	</array>
 	<key>RunAtLoad</key>
 	<true/>

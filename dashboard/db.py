@@ -1,47 +1,65 @@
 """SQLite access: schema, request-scoped connection reuse, WAL settings.
 
-Flask is imported lazily (inside ``get_db`` / ``close_db``) so the telemetry
-collector can import this module without pulling Flask into the sampler
-process; those helpers are only ever reached from a Flask request or teardown.
+The request connection lives in a context variable, so the same helper works
+inside an async FastAPI request and inside the Flask sub-app that still serves
+the unconverted routes (the WSGI bridge copies the context into its thread).
+Outside a request (collector, CLI, tests) each call returns a fresh connection.
 """
 
+import contextvars
 import sqlite3
 
 from . import config
+
+_session: contextvars.ContextVar = contextvars.ContextVar("db_session", default=None)
 
 
 def connect():
     """A new fully configured connection; the caller owns its lifetime."""
     config.DATA_DIR.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(config.DB_PATH)
+    # One request may touch the connection from the event loop and from a
+    # threadpool worker (sync library call); WAL plus busy_timeout keep that safe.
+    conn = sqlite3.connect(config.DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA busy_timeout=5000")
     conn.execute("PRAGMA synchronous=NORMAL")
     return conn
 
 
+class RequestSession:
+    """Per-request holder; the ASGI middleware closes whatever it opened."""
+
+    __slots__ = ("conn",)
+
+    def __init__(self):
+        self.conn = None
+
+
+def open_session() -> tuple[RequestSession, object]:
+    """Install a request session for this context; returns it and the token."""
+    session = RequestSession()
+    return session, _session.set(session)
+
+
+def close_session(session: RequestSession, token) -> None:
+    _session.reset(token)
+    conn, session.conn = session.conn, None
+    if conn is not None:
+        conn.close()
+
+
 def get_db():
-    """One connection per Flask app context; a fresh one outside a request.
-
-    The collector calls into the DB directly (no app context), so this must not
-    assume ``g`` exists.
-    """
-    from flask import g, has_app_context
-
-    if has_app_context():
-        if "db" not in g:
-            g.db = connect()
-        return g.db
-    return connect()
+    """The request connection, or a fresh one outside a request."""
+    session = _session.get()
+    if session is None:
+        return connect()
+    if session.conn is None:
+        session.conn = connect()
+    return session.conn
 
 
 def close_db(_error=None):
-    """Teardown hook: close the request-scoped connection, if any."""
-    from flask import g
-
-    conn = g.pop("db", None)
-    if conn is not None:
-        conn.close()
+    """Flask teardown hook: the ASGI middleware owns the session now."""
 
 
 def init_db():

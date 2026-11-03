@@ -1,12 +1,8 @@
-"""HTTP blueprint for the host process list and signals.
+"""Host process list and signals (FastAPI).
 
-GET  /api/procs?sort=rss|cpu|pid|name&order=desc|asc&limit=40
-POST /api/procs/<pid>/signal  {"signal": "TERM"|"KILL"}
-
-The dashboard runs as the logged-in user, so the OS already refuses signals to
-root and to other users' processes. Two extra guards live here: pid 1 and this
-process's own ancestry (gunicorn master and up) are never signalled, so the UI
-cannot kill launchd or the dashboard that serves it.
+psutil blocks (it primes cpu_percent, sleeps 120ms, then reads the delta), so
+every call runs in the threadpool. Two guards stay: pid 1 and the dashboard's
+own ancestry are never signalled.
 """
 
 import os
@@ -15,13 +11,12 @@ import time
 from datetime import datetime
 
 import psutil
-from flask import Blueprint, jsonify, request
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 
-bp = Blueprint("procs", __name__)
+router = APIRouter()
 
-# psutil reports cpu_percent as the delta since the previous call on the same
-# Process object, so the request primes every process, waits one short tick,
-# and reads the delta. 120ms keeps the panel accurate on its first paint.
 CPU_SAMPLE_S = 0.12
 DEFAULT_LIMIT = 40
 MAX_LIMIT = 500
@@ -87,57 +82,63 @@ def process_rows():
     return rows, protected
 
 
-@bp.get("/api/procs")
-def procs_list():
+@router.get("/api/procs")
+async def procs_list(sort: str = "rss", order: str = "desc", limit: str = str(DEFAULT_LIMIT)):
     """Live process snapshot, sorted server-side; default is top memory."""
-    sort_key = request.args.get("sort", "rss").lower()
+    sort_key = sort.lower()
     if sort_key not in SORTS:
-        return jsonify({"error": f"sort must be one of {', '.join(SORTS)}"}), 400
-    order = request.args.get("order", "desc").lower()
-    if order not in ("asc", "desc"):
-        return jsonify({"error": "order must be asc or desc"}), 400
+        return JSONResponse(
+            status_code=400, content={"error": f"sort must be one of {', '.join(SORTS)}"}
+        )
+    direction = order.lower()
+    if direction not in ("asc", "desc"):
+        return JSONResponse(status_code=400, content={"error": "order must be asc or desc"})
     try:
-        limit = max(1, min(int(request.args.get("limit", DEFAULT_LIMIT)), MAX_LIMIT))
+        size = max(1, min(int(limit), MAX_LIMIT))
     except (TypeError, ValueError):
-        return jsonify({"error": "limit must be an integer"}), 400
+        return JSONResponse(status_code=400, content={"error": "limit must be an integer"})
 
-    rows, _protected_pids = process_rows()
+    rows, _protected_pids = await run_in_threadpool(process_rows)
     field = SORTS[sort_key]
     rows.sort(
         key=lambda row: row["name"].lower() if field == "name" else row[field],
-        reverse=order == "desc",
+        reverse=direction == "desc",
     )
-    return jsonify(
-        {
-            "t": datetime.now().astimezone().isoformat(timespec="seconds"),
-            "sort": sort_key,
-            "order": order,
-            "total": len(rows),
-            "count": min(len(rows), limit),
-            "cpu_sample_s": CPU_SAMPLE_S,
-            "procs": rows[:limit],
-        }
-    )
+    return {
+        "t": datetime.now().astimezone().isoformat(timespec="seconds"),
+        "sort": sort_key,
+        "order": direction,
+        "total": len(rows),
+        "count": min(len(rows), size),
+        "cpu_sample_s": CPU_SAMPLE_S,
+        "procs": rows[:size],
+    }
 
 
-@bp.post("/api/procs/<int:pid>/signal")
-def procs_signal(pid):
-    body = request.get_json(silent=True)
+@router.post("/api/procs/{pid}/signal")
+async def procs_signal(pid: int, request: Request):
+    try:
+        body = await request.json()
+    except ValueError:
+        body = None
     if not isinstance(body, dict):
-        return jsonify({"error": "request body must be a JSON object with a signal field"}), 400
+        return JSONResponse(
+            status_code=400,
+            content={"error": "request body must be a JSON object with a signal field"},
+        )
     sig_name = str(body.get("signal", "")).upper()
     if sig_name not in SIGNALS:
-        return jsonify({"error": "signal must be TERM or KILL"}), 400
-    if pid in _protected():
-        return jsonify(
-            {
-                "error": f"refusing to signal pid {pid}: init or part of the dashboard",
-            }
-        ), 403
+        return JSONResponse(status_code=400, content={"error": "signal must be TERM or KILL"})
+    protected = await run_in_threadpool(_protected)
+    if pid in protected:
+        return JSONResponse(
+            status_code=403,
+            content={"error": f"refusing to signal pid {pid}: init or part of the dashboard"},
+        )
     try:
         proc = psutil.Process(pid)
     except psutil.NoSuchProcess:
-        return jsonify({"error": f"no process with pid {pid}"}), 404
+        return JSONResponse(status_code=404, content={"error": f"no process with pid {pid}"})
     try:
         name = proc.name()
     except psutil.Error:
@@ -145,11 +146,10 @@ def procs_signal(pid):
     try:
         proc.send_signal(SIGNALS[sig_name])
     except psutil.NoSuchProcess:
-        return jsonify({"error": f"no process with pid {pid}"}), 404
+        return JSONResponse(status_code=404, content={"error": f"no process with pid {pid}"})
     except psutil.AccessDenied:
-        return jsonify(
-            {
-                "error": f"permission denied for pid {pid} ({name}); it runs as another user",
-            }
-        ), 403
-    return jsonify({"pid": pid, "name": name, "signal": sig_name, "sent": True})
+        return JSONResponse(
+            status_code=403,
+            content={"error": f"permission denied for pid {pid} ({name}); it runs as another user"},
+        )
+    return {"pid": pid, "name": name, "signal": sig_name, "sent": True}

@@ -1,4 +1,5 @@
 Flask
-gunicorn
 psutil
 htpy
+fastapi
+uvicorn[standard]
