@@ -28,13 +28,22 @@ def docs_error(exc):
 def docs_list():
     """Metadata for every doc, newest update first. ``?prefix=`` filters a path."""
     prefix = request.args.get("prefix") or None
+    author = request.args.get("author")
     limit = docs.clean_limit(request.args.get("limit"))
     try:
         offset = int(request.args.get("offset", 0))
     except (TypeError, ValueError):
         raise DocsError("offset must be a number") from None
     with_content = str(request.args.get("content", "")).lower() in ("1", "true", "yes")
-    return jsonify(docs.listing(prefix, limit=limit, offset=offset, with_content=with_content))
+    return jsonify(
+        docs.listing(
+            prefix,
+            author=author,
+            limit=limit,
+            offset=offset,
+            with_content=with_content,
+        )
+    )
 
 
 @bp.get("/api/docs/tree")
@@ -44,7 +53,14 @@ def docs_tree():
         per_folder = int(request.args.get("per", 5))
     except (TypeError, ValueError):
         raise DocsError("per must be a number") from None
-    return jsonify(docs.tree(per_folder=per_folder))
+    author = request.args.get("author")
+    return jsonify(docs.tree(per_folder=per_folder, author=author))
+
+
+@bp.get("/api/docs/authors")
+def docs_authors():
+    """Authors in use with doc counts, alphabetical ('' = no author)."""
+    return jsonify({"authors": docs.authors()})
 
 
 @bp.get("/api/docs/prefixes")
@@ -61,6 +77,7 @@ def docs_search():
             request.args.get("q", ""),
             prefix=request.args.get("prefix") or None,
             prefix_q=docs.clean_prefix_query(request.args.get("prefix_q")),
+            author=request.args.get("author"),
             limit=docs.clean_limit(request.args.get("limit")),
         )
     )
@@ -76,6 +93,7 @@ def docs_semantic():
                 docs.clean_prefix(request.args["prefix"]) if request.args.get("prefix") else None
             ),
             prefix_q=docs.clean_prefix_query(request.args.get("prefix_q")),
+            author=request.args.get("author"),
             limit=docs.clean_limit(request.args.get("limit"), default=10),
             sort=request.args.get("sort") or "blend",
         )

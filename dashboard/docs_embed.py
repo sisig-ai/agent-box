@@ -201,7 +201,7 @@ def wait_idle(timeout=30):
 # ---------------------------------------------------------------- search
 
 
-def search(query, prefix=None, prefix_q=None, limit=50, sort="blend", conn=None):
+def search(query, prefix=None, prefix_q=None, author=None, limit=50, sort="blend", conn=None):
     """Cosine-rank chunks of the active model; best chunk per doc wins."""
     query = (query or "").strip()
     if not query:
@@ -220,6 +220,12 @@ def search(query, prefix=None, prefix_q=None, limit=50, sort="blend", conn=None)
             escaped = prefix_q.replace("%", chr(92) + "%").replace("_", chr(92) + "_")
             clauses.append("d.prefix LIKE ? ESCAPE '\\'")
             args.append(f"%{escaped}%")
+        if author is not None:
+            if author == "":
+                clauses.append("(d.author IS NULL OR d.author = '')")
+            else:
+                clauses.append("d.author = ? COLLATE NOCASE")
+                args.append(author)
         rows = conn.execute(
             "SELECT e.doc_id, e.vector, e.text, d.prefix, d.author, d.tags, d.updated_at,"
             " length(d.content) AS size"

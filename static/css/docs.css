@@ -384,3 +384,14 @@
   color: var(--amber, #ffb000);
   margin-left: 0.35rem;
 }
+
+.docs-author {
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  color: var(--text, var(--ink));
+  background: rgba(5, 8, 20, 0.6);
+  border: 1px solid var(--border, var(--line));
+  padding: 0.1rem 0.3rem;
+  max-width: 12rem;
+}
+.docs-author.active { border-color: var(--amber, #ffb000); color: var(--amber, #ffb000); }

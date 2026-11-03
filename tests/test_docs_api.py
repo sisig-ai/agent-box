@@ -234,3 +234,36 @@ def test_tree_caps_each_folder_and_reports_the_remainder(client):
     handoffs_wide = next(folder for folder in wide["folders"] if folder["path"] == "handoffs")
     assert len(handoffs_wide["docs"]) == 7
     assert handoffs_wide["more"] == 0
+
+
+def test_author_filter_on_listing_tree_and_search(client):
+    put(client, "notes/amy.md", content="alpha beta", author="Amy")
+    put(client, "notes/zed.md", content="alpha beta", author="zed")
+    put(client, "notes/none.md", content="alpha beta")
+
+    assert [row["prefix"] for row in client.get("/api/docs?author=Amy").get_json()["docs"]] == [
+        "notes/amy.md"
+    ]
+    assert [row["prefix"] for row in client.get("/api/docs?author=amy").get_json()["docs"]] == [
+        "notes/amy.md"
+    ]
+    assert [row["prefix"] for row in client.get("/api/docs?author=").get_json()["docs"]] == [
+        "notes/none.md"
+    ]
+
+    hits = client.get("/api/docs/search?q=alpha&author=zed").get_json()["hits"]
+    assert [hit["prefix"] for hit in hits] == ["notes/zed.md"]
+
+    tree = client.get("/api/docs/tree?author=zed").get_json()
+    assert tree["total"] == 1
+    assert tree["folders"][0]["docs"][0]["prefix"] == "notes/zed.md"
+
+
+def test_authors_unique_the_way_the_filter_matches(client):
+    put(client, "a/1.md", content="x", author="amy")
+    put(client, "a/2.md", content="x", author="Amy")
+    put(client, "a/3.md", content="x", author="Amy")
+    put(client, "a/4.md", content="x")
+    authors = client.get("/api/docs/authors").get_json()["authors"]
+    assert {"author": "Amy", "count": 3} in authors
+    assert any(entry["author"] == "" and entry["count"] == 1 for entry in authors)

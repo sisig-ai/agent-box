@@ -26,6 +26,7 @@ from .docs_keys import (
     clean_tags,
     prefix_filters,
 )
+from .docs_tree import tree  # noqa: F401 - re-exported for docs_api
 from .kanban_search import MARK_CLOSE, MARK_OPEN, match_expr
 
 _WRITE_LOCK = threading.Lock()
@@ -198,10 +199,20 @@ def delete(prefix):
     return prefix
 
 
-def listing(prefix=None, limit=DEFAULT_LIMIT, offset=0, with_content=False):
-    """Metadata for every doc, newest update first; ``prefix`` is a path filter."""
+def listing(prefix=None, author=None, limit=DEFAULT_LIMIT, offset=0, with_content=False):
+    """Metadata for every doc, newest update first.
+
+    ``prefix`` is a path filter, ``author`` matches the free-text author
+    case-insensitively ('' = docs with no author).
+    """
     conn = db.get_db()
     clauses, args = [], []
+    if author is not None:
+        if author == "":
+            clauses.append("(author IS NULL OR author = '')")
+        else:
+            clauses.append("author = ? COLLATE NOCASE")
+            args.append(author)
     if prefix:
         clean = clean_prefix(prefix)
         clauses.append("(prefix = ? OR prefix LIKE ? ESCAPE '\\')")
@@ -244,78 +255,28 @@ def prefixes():
     ]
 
 
-def tree(per_folder=5, include_content=False):
-    """One compact tree for the explorer: folders, counts, and the first N docs.
+def authors():
+    """Every author in use with a doc count, alphabetical; '' counts unowned docs.
 
-    Sending the whole corpus so the browser can build the tree does not scale,
-    so the server does the grouping here: every folder reports its recursive
-    count and at most ``per_folder`` docs (sorted by name), plus how many more
-    it holds. The page then lazily fetches a folder's remainder only when the
-    reader asks for it. Content is never included unless asked.
+    Spellings that differ only by case merge under the most used one, the same
+    way opname variants do on the board, because the filter matches either.
     """
-    per_folder = max(1, min(int(per_folder or 5), 100))
     conn = db.get_db()
     rows = conn.execute(
-        "SELECT id, prefix, author, tags, updated_at, length(content) AS size FROM doc"
+        "SELECT coalesce(author, '') AS author, count(*) AS n FROM doc"
+        " GROUP BY coalesce(author, '')"
     ).fetchall()
-    counts = card_docs.counts_for(conn, [row["prefix"] for row in rows])
-
-    folders = {}  # path -> {"docs": [...], "children": set()}
-    root_docs = []
-
-    def folder(path):
-        if path not in folders:
-            folders[path] = {"docs": [], "children": set()}
-        return folders[path]
-
+    merged = {}
     for row in rows:
-        parts = row["prefix"].split("/")
-        name = parts[-1]
-        parents = parts[:-1]
-        entry = {
-            "prefix": row["prefix"],
-            "name": name,
-            "author": row["author"],
-            "tags": json.loads(row["tags"] or "[]"),
-            "updated_at": row["updated_at"],
-            "size": row["size"],
-            "card_count": counts.get(row["prefix"], 0),
-        }
-        if not parents:
-            root_docs.append(entry)
-            continue
-        for index in range(1, len(parents) + 1):
-            child = "/".join(parents[:index])
-            folder(child)
-            if index > 1:  # the empty string is the root, not a folder
-                folder("/".join(parents[: index - 1]))["children"].add(child)
-        folder("/".join(parents))["docs"].append(entry)
-
-    def count(path):
-        node = folders.get(path) or {"docs": [], "children": set()}
-        return len(node["docs"]) + sum(count(child) for child in node["children"])
-
-    def build(path):
-        node = folders.get(path) or {"docs": [], "children": set()}
-        docs = sorted(node["docs"], key=lambda d: d["name"].lower())
-        return {
-            "path": path,
-            "name": path.rsplit("/", 1)[-1],
-            "total": count(path),
-            "docs": docs[:per_folder],
-            "more": max(0, len(docs) - per_folder),
-            "folders": [build(child) for child in sorted(node["children"], key=str.lower)],
-        }
-
-    tops = sorted({path.split("/")[0] for path in folders}, key=str.lower)
-    roots = sorted(root_docs, key=lambda d: d["name"].lower())
-    return {
-        "folders": [build(path) for path in tops],
-        "docs": roots[:per_folder],
-        "more": max(0, len(roots) - per_folder),
-        "per_folder": per_folder,
-        "total": len(rows),
-    }
+        key = row["author"].casefold()
+        entry = merged.setdefault(key, {"spellings": {}, "count": 0})
+        entry["spellings"][row["author"]] = row["n"]
+        entry["count"] += row["n"]
+    out = []
+    for entry in merged.values():
+        best = sorted(entry["spellings"].items(), key=lambda kv: (-kv[1], kv[0].casefold()))[0][0]
+        out.append({"author": best, "count": entry["count"]})
+    return sorted(out, key=lambda item: item["author"].casefold())
 
 
 def tags():
@@ -338,7 +299,7 @@ _SELECT = (
 )
 
 
-def search(query, prefix=None, prefix_q=None, limit=DEFAULT_LIMIT):
+def search(query, prefix=None, prefix_q=None, author=None, limit=DEFAULT_LIMIT):
     """Full-text search over prefix, content, tags and author.
 
     ``prefix`` scopes to a path and its descendants, ``prefix_q`` matches a
@@ -358,6 +319,12 @@ def search(query, prefix=None, prefix_q=None, limit=DEFAULT_LIMIT):
     path_clauses, path_args = prefix_filters(prefix, prefix_q)
     clauses.extend(path_clauses)
     args.extend(path_args)
+    if author is not None:
+        if author == "":
+            clauses.append("(d.author IS NULL OR d.author = '')")
+        else:
+            clauses.append("d.author = ? COLLATE NOCASE")
+            args.append(author)
     where = " WHERE " + " AND ".join(clauses)
     conn = db.get_db()
     if expr is None:

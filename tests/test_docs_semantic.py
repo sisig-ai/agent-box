@@ -197,3 +197,11 @@ def test_documents_and_queries_carry_the_model_prefixes(client, monkeypatch):
     assert any(text.startswith(embed.document_input("")) for text in seen[0])
     assert seen[-1] == [embed.query_input("tuya")]
     assert embed.document_input("x") == f"{embed.config.EMBED_DOC_PREFIX}x"
+
+
+def test_semantic_filters_by_author(client):
+    docs.put("notes/amy.md", content="tuya devices", author="Amy")
+    docs.put("notes/zed.md", content="tuya devices", author="zed")
+    index(client)
+    hits = client.get("/api/docs/semantic?q=tuya&author=amy").get_json()["hits"]
+    assert [hit["prefix"] for hit in hits] == ["notes/amy.md"]

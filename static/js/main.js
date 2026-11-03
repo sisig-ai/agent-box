@@ -3,7 +3,7 @@
 // and therefore every implicit dependency — is preserved.)
 import './stack.js?v=clockpill1';
 import './telemetry/poll.js';
-import './router.js?v=docs4';
+import './router.js?v=author2';
 import './notes/brief.js?v=sitrep2';
 import './notes/schedule.js';
 import './hotkeys.js?v=ascii2';

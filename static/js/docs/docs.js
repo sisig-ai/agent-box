@@ -4,7 +4,9 @@
 // the doc exists, so a rename can never orphan or clobber another entry.
 import { armDelete } from '../kanban/edit.js?v=kanban29';
 import { createTree } from './tree.js?v=docs4';
-import { paintBacklinks } from './backlinks.js?v=docs4';
+import { paintBacklinks } from './backlinks.js?v=author3';
+import { flatRow, sortHeader, sortedDocs } from './flatlist.js?v=author3';
+import { docPath, fmtTime, tagLabel } from './format.js?v=author3';
 
 const $ = (id) => document.getElementById(id);
 const DEBOUNCE_MS = 180;
@@ -15,6 +17,8 @@ const SCOPE_KEY = 'docs.prefix';
 const TREE_KEY = 'docs.collapsed';
 const VIEW_KEY = 'docs.view';
 const SORT_KEY = 'docs.sort';
+const AUTHOR_KEY = 'docs.author';
+const NO_AUTHOR = '__none__';
 
 const state = {
   started: false,
@@ -32,6 +36,7 @@ const state = {
   semanticNote: '',
   q: '',
   prefix: '',
+  author: '',
   current: null, // {prefix, author, tags, content, created_at, updated_at, revision} or null (new)
   dirty: false,
   timer: 0,
@@ -55,13 +60,6 @@ async function api(path, options = {}) {
   return data;
 }
 
-const docPath = (prefix) => '/api/docs/' + prefix.split('/').map(encodeURIComponent).join('/');
-const tagLabel = (tags) => (tags || []).join(' · ');
-const fmtTime = (iso) => {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '—'
-    : d.toLocaleString([], { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
-};
 
 function setStatus(text, isError) {
   const node = $('docs-status');
@@ -104,6 +102,7 @@ function applyScope() {
 
 function restoreView() {
   try {
+    state.author = localStorage.getItem(AUTHOR_KEY) || '';
     const saved = localStorage.getItem(VIEW_KEY);
     if (saved === 'flat' || saved === 'tree') state.view = saved;
     const sort = JSON.parse(localStorage.getItem(SORT_KEY) || 'null');
@@ -111,6 +110,46 @@ function restoreView() {
       state.sort = { key: sort.key, dir: sort.dir === 1 ? 1 : -1 };
     }
   } catch { /* storage blocked */ }
+}
+
+// '' = every author, '__none__' = docs with no author, anything else = that name.
+function authorParam() {
+  return state.author === NO_AUTHOR ? '' : (state.author || undefined);
+}
+
+function paintAuthors(list) {
+  const sel = $('docs-author');
+  if (!sel || document.activeElement === sel) return;
+  const options = [['', 'all authors'], ...list
+    .filter((entry) => entry.author)
+    .map((entry) => [entry.author, `${entry.author} (${entry.count})`])];
+  if (list.some((entry) => !entry.author)) options.push([NO_AUTHOR, '— no author —']);
+  if (state.author && !options.some(([value]) => value === state.author)) {
+    options.push([state.author, state.author]);
+  }
+  sel.replaceChildren(...options.map(([value, label]) => {
+    const option = el('option', '', label);
+    option.value = value;
+    option.selected = value === state.author;
+    return option;
+  }));
+  sel.classList.toggle('active', !!state.author);
+}
+
+async function loadAuthors() {
+  const data = await api('/api/docs/authors');
+  paintAuthors(data.authors || []);
+}
+
+function setAuthor(author) {
+  state.author = author || '';
+  $('docs-author').classList.toggle('active', !!state.author);
+  try {
+    if (state.author) localStorage.setItem(AUTHOR_KEY, state.author);
+    else localStorage.removeItem(AUTHOR_KEY);
+  } catch { /* storage blocked */ }
+  loadList();
+  if (state.searching) runSearch();
 }
 
 function setView(view) {
@@ -140,57 +179,6 @@ function setSort(key) {
   else state.sort = { key, dir: key === 'updated' ? -1 : 1 };
   try { localStorage.setItem(SORT_KEY, JSON.stringify(state.sort)); } catch { /* storage blocked */ }
   renderList();
-}
-
-function sortedDocs(docs) {
-  const { key, dir } = state.sort;
-  const value = (doc) => {
-    if (key === 'prefix') return doc.prefix.toLowerCase();
-    if (key === 'author') return (doc.author || '').toLowerCase();
-    return new Date(doc.updated_at).getTime() || 0;
-  };
-  return docs.slice().sort((a, b) => {
-    const left = value(a);
-    const right = value(b);
-    if (left === right) return a.prefix.localeCompare(b.prefix);
-    return (left < right ? -1 : 1) * dir;
-  });
-}
-
-function sortHeader() {
-  const head = el('li', 'docs-flat-row docs-flat-head');
-  for (const [key, label] of [['prefix', 'prefix'], ['updated', 'updated'], ['author', 'author']]) {
-    const btn = el('button', 'docs-sort', label);
-    btn.classList.toggle('active', state.sort.key === key);
-    if (state.sort.key === key) {
-      btn.append(el('span', 'docs-sort-arrow', state.sort.dir === 1 ? '▲' : '▼'));
-    }
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      setSort(key);
-    });
-    const cell = el('span', `docs-flat-cell is-${key}`);
-    cell.append(btn);
-    head.append(cell);
-  }
-  return head;
-}
-
-// One line per doc in flat mode; the columns line up with sortHeader().
-function flatRow(doc) {
-  const row = el('li', 'docs-flat-row');
-  row.dataset.prefix = doc.prefix;
-  if (state.current && state.current.prefix === doc.prefix) row.classList.add('selected');
-  const prefixCell = el('span', 'docs-flat-cell is-prefix');
-  prefixCell.append(el('span', 'docs-flat-prefix', doc.prefix));
-  if (doc.card_count) prefixCell.append(el('span', 'docs-tree-cards', `⧉${doc.card_count}`));
-  if (doc.tags && doc.tags.length) prefixCell.append(el('span', 'docs-flat-tags', tagLabel(doc.tags)));
-  row.append(prefixCell);
-  row.append(el('span', 'docs-flat-cell is-updated', fmtTime(doc.updated_at)));
-  row.append(el('span', 'docs-flat-cell is-author', doc.author ? `@${doc.author}` : '—'));
-  row.title = `${doc.prefix}\n${doc.author || 'no author'} · ${fmtTime(doc.updated_at)}`;
-  row.addEventListener('click', () => selectDoc(doc.prefix));
-  return row;
 }
 
 function docRow(doc, kind) {
@@ -230,14 +218,14 @@ function renderList() {
   const searching = state.searching;
   const flat = state.view === 'flat';
   // Flat mode always lists every doc (sorted); search results take over both views.
-  const base = flat ? sortedDocs(state.all) : state.docs;
+  const base = flat ? sortedDocs(state, state.all) : state.docs;
   const rows = searching ? [...state.hits.values()] : base;
   const semantic = searching
     ? [...state.semantic.values()].filter((hit) => !state.hits.has(hit.prefix))
     : [];
   // Flat mode is a one-line-per-doc listing; search results stay as cards.
   const nodes = flat && !searching
-    ? [sortHeader(), ...rows.map(flatRow)]
+    ? [sortHeader(state, el, setSort), ...rows.map((doc) => flatRow(doc, state, el, fmtTime, tagLabel, selectDoc))]
     : rows.map((doc) => docRow(doc, 'fts'));
   if (searching && (semantic.length || state.semanticNote)) {
     nodes.push(el('li', 'docs-divider', `semantic${semantic.length ? ` · ${semantic.length}` : ''}`));
@@ -268,9 +256,16 @@ function renderList() {
 async function loadList() {
   // Two shapes of the same corpus: the flat list for sorting and scoped views,
   // and the server-built tree so the explorer never needs every doc row.
+  const author = authorParam();
+  const listParams = new URLSearchParams({ limit: String(LIST_LIMIT) });
+  const treeParams = new URLSearchParams({ per: '5' });
+  if (author !== undefined) {
+    listParams.set('author', author);
+    treeParams.set('author', author);
+  }
   const [list, treeData] = await Promise.all([
-    api(`/api/docs?${new URLSearchParams({ limit: String(LIST_LIMIT) })}`),
-    api(`/api/docs/tree?${new URLSearchParams({ per: '5' })}`),
+    api(`/api/docs?${listParams}`),
+    api(`/api/docs/tree?${treeParams}`),
   ]);
   state.all = list.docs;
   state.tree = treeData;
@@ -311,6 +306,7 @@ async function runSearch() {
     const params = new URLSearchParams({ q, limit: String(LIST_LIMIT) });
     if (state.prefix) params.set('prefix', state.prefix);
     if (prefixQ) params.set('prefix_q', prefixQ);
+    if (authorParam() !== undefined) params.set('author', authorParam());
     const data = await api(`/api/docs/search?${params}`);
     if (seq !== state.seq) return;
     state.hits = new Map(data.hits.map((hit) => [hit.prefix, hit]));
@@ -332,6 +328,7 @@ async function loadSemantic(q, seq) {
     const params = new URLSearchParams({ q, limit: '10' });
     if (state.prefix) params.set('prefix', state.prefix);
     if (state.prefixQ) params.set('prefix_q', state.prefixQ);
+    if (authorParam() !== undefined) params.set('author', authorParam());
     const data = await api(`/api/docs/semantic?${params}`);
     if (seq !== state.seq) return;
     state.semantic = new Map(data.hits.map((hit) => [hit.prefix, hit]));
@@ -464,6 +461,7 @@ function bind() {
     setStatus(`cleared · ${state.all.length} docs`);
     $('docs-search').focus();
   });
+  $('docs-author').addEventListener('change', (e) => setAuthor(e.target.value));
   $('docs-view-tree').addEventListener('click', () => setView('tree'));
   $('docs-view-flat').addEventListener('click', () => setView('flat'));
   $('docs-new').addEventListener('click', startNew);
@@ -506,5 +504,6 @@ export function initDocs(openPrefix = '') {
   bind();
   paintView();
   setEditorVisible(false);
+  loadAuthors().catch(() => {});
   refresh().then(() => { if (openPrefix) selectDoc(openPrefix); });
 }

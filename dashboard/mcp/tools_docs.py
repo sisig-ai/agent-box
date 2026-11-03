@@ -46,6 +46,12 @@ PREFIX_Q = {
         "listing, newest update first."
     ),
 }
+AUTHOR_FILTER = {
+    "type": "string",
+    "description": (
+        "Only docs by this author, case-insensitive. An empty string matches docs with no author."
+    ),
+}
 LIMIT = {
     "type": "integer",
     "minimum": 1,
@@ -110,6 +116,7 @@ def list_docs(args):
     try:
         return docs.listing(
             args.get("prefix") or None,
+            author=args.get("author"),
             limit=docs.clean_limit(args.get("limit")),
             offset=int(args.get("offset") or 0),
         )
@@ -127,6 +134,7 @@ def search_docs(args):
             query,
             prefix=args.get("prefix") or None,
             prefix_q=prefix_q,
+            author=args.get("author"),
             limit=docs.clean_limit(args.get("limit"), default=SEARCH_DEFAULT_LIMIT),
         )
     except DocsError as exc:
@@ -148,6 +156,7 @@ def semantic_search_docs(args):
             query,
             prefix=prefix,
             prefix_q=docs.clean_prefix_query(args.get("prefix_q")),
+            author=args.get("author"),
             sort=args.get("sort") or "blend",
             limit=docs.clean_limit(args.get("limit"), default=SEARCH_DEFAULT_LIMIT),
         )
@@ -211,7 +220,7 @@ TOOLS = {
             "List Docs",
             "Metadata for every doc (no content), newest update first. Pass prefix to "
             "narrow to a path and its descendants.",
-            {"prefix": PREFIX, "limit": LIMIT, "offset": OFFSET},
+            {"prefix": PREFIX, "author": AUTHOR_FILTER, "limit": LIMIT, "offset": OFFSET},
             [],
             read_only=True,
         ),
@@ -231,6 +240,7 @@ TOOLS = {
                     "description": "Optional path filter (that doc and its descendants).",
                 },
                 "prefix_q": PREFIX_Q,
+                "author": AUTHOR_FILTER,
                 "limit": {**LIMIT, "default": SEARCH_DEFAULT_LIMIT},
             },
             [],
@@ -253,6 +263,7 @@ TOOLS = {
                     "description": "Optional path filter (that doc and its descendants).",
                 },
                 "prefix_q": PREFIX_Q,
+                "author": AUTHOR_FILTER,
                 "sort": SORT,
                 "limit": {**LIMIT, "default": SEARCH_DEFAULT_LIMIT},
             },
