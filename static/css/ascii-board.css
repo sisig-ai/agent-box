@@ -285,3 +285,65 @@
 }
 .kbc-meta { margin-bottom: 5px; }
 .kbc-body { line-height: 1.65; }
+
+/* ---------- Stackable filter bar ---------- */
+.kb-filters { position: relative; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.4ch; }
+.kb-chip {
+  display: inline-flex; align-items: baseline; gap: 0.5ch;
+  padding: 0.02rem 0.4ch;
+  font-family: var(--mono); font-size: 0.64rem;
+  color: var(--ink); background: none;
+  border: 1px solid var(--line); border-radius: 3px;
+  cursor: pointer;
+}
+.kb-chip:hover { border-color: var(--muted); }
+.kb-chip-field { color: var(--dim); text-transform: lowercase; }
+.kb-chip-op { color: var(--muted); }
+.kb-chip-value { color: var(--amber); }
+.kb-chip-x { color: var(--dim); padding: 0 0.2ch; }
+.kb-chip-x:hover { color: var(--bad); background: var(--line); }
+.kb-filter-add {
+  padding: 0.02rem 0.5ch;
+  font-family: var(--mono); font-size: 0.64rem;
+  color: var(--dim); background: none;
+  border: 1px dashed var(--line); border-radius: 3px; cursor: pointer;
+}
+.kb-filter-add:hover { color: var(--ink); border-color: var(--muted); }
+.kb-filters.active .kb-filter-add { color: var(--amber); border-color: var(--amber-dim); }
+.kb-fm {
+  position: absolute; top: calc(100% + 0.3rem); left: 0; z-index: 40;
+  min-width: 13rem; max-height: 20rem; overflow-y: auto;
+  padding: 0.3rem 0;
+  background: var(--bg); border: 1px solid var(--line);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+}
+.kb-fm-title { padding: 0.15rem 0.7ch; color: var(--dim); font-size: 0.62rem; text-transform: lowercase; letter-spacing: 0.06em; }
+.kb-fm-head { display: flex; align-items: center; gap: 1ch; padding: 0 0.7ch 0.2rem; }
+.kb-fm-head .kb-fm-title { padding: 0; color: var(--ink); }
+.kb-fm-neg {
+  margin-left: auto; padding: 0 0.4ch;
+  font-family: var(--mono); font-size: 0.62rem;
+  color: var(--amber); background: none; border: 1px dotted var(--amber-dim); cursor: pointer;
+}
+.kb-fm-field {
+  display: block; width: 100%; text-align: left;
+  padding: 0.15rem 0.7ch;
+  font-family: var(--mono); font-size: 0.68rem;
+  color: var(--text); background: none; border: 0; cursor: pointer;
+}
+.kb-fm-field:hover { background: var(--ink); color: var(--bg); }
+.kb-fm-list { display: flex; flex-direction: column; }
+.kb-fm-opt {
+  display: flex; align-items: center; gap: 0.7ch;
+  padding: 0.15rem 0.7ch;
+  font-family: var(--mono); font-size: 0.68rem; color: var(--text); cursor: pointer;
+}
+.kb-fm-opt:hover { background: var(--line); }
+.kb-fm-opt input { accent-color: var(--amber); margin: 0; }
+.kb-fm-date { display: flex; align-items: center; gap: 0.7ch; padding: 0.25rem 0.7ch 0.1rem; }
+.kb-fm-date input[type="date"] { font-family: var(--mono); font-size: 0.66rem; padding: 0.05rem 0.2rem; }
+.kb-fm-apply {
+  padding: 0.02rem 0.5ch;
+  font-family: var(--mono); font-size: 0.64rem;
+  color: var(--bg); background: var(--amber); border: 1px solid var(--amber); cursor: pointer;
+}

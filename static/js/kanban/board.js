@@ -11,26 +11,16 @@ import * as search from './search.js?v=owner1';
 import * as attention from '../attention.js?v=attention7';
 import { createGrouping } from './group.js?v=docs4';
 import { appendDocRefs } from './docrefs.js?v=docs4';
-import { laneMatch, paintLaneFilter, restoreLane, storeLane } from './lanefilter.js?v=lanefilter1';
-import { paintUpdatedFilter, updatedLabel, updatedMatch } from './updatedfilter.js?v=updatedfilter1';
+import { activeOp, hasOp, loadFilters, matches, paintFilters, saveFilters, setOpFilter } from './filters.js?v=filters1';
 
 const POLL_MS = 3000;
 const $ = (id) => document.getElementById(id);
 const GROUP_KEY = 'opsboard.group';
-const OP_KEY = 'opsboard.opname';
-const OWNER_KEY = 'opsboard.owner';
-const UPDATED_KEY = 'opsboard.updated'; // '' | 'today' | 'YYYY-MM-DD'
-const NO_OP = '__none__'; // filter value for cards without an opname
-const NO_OWNER = '__none__'; // filter value for cards without an owner
-const state = { data: null, archived: null, archivedLoad: null, sig: '', searchSig: '', searchQ: '', busy: 0, dragId: null, dragEnd: 0, started: false, op: '', owner: '', updated: '', lane: '', group: 'lane', laneNames: {} };
+const state = { data: null, archived: null, archivedLoad: null, sig: '', searchSig: '', searchQ: '', busy: 0, dragId: null, dragEnd: 0, started: false, filters: [], group: 'lane', laneNames: {} };
 let attentionPending = false;
 let unreadCards = new Set();
-try { state.op = localStorage.getItem(OP_KEY) || ''; } catch { /* storage blocked */ }
-try { state.owner = localStorage.getItem(OWNER_KEY) || ''; } catch { /* storage blocked */ }
-try { state.updated = localStorage.getItem(UPDATED_KEY) || ''; } catch { /* storage blocked */ }
-state.lane = restoreLane();
+state.filters = loadFilters();
 try { state.group = localStorage.getItem(GROUP_KEY) === 'owner' ? 'owner' : 'lane'; } catch { /* storage blocked */ }
-const opKey = (v) => (v || '').trim().toLowerCase();
 
 function el(tag, cls, text) {
   const n = document.createElement(tag);
@@ -96,108 +86,10 @@ async function mutate(fn) {
   await refresh(true);
 }
 
-// Distinct opnames on the board (first spelling wins), alphabetical.
-function boardOps(cards) {
-  const seen = new Map();
-  for (const c of cards) if (c.opname && !seen.has(opKey(c.opname))) seen.set(opKey(c.opname), c.opname);
-  return [...seen.values()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-}
-
-function setOp(op) {
-  state.op = op || '';
-  try { if (state.op) localStorage.setItem(OP_KEY, state.op); else localStorage.removeItem(OP_KEY); } catch { /* ignore */ }
+function setFilters(list) {
+  state.filters = list;
+  saveFilters(list);
   if (state.data) render();
-}
-
-function setOwner(owner) {
-  state.owner = owner || '';
-  try { if (state.owner) localStorage.setItem(OWNER_KEY, state.owner); else localStorage.removeItem(OWNER_KEY); } catch { /* ignore */ }
-  if (state.data) render();
-}
-
-function setLane(lane) {
-  state.lane = lane ? String(lane) : '';
-  storeLane(state.lane);
-  if (state.data) render();
-}
-
-function setUpdated(value) {
-  state.updated = value || '';
-  try { if (state.updated) localStorage.setItem(UPDATED_KEY, state.updated); else localStorage.removeItem(UPDATED_KEY); } catch { /* ignore */ }
-  if (state.data) render();
-}
-
-function boardOwners(cards) {
-  const seen = new Map();
-  for (const c of cards) if (c.owner && !seen.has(opKey(c.owner))) seen.set(opKey(c.owner), c.owner);
-  return [...seen.values()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-}
-
-// Header "Author" filter: All authors / each card owner / (unassigned).
-function paintOwnerFilter(cards) {
-  let sel = $('kanban-owner');
-  if (!sel) {
-    const wrap = el('label', 'kb-op-filter kb-owner-filter');
-    wrap.title = 'Filter the board by author (card owner)';
-    wrap.append(el('span', 'kb-op-filter-lbl', 'Author'));
-    sel = el('select');
-    sel.id = 'kanban-owner';
-    sel.addEventListener('change', () => setOwner(sel.value));
-    wrap.append(sel);
-    $('kanban-add-lane').before(wrap);
-  }
-  const owners = boardOwners(cards);
-  if (document.activeElement === sel) return; // never rebuild an open dropdown
-  if (state.owner && state.owner !== NO_OWNER && !owners.some((o) => opKey(o) === opKey(state.owner))) owners.push(state.owner);
-  const opts = [['', 'All authors'], ...owners.map((o) => [o, o]), [NO_OWNER, '— unassigned —']];
-  sel.replaceChildren(...opts.map(([v, label]) => {
-    const o = el('option', '', label);
-    o.value = v;
-    o.selected = v === NO_OWNER ? state.owner === v : opKey(v) === opKey(state.owner);
-    return o;
-  }));
-  sel.classList.toggle('active', !!state.owner);
-}
-
-function opMatch(card) {
-  if (!state.op) return true;
-  if (state.op === NO_OP) return !card.opname;
-  return opKey(card.opname) === opKey(state.op);
-}
-
-function ownerMatch(card) {
-  if (!state.owner) return true;
-  if (state.owner === NO_OWNER) return !card.owner;
-  return opKey(card.owner) === opKey(state.owner);
-}
-
-// Header "op" filter: All ops / each opname / (no op). Built in JS so index.html stays untouched.
-function paintOpFilter(cards) {
-  let sel = $('kanban-opname');
-  if (!sel) {
-    const wrap = el('label', 'kb-op-filter');
-    wrap.title = 'Filter the board by operation (opname)';
-    wrap.append(el('span', 'kb-op-filter-lbl', 'Op'));
-    sel = el('select');
-    sel.id = 'kanban-opname';
-    sel.addEventListener('change', () => setOp(sel.value));
-    wrap.append(sel);
-    $('kanban-refresh').before(wrap);
-  }
-  const ops = boardOps(cards);
-  if (document.activeElement === sel) return; // never rebuild an open dropdown
-  if (state.op && state.op !== NO_OP && !ops.some((o) => opKey(o) === opKey(state.op))) ops.push(state.op);
-  const opts = [['', 'All ops'], ...ops.map((o) => [o, o]), [NO_OP, '— no op —']];
-  sel.replaceChildren(...opts.map(([v, label]) => {
-    const o = el('option', '', label);
-    o.value = v;
-    o.selected = v === NO_OP ? state.op === v : opKey(v) === opKey(state.op);
-    return o;
-  }));
-  sel.classList.toggle('active', !!state.op);
-  let list = $('kb-opname-list');
-  if (!list) { list = el('datalist'); list.id = 'kb-opname-list'; document.body.append(list); }
-  list.replaceChildren(...boardOps(cards).map((o) => { const n = el('option'); n.value = o; return n; }));
 }
 
 const grouping = createGrouping({ el, state, $, render: () => render(), renderCard });
@@ -215,19 +107,14 @@ function render() {
     if (openCardData && unreadCards.has(opened)) markCardRead(openCardData);
   }
   const pool = state.archived ? all.concat(state.archived) : all;
+  state.laneNames = Object.fromEntries(lanes.map((lane) => [lane.id, lane.name]));
   const done = lanes.find((lane) => lane.name.toLowerCase() === 'done');
   const laneOf = (card) => (card.archived_at && done ? done.id : card.lane_id);
-  paintUpdatedFilter({ el, $, state, onChange: setUpdated });
-  paintOpFilter(pool);
-  paintOwnerFilter(pool);
-  paintLaneFilter({ el, $, state, lanes, onChange: setLane });
-  const cards = search
-    .filter(pool.filter(opMatch).filter(ownerMatch).filter((card) => updatedMatch(state, card)))
-    .filter((card) => laneMatch(state, card, done ? done.id : null));
+  paintFilters({ el, $, state, lanes, cards: pool, laneNames: state.laneNames, onChange: setFilters });
+  const cards = search.filter(pool.filter((card) => matches(state.filters, card, laneOf)));
   // live matches first; a stable sort keeps the server's relevance order inside each group
   cards.sort((a, b) => (a.archived_at ? 1 : 0) - (b.archived_at ? 1 : 0));
   const board = $('kanban-board');
-  board.classList.toggle('op-filtered', !!state.op);
   board.classList.toggle('searching', search.active());
   // Re-rendering replaces the lane nodes, which would reset each lane's own
   // scroll; carry the offsets across so a 3s poll never yanks the view.
@@ -235,7 +122,6 @@ function render() {
   board.querySelectorAll('.kb-cards').forEach((list) => {
     if (list.scrollTop) laneScroll.set(String(list.dataset.laneId), list.scrollTop);
   });
-  state.laneNames = Object.fromEntries(lanes.map((lane) => [lane.id, lane.name]));
   if (state.group === 'owner') {
     board.classList.add('by-owner');
     board.replaceChildren(...grouping.ownerColumns(cards).map(grouping.renderOwnerColumn));
@@ -257,13 +143,11 @@ function render() {
     : `${lanes.length} lanes`;
   $('kanban-count').textContent = `${shown} card${total === 1 ? '' : 's'} · ${unit}`
     + (archivedCount ? ` · ${archivedCount} archived` : '')
-    + (state.op ? ` · op: ${state.op === NO_OP ? 'none' : state.op}` : '')
-    + (state.owner ? ` · author: ${state.owner === NO_OWNER ? 'none' : state.owner}` : '')
-    + (state.lane ? ` · lane: ${state.laneNames[state.lane] || state.lane}` : '')
-    + (state.updated ? ` · updated: ${updatedLabel(state)}` : '')
+    + (state.filters.length ? ` · ${state.filters.length} filter${state.filters.length === 1 ? '' : 's'}` : '')
     + (search.active() ? ` · ${search.note()}` : '');
   if (!lanes.length) board.append(el('div', 'kb-empty', 'No lanes yet — add one with + Lane.'));
   else if (search.active() && !cards.length) board.append(el('div', 'kb-empty', `No cards match “${search.query()}”.`));
+  else if (state.filters.length && !cards.length) board.append(el('div', 'kb-empty', 'No cards match these filters.'));
   // A new query brings its first hit's lane into view (archived hits live in Done).
   const q = search.active() ? search.query() : '';
   if (q !== state.searchQ) {
@@ -438,10 +322,10 @@ function opChip(opname) {
   const chip = el('button', 'kb-opname');
   chip.type = 'button';
   chip.append(el('span', 'kb-opname-ico', '◆'), el('span', 'kb-opname-txt', opname));
-  const active = opKey(state.op) === opKey(opname);
+  const active = hasOp(state.filters, opname);
   chip.classList.toggle('active', active);
   chip.title = active ? 'Show all ops' : `Show only ${opname}`;
-  chip.addEventListener('click', (e) => { e.stopPropagation(); setOp(active ? '' : opname); });
+  chip.addEventListener('click', (e) => { e.stopPropagation(); setFilters(setOpFilter(state.filters, active ? '' : opname)); });
   return chip;
 }
 
@@ -534,7 +418,8 @@ function renderAdd(lane) {
   open.addEventListener('click', () => {
     form.hidden = false; open.hidden = true; state.busy++;
     // A new card starts in the op you are filtered to.
-    if (!opname.value && state.op && state.op !== NO_OP) opname.value = state.op;
+    const op = activeOp(state.filters);
+    if (!opname.value && op) opname.value = op;
     title.focus();
   });
   cancel.addEventListener('click', close);
