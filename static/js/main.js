@@ -12,9 +12,13 @@ import { chrome } from './chrome.js?v=alpine2';
 Alpine.data('chrome', chrome);
 Alpine.start();
 
-// The retired GMGN PWA registered a service worker; drop any leftover one.
+// The retired GMGN PWA registered a service worker; drop any leftover one, then
+// register this app's worker on load (it used to live in an inline script).
 if ('serviceWorker' in navigator && window.isSecureContext) {
   navigator.serviceWorker.getRegistrations?.()
     .then((regs) => regs.forEach((reg) => reg.unregister()))
     .catch(() => {});
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
 }

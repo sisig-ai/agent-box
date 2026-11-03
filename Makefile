@@ -12,11 +12,9 @@ SLOC_LIMIT ?= 400
 SLOC_STRICT ?= 1
 # Files that predate the budget get an explicit ceiling instead of an exclusion,
 # so they still fail if they grow. Keep these numbers honest: lowering them is
-# the point. docs.js carries the explorer modes and the editor in one module and
-# is the next split candidate; the cap moves only with a matching change.
-# index.html carries the Alpine markup now (logs, stack, progress, files), so its
-# ceiling rose 560 -> 620 -> 700 -> 800 -> 980 as that markup left the JS files.
-SLOC_EXEMPT ?= static/index.html:1100 dashboard/progress.py:470
+# the point. The page markup lives in dashboard/page/*.py, one module per panel,
+# each inside the normal 400-line budget.
+SLOC_EXEMPT ?= dashboard/progress.py:470
 
 NPM        ?= npm
 ESLINT     ?= npx eslint

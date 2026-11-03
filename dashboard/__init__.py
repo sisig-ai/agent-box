@@ -8,7 +8,7 @@ loading Flask (M2 decoupling, known-issue #5).
 
 
 def create_app():
-    from flask import Flask, jsonify, request, send_from_directory
+    from flask import Flask, Response, jsonify, request, send_from_directory
 
     from . import config, db
     from .docs_api import bp as docs_bp
@@ -55,7 +55,9 @@ def create_app():
     @app.get("/")
     @app.get("/index.html")
     def index():
-        return send_from_directory(config.STATIC_DIR, "index.html")
+        from .page import render_page
+
+        return Response(render_page(), mimetype="text/html")
 
     @app.get("/config.json")
     def config_json():

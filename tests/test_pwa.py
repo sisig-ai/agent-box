@@ -17,7 +17,7 @@ def test_index_has_pwa_metadata(client):
     assert 'rel="manifest"' in html
     assert "apple-mobile-web-app-capable" in html
     assert "pwa.css" in html
-    assert "serviceWorker" in html
+    assert "serviceWorker" in client.get("/static/js/main.js").data.decode()
 
 
 def test_pwa_assets_served(client):

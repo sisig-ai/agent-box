@@ -14,6 +14,12 @@ exclude = ["deploy", "node_modules", ".venv"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
+[tool.ruff.lint.per-file-ignores]
+# The page modules mirror HTML attribute for attribute; Alpine expressions in
+# those attributes run past 100 columns, and wrapping them makes the diff against
+# the old static page unreadable.
+"dashboard/page/*.py" = ["E501"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # Make the repo root importable so tests can `from dashboard...` without an
