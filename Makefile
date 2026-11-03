@@ -15,8 +15,8 @@ SLOC_STRICT ?= 1
 # the point. docs.js carries the explorer modes and the editor in one module and
 # is the next split candidate; the cap moves only with a matching change.
 # index.html carries the Alpine markup now (logs, stack, progress, files), so its
-# ceiling rose 560 -> 620 -> 700 as that markup left the JS files.
-SLOC_EXEMPT ?= static/js/kanban/board.js:530 static/index.html:700 \
+# ceiling rose 560 -> 620 -> 700 -> 800 as that markup left the JS files.
+SLOC_EXEMPT ?= static/js/kanban/board.js:530 static/index.html:800 \
 	dashboard/progress.py:470 static/js/docs/docs.js:510
 
 NPM        ?= npm

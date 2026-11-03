@@ -29,7 +29,7 @@ function current() {
 const lazy = {};
 const KANBAN = './kanban/board.js?v=filters1';
 const PROGRESS = './progress/bars.js?v=alpine3';
-const DOCS = './docs/docs.js?v=author2';
+const DOCS = './docs/view.js?v=alpine6';
 const LOGS = './logs/view.js?v=alpine1';
 const STACK = './stack/view.js?v=alpine2';
 const BRIEF = './notes/brief.js?v=alpine5';
@@ -49,7 +49,7 @@ function ensure(v) {
     (lazy.progress ||= import(PROGRESS)).then(m => m.mount(document.getElementById('progress-view')));
   } else if (v === 'docs') {
     const docPrefix = decodeURIComponent(location.hash.replace(/^#\/docs\/?/, ''));
-    (lazy.docs ||= import(DOCS)).then(m => m.initDocs(docPrefix || ''));
+    (lazy.docs ||= import(DOCS)).then(m => m.mount(document.getElementById('docs-view'), docPrefix || ''));
   } else if (v === 'logs') {
     (lazy.logs ||= import(LOGS)).then(m => m.mount(document.getElementById('logs-view')));
   }
@@ -67,7 +67,7 @@ function apply() {
     else if (v === 'progress') (lazy.progress ||= import(PROGRESS)).then(m => m.enter());
     else if (v === 'docs') {
       const docPrefix = decodeURIComponent(location.hash.replace(/^#\/docs\/?/, ''));
-      (lazy.docs ||= import(DOCS)).then(m => m.initDocs(docPrefix || ''));
+      (lazy.docs ||= import(DOCS)).then(m => m.mount(document.getElementById('docs-view'), docPrefix || ''));
     }
   }
 }

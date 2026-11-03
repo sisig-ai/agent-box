@@ -501,7 +501,7 @@
 
 
       <!-- ---------- Docs ---------- -->
-      <section class="docs" data-tabpanel="docs" x-ignore id="docs-view" aria-label="Docs">
+      <section class="docs" data-tabpanel="docs" x-ignore id="docs-view" aria-label="Docs" @keydown.window="onEscape($event)">
         <div class="docs-head">
           <div class="docs-title">
             <h2>Docs</h2>
@@ -509,50 +509,143 @@
           </div>
           <div class="docs-actions">
             <div class="docs-searchbox" role="search">
-              <input id="docs-search" type="search" placeholder="search docs…" autocomplete="off" spellcheck="false" aria-label="Full-text search over prefixes, content, tags and authors">
-              <input id="docs-prefix-q" type="search" placeholder="prefix…" autocomplete="off" spellcheck="false" aria-label="Filter results by doc prefix, any part of the key" title="Prefix search: any part of the doc key, e.g. card-389 or handoffs/">
-              <button type="button" id="docs-search-clear" title="Clear search" hidden>×</button>
+              <input id="docs-search" type="search" x-ref="search" x-model="q" @input="onSearchInput()"
+                     placeholder="search docs…" autocomplete="off" spellcheck="false" aria-label="Full-text search over prefixes, content, tags and authors">
+              <input id="docs-prefix-q" type="search" x-ref="prefixQ" x-model="prefixQ" @input="onSearchInput()"
+                     placeholder="prefix…" autocomplete="off" spellcheck="false" aria-label="Filter results by doc prefix, any part of the key" title="Prefix search: any part of the doc key, e.g. card-389 or handoffs/">
+              <button type="button" id="docs-search-clear" title="Clear search" x-show="q || prefixQ" @click="clearSearch()">×</button>
             </div>
-            <button class="brief-btn" id="docs-new" title="New doc">+ new</button>
-            <button class="brief-btn" id="docs-refresh" title="Reload the list">⟳ refresh</button>
+            <button class="brief-btn" id="docs-new" title="New doc" @click="startNew()">+ new</button>
+            <button class="brief-btn" id="docs-refresh" title="Reload the list" @click="refresh()">⟳ refresh</button>
           </div>
         </div>
-        <div class="docs-body">
+        <div class="docs-body" :class="{ 'is-flat': view === 'flat' }">
           <div class="docs-list-wrap">
             <div class="docs-toolbar" role="group" aria-label="Explorer mode">
-              <select class="docs-author" id="docs-author" aria-label="Filter by author" title="Only docs by this author"><option value="">all authors</option></select>
-              <button class="docs-toggle" id="docs-view-tree" aria-pressed="true" title="Browse by prefix path">[tree]</button>
-              <button class="docs-toggle" id="docs-view-flat" aria-pressed="false" title="One list, sortable by prefix, updated or author">[flat]</button>
+              <select class="docs-author" id="docs-author" aria-label="Filter by author" title="Only docs by this author"
+                      :class="{ active: !!author }" x-model="author" @change="setAuthor(author)">
+                <template x-for="option in authorOptions" :key="option.value">
+                  <option :value="option.value" x-text="option.label"></option>
+                </template>
+              </select>
+              <button class="docs-toggle" id="docs-view-tree" :class="{ active: view === 'tree' }" :aria-pressed="view === 'tree'"
+                      title="Browse by prefix path" @click="setView('tree')">[tree]</button>
+              <button class="docs-toggle" id="docs-view-flat" :class="{ active: view === 'flat' }" :aria-pressed="view === 'flat'"
+                      title="One list, sortable by prefix, updated or author" @click="setView('flat')">[flat]</button>
             </div>
-            <div class="docs-tree" id="docs-tree" aria-label="Prefix tree"></div>
-            <p class="docs-tree-empty" id="docs-tree-empty" hidden>no docs yet</p>
-            <ul class="docs-list" id="docs-list"></ul>
-            <p class="docs-empty-list" id="docs-empty-list" hidden></p>
+            <div class="docs-tree" id="docs-tree" aria-label="Prefix tree" x-show="view === 'tree'">
+              <template x-for="row in treeRows" :key="row.key">
+                <li :class="row.kind === 'folder' ? 'docs-tree-folder' : (row.kind === 'doc' ? 'docs-tree-doc' : 'docs-tree-more-row')">
+                  <template x-if="row.kind === 'folder'">
+                    <div class="docs-tree-row" :style="'padding-left: ' + (row.depth * 0.8) + 'rem'">
+                      <button class="docs-tree-twist" :title="row.open ? 'Collapse' : 'Expand'" @click.stop="toggleFolder(row.path)" x-text="row.open ? '▾' : '▸'"></button>
+                      <button class="docs-tree-name" :class="{ scoped: row.scoped }" :title="'Scope to ' + row.path + '/'"
+                              @click="setScope(prefix === row.path ? '' : row.path)" x-text="row.name"></button>
+                      <span class="docs-tree-count" x-text="row.total"></span>
+                    </div>
+                  </template>
+                  <template x-if="row.kind === 'doc'">
+                    <div class="docs-tree-row" :style="'padding-left: ' + (row.depth * 0.8 + 1.1) + 'rem'">
+                      <span class="docs-tree-twist">·</span>
+                      <button class="docs-tree-name is-doc" :class="{ open: row.selected }"
+                              :title="row.prefix + (row.author ? ' · @' + row.author : '')"
+                              @click="selectDoc(row.prefix)" x-text="row.name"></button>
+                      <span class="docs-tree-cards" x-show="row.cards" x-text="'⧉' + row.cards"></span>
+                    </div>
+                  </template>
+                  <template x-if="row.kind === 'more'">
+                    <div class="docs-tree-row" :style="'padding-left: ' + (row.depth * 0.8 + 1.1) + 'rem'">
+                      <button class="docs-tree-more" @click.stop="showMore(row)"
+                              x-text="row.path ? ('show ' + row.more + ' more') : ('show ' + row.more + ' more at root')"></button>
+                    </div>
+                  </template>
+                </li>
+              </template>
+            </div>
+            <p class="docs-tree-empty" id="docs-tree-empty" x-show="view === 'tree' && !all.length">no docs yet</p>
+            <ul class="docs-list" id="docs-list" x-show="listVisible">
+              <li class="docs-flat-row docs-flat-head" x-show="flatMode">
+                <span class="docs-flat-cell is-prefix"><button class="docs-sort" :class="{ active: sort.key === 'prefix' }" @click="setSort('prefix')">prefix<span class="docs-sort-arrow" x-show="sort.key === 'prefix'" x-text="sort.dir === 1 ? '▲' : '▼'"></span></button></span>
+                <span class="docs-flat-cell is-updated"><button class="docs-sort" :class="{ active: sort.key === 'updated' }" @click="setSort('updated')">updated<span class="docs-sort-arrow" x-show="sort.key === 'updated'" x-text="sort.dir === 1 ? '▲' : '▼'"></span></button></span>
+                <span class="docs-flat-cell is-author"><button class="docs-sort" :class="{ active: sort.key === 'author' }" @click="setSort('author')">author<span class="docs-sort-arrow" x-show="sort.key === 'author'" x-text="sort.dir === 1 ? '▲' : '▼'"></span></button></span>
+              </li>
+              <template x-for="doc in listRows" :key="doc.prefix">
+                <li :class="[flatMode ? 'docs-flat-row' : ('docs-item' + (doc.kind === 'semantic' ? ' is-semantic' : '')), { selected: current && current.prefix === doc.prefix }]"
+                    :data-prefix="doc.prefix" @click="selectDoc(doc.prefix)">
+                  <template x-if="flatMode">
+                    <span class="docs-flat-cell is-prefix">
+                      <span class="docs-flat-prefix" x-text="doc.prefix"></span>
+                      <span class="docs-tree-cards" x-show="doc.card_count" x-text="'⧉' + doc.card_count"></span>
+                      <span class="docs-flat-tags" x-show="doc.tags && doc.tags.length" x-text="tagLabel(doc.tags)"></span>
+                    </span>
+                  </template>
+                  <template x-if="flatMode">
+                    <span class="docs-flat-cell is-updated" x-text="fmtTime(doc.updated_at)"></span>
+                  </template>
+                  <template x-if="flatMode">
+                    <span class="docs-flat-cell is-author" x-text="doc.author ? '@' + doc.author : '—'"></span>
+                  </template>
+                  <template x-if="!flatMode">
+                    <span>
+                      <span class="docs-item-head">
+                        <span class="docs-item-name">
+                          <template x-for="(part, i) in markedParts(doc.prefix_snip || doc.prefix)" :key="i">
+                            <span :class="{ 'docs-hl': part.mark }" x-text="part.text"></span>
+                          </template>
+                        </span>
+                        <span class="docs-score" x-show="doc.kind === 'semantic' && typeof doc.score === 'number'" x-text="doc.score ? doc.score.toFixed(2) : ''"></span>
+                      </span>
+                      <template x-if="doc.snippet || doc.excerpt">
+                        <p class="docs-item-snip">
+                          <template x-for="(part, i) in markedParts(doc.snippet || doc.excerpt)" :key="i">
+                            <span :class="{ 'docs-hl': part.mark }" x-text="part.text"></span>
+                          </template>
+                        </p>
+                      </template>
+                      <span class="docs-item-meta">
+                        <span x-text="doc.author ? '@' + doc.author : '—'"></span>
+                        <span x-text="fmtTime(doc.updated_at)"></span>
+                        <span class="docs-item-tags" x-show="doc.tags && doc.tags.length" x-text="tagLabel(doc.tags)"></span>
+                        <span x-show="!doc.tags || !doc.tags.length" x-text="doc.size ? doc.size + 'b' : ''"></span>
+                      </span>
+                    </span>
+                  </template>
+                </li>
+              </template>
+              <template x-if="searching && (semanticRows.length || semanticNote)">
+                <li class="docs-divider" x-text="'semantic' + (semanticRows.length ? ' · ' + semanticRows.length : '')"></li>
+              </template>
+              <template x-if="searching && semanticNote">
+                <li class="docs-divider-note" x-text="semanticNote"></li>
+              </template>
+            </ul>
+            <p class="docs-empty-list" id="docs-empty-list" x-show="listVisible && !listRows.length" x-text="emptyListText"></p>
           </div>
-          <div class="docs-editor" id="docs-editor" hidden>
+
+          <div class="docs-editor" id="docs-editor" x-show="editorOpen">
             <div class="docs-meta">
-              <label class="mono">prefix<input id="doc-prefix" spellcheck="false" placeholder="notes/handoff.md"></label>
-              <label class="mono">author<input id="doc-author" spellcheck="false" placeholder="agent name"></label>
-              <label class="mono">tags<input id="doc-tags" spellcheck="false" placeholder="handoff, doctrine"></label>
+              <label class="mono">prefix<input id="doc-prefix" x-ref="prefix" x-model="form.prefix" :readonly="!!current" @input="markDirty()" spellcheck="false" placeholder="notes/handoff.md"></label>
+              <label class="mono">author<input id="doc-author" x-model="form.author" @input="markDirty()" spellcheck="false" placeholder="agent name"></label>
+              <label class="mono">tags<input id="doc-tags" x-model="form.tags" @input="markDirty()" spellcheck="false" placeholder="handoff, doctrine"></label>
             </div>
-            <div class="docs-backlinks" id="doc-backlinks" hidden></div>
-            <textarea id="doc-content" spellcheck="false" placeholder="markdown…"></textarea>
+            <div class="docs-backlinks" id="doc-backlinks" x-ref="backlinks" x-show="current"></div>
+            <textarea id="doc-content" x-model="form.content" @input="markDirty()" @keydown="onEditorKey($event)" spellcheck="false" placeholder="markdown…"></textarea>
             <div class="docs-editor-foot">
-              <span class="mono" id="doc-status"></span>
+              <span class="mono" id="doc-status" x-text="docStatus"></span>
               <div class="docs-editor-actions">
-                <button class="brief-btn" id="doc-delete" title="Delete this doc (two clicks)">delete</button>
-                <button class="brief-btn" id="doc-save" title="Save (Cmd/Ctrl+S)">save</button>
+                <button class="brief-btn" id="doc-delete" title="Delete this doc (two clicks)" x-show="!!current" x-init="armDelete($el)">delete</button>
+                <button class="brief-btn" id="doc-save" title="Save (Cmd/Ctrl+S)" @click="save()">save</button>
               </div>
             </div>
           </div>
-          <div class="docs-empty" id="docs-empty">
+          <div class="docs-empty" id="docs-empty" x-show="!editorOpen">
             <p class="mono">select a doc from the list, or start one with + new</p>
             <p class="mono dim">prefix is the key: <code>handoffs/2026-11-02-box-assistant.md</code></p>
           </div>
         </div>
         <div class="docs-status">
-          <span id="docs-status">loading…</span>
-          <span id="docs-count"></span>
+          <span id="docs-status" :class="{ err: statusError }" x-text="status">loading…</span>
+          <span id="docs-count" x-text="countText"></span>
         </div>
       </section>
 
@@ -654,6 +747,6 @@
   </div>
 
   <script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}))}</script>
-  <script type="module" src="/static/js/main.js?v=alpine5"></script>
+  <script type="module" src="/static/js/main.js?v=alpine6"></script>
 </body>
 </html>
