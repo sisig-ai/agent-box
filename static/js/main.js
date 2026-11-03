@@ -3,8 +3,6 @@
 // and therefore every implicit dependency — is preserved.)
 import './telemetry/poll.js';
 import './router.js?v=author2';
-import './notes/brief.js?v=sitrep2';
-import './notes/schedule.js';
 import './hotkeys.js?v=ascii2';
 import Alpine from './alpine.js';
 import { chrome } from './chrome.js?v=alpine2';

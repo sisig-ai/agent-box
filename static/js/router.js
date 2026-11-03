@@ -32,9 +32,12 @@ const PROGRESS = './progress/bars.js?v=alpine3';
 const DOCS = './docs/docs.js?v=author2';
 const LOGS = './logs/view.js?v=alpine1';
 const STACK = './stack/view.js?v=alpine2';
+const BRIEF = './notes/brief.js?v=alpine5';
 let lastView = null;
 function ensure(v) {
-  if (v === 'stack') {
+  if (v === 'brief') {
+    (lazy.brief ||= import(BRIEF)).then(m => m.mount(document.getElementById('brief')));
+  } else if (v === 'stack') {
     (lazy.stack ||= import(STACK)).then(m => m.mount(document.getElementById('stack-view')));
   } else if (v === 'shell') {
     (lazy.shell ||= import('./shell/shell.js')).then(m => m.initShell());

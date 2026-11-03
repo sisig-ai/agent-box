@@ -148,17 +148,17 @@
           <div class="brief-head">
             <div class="brief-title">
               <h2>Daily Sitrep</h2>
-              <span class="brief-date-label" id="brief-date-label"></span>
+              <span class="brief-date-label" id="brief-date-label" x-text="dateLabel"></span>
             </div>
             <div class="brief-nav">
-              <button class="brief-btn" id="brief-prev" title="Previous day" aria-label="Previous day">‹</button>
-              <input type="date" id="brief-date" aria-label="Sitrep date">
-              <button class="brief-btn" id="brief-next" title="Next day" aria-label="Next day">›</button>
-              <button class="brief-btn" id="brief-today" title="Jump to today" aria-label="Jump to today">today</button>
+              <button class="brief-btn" id="brief-prev" title="Previous day" aria-label="Previous day" @click="prev()">‹</button>
+              <input type="date" id="brief-date" aria-label="Sitrep date" x-model="date" @change="load(date)">
+              <button class="brief-btn" id="brief-next" title="Next day" aria-label="Next day" @click="next()">›</button>
+              <button class="brief-btn" id="brief-today" title="Jump to today" aria-label="Jump to today" @click="today()">today</button>
             </div>
           </div>
 
-          <div class="brief-toolbar" role="toolbar" aria-label="Markdown toolbar">
+          <div class="brief-toolbar" role="toolbar" aria-label="Markdown toolbar" x-show="tab === 'edit'" @click="onToolbar($event)">
             <button class="tool-btn" data-md="h1" title="Heading 1">H1</button>
             <button class="tool-btn" data-md="h2" title="Heading 2">H2</button>
             <button class="tool-btn" data-md="h3" title="Heading 3">H3</button>
@@ -181,19 +181,21 @@
           </div>
 
           <div class="brief-tabs">
-            <button class="tab-btn active" data-tab="preview">preview</button>
-            <button class="tab-btn" data-tab="write">edit</button>
+            <button class="tab-btn" :class="{ active: tab === 'preview' }" @click="setTab('preview')">preview</button>
+            <button class="tab-btn" :class="{ active: tab === 'edit' }" @click="setTab('edit')">edit</button>
           </div>
 
           <div class="brief-panes">
-            <textarea class="brief-editor" id="brief-editor"
+            <textarea class="brief-editor" id="brief-editor" x-ref="editor" x-show="tab === 'edit'"
+              x-model="content" @input="onInput()" @keydown="onEditorKey($event)"
               placeholder="type today's sitrep… markdown supported. saved automatically."></textarea>
-            <div class="brief-preview" id="brief-preview"></div>
+            <div class="brief-preview" id="brief-preview" x-ref="preview" x-show="tab === 'preview'"
+                 :class="{ visible: tab === 'preview' }" @change="onPreviewChange($event)" x-html="previewHtml"></div>
           </div>
 
           <div class="brief-status">
-            <span class="brief-save-state" id="brief-save-state">ready</span>
-            <span id="brief-wordcount"></span>
+            <span class="brief-save-state" id="brief-save-state" :class="'brief-save-state ' + saveClass" x-text="saveState">ready</span>
+            <span id="brief-wordcount" x-text="wordText"></span>
           </div>
         </div>
 
@@ -201,15 +203,31 @@
           <div class="schedule-head">
             <div class="schedule-title">
               <h2>Schedule</h2>
-              <span class="schedule-week-label" id="schedule-week-label"></span>
+              <span class="schedule-week-label" id="schedule-week-label" x-text="scheduleLabel"></span>
             </div>
             <div class="schedule-nav">
-              <button class="brief-btn" id="sched-prev" title="Previous week" aria-label="Previous week">‹</button>
-              <button class="brief-btn" id="sched-next" title="Next week" aria-label="Next week">›</button>
-              <button class="brief-btn" id="sched-now" title="This week" aria-label="This week">now</button>
+              <button class="brief-btn" id="sched-prev" title="Previous week" aria-label="Previous week" @click="weekPrev()">‹</button>
+              <button class="brief-btn" id="sched-next" title="Next week" aria-label="Next week" @click="weekNext()">›</button>
+              <button class="brief-btn" id="sched-now" title="This week" aria-label="This week" @click="weekNow()">now</button>
             </div>
           </div>
-          <div class="schedule-preview" id="schedule-preview"></div>
+          <div class="schedule-preview" id="schedule-preview">
+            <p class="schedule-empty" x-show="scheduleEmpty" x-text="scheduleEmptyText"></p>
+            <div class="schedule-calendar" x-show="!scheduleEmpty && scheduleMapped">
+              <template x-for="(day, index) in scheduleDays" :key="day.label">
+                <div class="cal-row" :class="{ 'cal-today': index === todayOffset }">
+                  <div class="cal-rowhead" x-text="day.label"></div>
+                  <template x-if="!day.items.length">
+                    <div class="cal-event cal-event-empty">—</div>
+                  </template>
+                  <template x-for="(item, i) in day.items" :key="day.label + i">
+                    <div class="cal-event" :class="{ done: item.done }" x-text="item.text"></div>
+                  </template>
+                </div>
+              </template>
+            </div>
+            <div class="schedule-extra" x-show="!!scheduleExtra" x-html="scheduleExtraHtml"></div>
+          </div>
         </aside>
       </section>
 
@@ -636,6 +654,6 @@
   </div>
 
   <script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}))}</script>
-  <script type="module" src="/static/js/main.js?v=alpine4"></script>
+  <script type="module" src="/static/js/main.js?v=alpine5"></script>
 </body>
 </html>
