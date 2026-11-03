@@ -39,7 +39,7 @@ function ensure(v) {
   } else if (v === 'shell') {
     (lazy.shell ||= import('./shell/shell.js')).then(m => m.initShell());
   } else if (v === 'files') {
-    (lazy.files ||= import('./files/actions.js')).then(m => m.initFiles());
+    (lazy.files ||= import('./files/view.js?v=alpine4')).then(m => m.mount(document.getElementById('files-view')));
   } else if (v === 'kanban') {
     (lazy.kanban ||= import(KANBAN)).then(m => m.initKanban());
   } else if (v === 'progress') {

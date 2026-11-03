@@ -1,7 +1,6 @@
-// Files inline editor: lazy CodeMirror load, open/save/close/download.
-import { $ } from '../dom.js';
-import { state, setStatus } from './render.js';
-import { openModal } from '../modal.js';
+// Files editor: CodeMirror 5, lazily loaded, one instance at a time.
+// Imperative on purpose: CodeMirror owns its DOM. The view component calls
+// open()/save()/close() and reads the dirty state it is told about.
 
 const CM_VERSION = '5.65.16';
 const CM_BASE = '/static/vendor/codemirror';
@@ -30,27 +29,17 @@ const MODE_BY_EXT = {
   diff: 'diff', patch: 'diff',
 };
 
-const panel = $('files-editor');
-const host = $('files-editor-host');
-const nameEl = $('files-editor-name');
-const dirtyEl = $('files-editor-dirty');
-const editorStatusEl = $('files-editor-status');
-const breadcrumbEl = $('files-breadcrumb');
-const listWrapEl = $('files-list-wrap');
-const infoEl = document.querySelector('.files-info');
-
 let cmLoad = null;
+let instance = null; // { path, name, cm, orig, callbacks }
 
-function asset(path) {
-  return CM_BASE + '/' + path + '?v=' + CM_VERSION;
-}
+const asset = (path) => `${CM_BASE}/${path}?v=${CM_VERSION}`;
 
 function loadScript(src) {
   return new Promise((resolve, reject) => {
     const s = document.createElement('script');
     s.src = src;
     s.onload = () => resolve();
-    s.onerror = () => reject(new Error('failed to load ' + src));
+    s.onerror = () => reject(new Error(`failed to load ${src}`));
     document.head.appendChild(s);
   });
 }
@@ -61,7 +50,7 @@ function loadStyle(href) {
     link.rel = 'stylesheet';
     link.href = href;
     link.onload = () => resolve();
-    link.onerror = () => reject(new Error('failed to load ' + href));
+    link.onerror = () => reject(new Error(`failed to load ${href}`));
     document.head.appendChild(link);
   });
 }
@@ -72,7 +61,7 @@ function loadCodemirror() {
     ? Promise.resolve()
     : loadScript(asset('codemirror.min.js'))
         .then(() => loadScript(asset('addon/mode/simple.min.js')))
-        .then(() => Promise.all(CM_MODES.map(m => loadScript(asset('mode/' + m + '.min.js')))));
+        .then(() => Promise.all(CM_MODES.map((m) => loadScript(asset(`mode/${m}.min.js`)))));
   cmLoad = loadStyle(asset('codemirror.min.css')).then(() => core);
   return cmLoad;
 }
@@ -84,35 +73,21 @@ export function modeFor(name) {
   return MODE_BY_EXT[ext] || null;
 }
 
-export function editorIsOpen() {
-  return !!state.editor;
-}
+export const isOpen = () => !!instance;
+export const current = () => instance;
+export const value = () => (instance ? instance.cm.getValue() : '');
 
-function setDirty(on) {
-  state.editor.dirty = on;
-  dirtyEl.hidden = !on;
-}
-
-export async function openEditor(path, name, text) {
+// open(host, { path, name, text, onDirty, onSave, onClose }) -> true on success
+export async function open(host, opts) {
   try {
     await loadCodemirror();
   } catch (err) {
-    setStatus('editor failed to load — ' + err.message, true);
-    return false;
+    return { error: `editor failed to load — ${err.message}` };
   }
-  state.editor = { path, name, cm: null, orig: text, dirty: false };
-  nameEl.textContent = name;
-  nameEl.title = path;
-  editorStatusEl.textContent = path;
-  dirtyEl.hidden = true;
-  breadcrumbEl.hidden = true;
-  listWrapEl.hidden = true;
-  if (infoEl) infoEl.hidden = true;
-  panel.hidden = false;
   host.innerHTML = '';
   const cm = window.CodeMirror(host, {
-    value: text,
-    mode: modeFor(name),
+    value: opts.text,
+    mode: modeFor(opts.name),
     theme: 'macmini',
     lineNumbers: true,
     lineWrapping: false,
@@ -121,86 +96,24 @@ export async function openEditor(path, name, text) {
     indentWithTabs: false,
     viewportMargin: 20,
     extraKeys: {
-      'Cmd-S': save,
-      'Ctrl-S': save,
-      Esc: closeEditor,
+      'Cmd-S': () => opts.onSave(),
+      'Ctrl-S': () => opts.onSave(),
+      Esc: () => opts.onClose(),
       Tab: (c) => c.replaceSelection('  ', 'end'),
     },
   });
-  state.editor.cm = cm;
-  cm.on('change', () => setDirty(cm.getValue() !== state.editor.orig));
-  setStatus('editing ' + name);
+  instance = { path: opts.path, name: opts.name, cm, orig: opts.text };
+  cm.on('change', () => opts.onDirty(cm.getValue() !== instance.orig));
   cm.focus();
-  return true;
+  return { ok: true };
 }
 
-export async function save() {
-  if (!state.editor) return;
-  const cm = state.editor.cm;
-  const content = cm.getValue();
-  editorStatusEl.textContent = 'saving…';
-  let res;
-  try {
-    res = await fetch('/api/fs/write', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: state.editor.path, content }),
-    });
-  } catch (err) {
-    editorStatusEl.textContent = 'save failed — network error';
-    setStatus('save failed — network error', true);
-    return;
-  }
-  if (!state.editor || state.editor.cm !== cm) return;
-  const d = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const msg = d.error || ('save failed (' + res.status + ')');
-    editorStatusEl.textContent = msg;
-    setStatus(msg, true);
-    return;
-  }
-  state.editor.orig = content;
-  setDirty(cm.getValue() !== content);
-  editorStatusEl.textContent = 'saved ' + state.editor.name;
-  setStatus('saved ' + state.editor.name);
+export function markSaved(text) {
+  if (instance) instance.orig = text;
 }
 
-export async function closeEditor() {
-  if (!state.editor) return true;
-  if (state.editor.dirty) {
-    const ok = await openModal({
-      title: 'Discard changes?',
-      text: '“' + state.editor.name + '” has unsaved changes.',
-      ok: 'Discard', danger: true,
-    });
-    if (!ok) return false;
-  }
-  const cm = state.editor.cm;
-  if (cm) cm.getWrapperElement().remove();
-  state.editor = null;
-  host.innerHTML = '';
-  panel.hidden = true;
-  breadcrumbEl.hidden = false;
-  listWrapEl.hidden = false;
-  if (infoEl) infoEl.hidden = false;
-  setStatus('editor closed');
-  return true;
+export function destroy() {
+  if (!instance) return;
+  instance.cm.getWrapperElement().remove();
+  instance = null;
 }
-
-export function downloadCurrent() {
-  if (!state.editor) return;
-  const cm = state.editor.cm;
-  const blob = new Blob([cm.getValue()], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = state.editor.name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
-$('files-editor-save').addEventListener('click', save);
-$('files-editor-close').addEventListener('click', closeEditor);
-$('files-editor-download').addEventListener('click', downloadCurrent);

@@ -1,211 +1,195 @@
-// Files explorer actions: navigation, create/rename/delete, upload, drag-drop.
-import { $ } from '../dom.js';
-import { state, refs, render, renderBreadcrumb, renderPlaces, clearSelection, setStatus } from './render.js';
-import { api, xhrUpload } from './api.js';
+// Entry actions for the files explorer: selection, details, download, the
+// editor round trip, and create/rename/delete. Methods run with the Alpine
+// component as `this`.
+
 import { openModal } from '../modal.js';
-import { openEditor, closeEditor, editorIsOpen } from './editor.js';
+import * as editor from './editor.js';
+import { fileIcon, fmtSize, fmtTime } from './format.js';
 
-/* ----- Data access ----- */
-async function load(path) {
-  const url = '/api/fs/list' + (path ? '?path=' + encodeURIComponent(path) : '');
-  setStatus('loading…');
-  try {
-    const res = await fetch(url);
-    const data = await res.json().catch(() => ({}));
+export const entryActions = {
+  // ---- selection + details ----
+  async select(entry) {
+    this.selected = entry;
+    this.renderInfo(entry, null);
+    try {
+      const res = await fetch(`/api/fs/stat?path=${encodeURIComponent(entry.path)}`);
+      if (!res.ok) return;
+      const detail = await res.json();
+      if (this.selected && this.selected.path === entry.path) this.renderInfo(entry, detail);
+    } catch { /* details are optional */ }
+  },
+
+  isSelected(entry) {
+    return !!this.selected && this.selected.path === entry.path;
+  },
+
+  renderInfo(entry, detail) {
+    const rows = [];
+    const add = (k, v) => { if (v != null && v !== '') rows.push({ k, v }); };
+    add('Type', entry.is_link ? `symlink${entry.is_dir ? ' → folder' : ''}` : entry.type);
+    if (detail && detail.link_target) add('Target', detail.link_target);
+    if (!entry.is_dir) {
+      const exact = Number(entry.size || 0);
+      add('Size', exact < 1024 ? `${exact} B` : `${fmtSize(entry.size)} (${exact.toLocaleString()} B)`);
+    }
+    add('Modified', detail && detail.mtime_iso ? new Date(detail.mtime_iso).toLocaleString() : fmtTime(entry.mtime));
+    if (detail && detail.btime_iso) add('Created', new Date(detail.btime_iso).toLocaleString());
+    add('Mode', entry.mode);
+    if (detail && detail.owner) add('Owner', detail.owner + (detail.group ? `:${detail.group}` : ''));
+    if (detail && detail.mime) add('Mime', detail.mime);
+    add('Access', [entry.readable ? 'read' : null, entry.writable ? 'write' : null].filter(Boolean).join(' · ') || 'none');
+    add('Path', entry.path);
+    this.info = { name: entry.name, icon: fileIcon(entry), rows };
+  },
+
+  // ---- editor ----
+  async openEntry(entry) {
+    if (!entry || entry.is_dir) { if (entry) this.cd(entry.path); return; }
+    this.setStatus(`opening ${entry.name}…`);
+    let res;
+    try {
+      res = await fetch(`/api/fs/read?path=${encodeURIComponent(entry.path)}`);
+    } catch {
+      this.setStatus('network error', true);
+      return;
+    }
+    if (res.status === 413 || res.status === 415) {
+      const d = await res.json().catch(() => ({}));
+      this.setStatus(`${d.error || 'not editable'} — downloading ${entry.name}`);
+      this.download(entry);
+      return;
+    }
     if (!res.ok) {
-      setStatus(data.error || ('could not open folder (' + res.status + ')'), true);
-      return false;
+      const d = await res.json().catch(() => ({}));
+      this.setStatus(d.error || `could not open file (${res.status})`, true);
+      return;
     }
-    state.cwd = data.path;
-    state.home = data.home;
-    state.parentPath = data.parent;
-    state.entries = data.entries || [];
-    refs.pathLabel.textContent = state.cwd;
-    refs.pathLabel.title = state.cwd;
-    clearSelection();
-    renderBreadcrumb();
-    renderPlaces(data.places);
-    render();
-    setStatus('opened ' + state.cwd);
-    return true;
-  } catch (err) {
-    setStatus('network error', true);
-    return false;
-  }
-}
-
-export async function cd(path) {
-  if (!(await closeEditor())) return;
-  clearSelection();
-  load(path);
-}
-
-export function goUp() {
-  if (state.parentPath) cd(state.parentPath);
-}
-
-export async function openEntry(e) {
-  if (!e || e.is_dir) { if (e) cd(e.path); return; }
-  setStatus('opening ' + e.name + '…');
-  let res;
-  try {
-    res = await fetch('/api/fs/read?path=' + encodeURIComponent(e.path));
-  } catch (err) {
-    setStatus('network error', true);
-    return;
-  }
-  if (res.status === 413 || res.status === 415) {
-    const d = await res.json().catch(() => ({}));
-    setStatus((d.error || 'not editable') + ' — downloading ' + e.name);
-    download(e);
-    return;
-  }
-  if (!res.ok) {
-    const d = await res.json().catch(() => ({}));
-    setStatus(d.error || ('could not open file (' + res.status + ')'), true);
-    return;
-  }
-  const d = await res.json();
-  if (await openEditor(d.path, d.name, d.text)) setStatus('editing ' + d.name);
-}
-
-export function download(e) {
-  if (!e || e.is_dir) return;
-  const a = document.createElement('a');
-  a.href = '/api/fs/download?path=' + encodeURIComponent(e.path);
-  a.download = e.name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setStatus('downloading ' + e.name + '…');
-}
-
-/* ----- Create / rename / delete ----- */
-export async function newFolder() {
-  const name = await openModal({ title: 'New folder', input: true, value: 'untitled folder', ok: 'Create' });
-  if (name == null) return;
-  const r = await api('/api/fs/mkdir', 'POST', { parent: state.cwd, name });
-  if (r) { await load(state.cwd); setStatus('created folder ' + r.name); }
-}
-
-export async function newFile() {
-  const name = await openModal({ title: 'New empty file', input: true, value: 'untitled.txt', ok: 'Create' });
-  if (name == null) return;
-  const r = await api('/api/fs/touch', 'POST', { parent: state.cwd, name });
-  if (r) { await load(state.cwd); setStatus('created file ' + r.name); }
-}
-
-export async function renameEntry(e) {
-  const name = await openModal({ title: 'Rename', input: true, value: e.name, ok: 'Rename' });
-  if (name == null || name === e.name) return;
-  const r = await api('/api/fs/rename', 'POST', { path: e.path, name });
-  if (r) { await load(state.cwd); setStatus('renamed to ' + r.name); }
-}
-
-export async function deleteEntry(e) {
-  const ok = await openModal({
-    title: e.is_dir ? 'Delete folder?' : 'Delete ' + (e.type === 'link' ? 'symlink' : 'file') + '?',
-    text: e.is_dir
-      ? '“' + e.name + '” and everything inside it will be deleted.'
-      : '“' + e.name + '” will be deleted.',
-    ok: 'Delete', danger: true,
-  });
-  if (!ok) return;
-  const r = await api('/api/fs?path=' + encodeURIComponent(e.path), 'DELETE');
-  if (r) {
-    if (state.selected && state.selected.path === e.path) clearSelection();
-    await load(state.cwd);
-    setStatus('deleted ' + e.name);
-  }
-}
-
-/* ----- Upload (XHR for progress; sequential; confirm on collision) ----- */
-function uploadFiles(files) {
-  const list = Array.from(files || []);
-  if (!list.length) return;
-  uploadQueue(list);
-}
-
-async function uploadQueue(list) {
-  let done = 0;
-  for (const f of list) {
-    const clash = state.entries.some(e => e.name === f.name);
-    let overwrite = false;
-    if (clash) {
-      const ok = await openModal({
-        title: 'Overwrite file?',
-        text: '“' + f.name + '” already exists in this folder.',
-        ok: 'Overwrite', danger: true,
+    const d = await res.json();
+    this.editor = { open: true, name: d.name, path: d.path, dirty: false, status: d.path };
+    this.setStatus(`editing ${d.name}`);
+    this.$nextTick(async () => {
+      const result = await editor.open(this.$refs.host, {
+        path: d.path,
+        name: d.name,
+        text: d.text,
+        onDirty: (dirty) => { this.editor.dirty = dirty; },
+        onSave: () => this.saveEditor(),
+        onClose: () => this.closeEditor(),
       });
-      if (!ok) continue;
-      overwrite = true;
-    }
-    const res = await xhrUpload(f, overwrite, pct => {
-      setStatus('uploading ' + f.name + ' — ' + pct + '%');
+      if (result.error) this.editor.status = result.error;
     });
-    if (res) done++;
-  }
-  refs.uploadInput.value = '';
-  if (done) { await load(state.cwd); setStatus('uploaded ' + done + ' file' + (done === 1 ? '' : 's')); }
-}
+  },
 
-/* ----- Wiring ----- */
-function wire() {
-  $('files-up').addEventListener('click', goUp);
-  $('files-home').addEventListener('click', () => { if (state.home) cd(state.home); });
-  $('files-refresh').addEventListener('click', async () => { if (state.cwd && await closeEditor()) load(state.cwd); });
-  $('files-hidden').addEventListener('click', (e) => {
-    state.showHidden = !state.showHidden;
-    e.currentTarget.classList.toggle('toggled', state.showHidden);
-    render();
-  });
-  $('files-mkdir').addEventListener('click', newFolder);
-  $('files-touch').addEventListener('click', newFile);
-  $('files-upload').addEventListener('click', () => refs.uploadInput.click());
-  refs.uploadInput.addEventListener('change', () => uploadFiles(refs.uploadInput.files));
-
-  document.querySelectorAll('.files-table thead th[data-sort]').forEach(th => {
-    th.addEventListener('click', () => {
-      const key = th.dataset.sort;
-      if (state.sortKey === key) state.sortDir *= -1;
-      else { state.sortKey = key; state.sortDir = 1; }
-      render();
-    });
-  });
-
-  refs.listWrap.addEventListener('dragover', (e) => { e.preventDefault(); refs.listWrap.classList.add('dragover'); });
-  refs.listWrap.addEventListener('dragleave', (e) => {
-    if (!refs.listWrap.contains(e.relatedTarget)) refs.listWrap.classList.remove('dragover');
-  });
-  refs.listWrap.addEventListener('drop', (e) => {
-    e.preventDefault();
-    refs.listWrap.classList.remove('dragover');
-    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
-      uploadFiles(e.dataTransfer.files);
+  async saveEditor() {
+    if (!this.editor.open) return;
+    const content = editor.value();
+    this.editor.status = 'saving…';
+    let res;
+    try {
+      res = await fetch('/api/fs/write', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: this.editor.path, content }),
+      });
+    } catch {
+      this.editor.status = 'save failed — network error';
+      this.setStatus('save failed — network error', true);
+      return;
     }
-  });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = d.error || `save failed (${res.status})`;
+      this.editor.status = msg;
+      this.setStatus(msg, true);
+      return;
+    }
+    editor.markSaved(content);
+    this.editor.dirty = false;
+    this.editor.status = `saved ${this.editor.name}`;
+    this.setStatus(`saved ${this.editor.name}`);
+  },
 
-  document.addEventListener('keydown', (e) => {
-    if (document.body.dataset.view !== 'files' || modalOpen()) return;
-    if (editorIsOpen()) return;
-    const tag = document.activeElement && document.activeElement.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-    if (e.key === 'Backspace') { e.preventDefault(); goUp(); }
-    else if (e.key === 'Enter' && state.selected) {
-      e.preventDefault();
-      if (state.selected.is_dir) cd(state.selected.path); else openEntry(state.selected);
-    } else if (e.key === 'Delete' && state.selected) { e.preventDefault(); deleteEntry(state.selected); }
-    else if (e.key.toLowerCase() === 'r' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); load(state.cwd); }
-  });
-}
+  async closeEditor() {
+    if (!this.editor.open) return true;
+    if (this.editor.dirty) {
+      const ok = await openModal({
+        title: 'Discard changes?',
+        text: `“${this.editor.name}” has unsaved changes.`,
+        ok: 'Discard',
+        danger: true,
+      });
+      if (!ok) return false;
+    }
+    editor.destroy();
+    this.editor = { open: false, name: '', path: '', dirty: false, status: '' };
+    this.setStatus('editor closed');
+    return true;
+  },
 
-function modalOpen() {
-  return !$('fs-modal').hidden;
-}
+  // ---- create / download ----
+  async newFolder() {
+    const name = await openModal({ title: 'New folder', input: true, value: 'untitled folder', ok: 'Create' });
+    if (name == null) return;
+    const r = await this.api('/api/fs/mkdir', 'POST', { parent: this.cwd, name });
+    if (r) { await this.load(this.cwd); this.setStatus(`created folder ${r.name}`); }
+  },
 
-export function initFiles() {
-  if (state.inited) return;
-  state.inited = true;
-  wire();
-  load(null); // server defaults to ~
-}
+  async newFile() {
+    const name = await openModal({ title: 'New empty file', input: true, value: 'untitled.txt', ok: 'Create' });
+    if (name == null) return;
+    const r = await this.api('/api/fs/touch', 'POST', { parent: this.cwd, name });
+    if (r) { await this.load(this.cwd); this.setStatus(`created file ${r.name}`); }
+  },
+
+  download(entry) {
+    if (!entry || entry.is_dir) return;
+    const a = document.createElement('a');
+    a.href = `/api/fs/download?path=${encodeURIComponent(entry.path)}`;
+    a.download = entry.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    this.setStatus(`downloading ${entry.name}…`);
+  },
+
+  downloadCurrent() {
+    if (!this.editor.open) return;
+    const blob = new Blob([editor.value()], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = this.editor.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
+
+  async rename(entry) {
+    const name = await openModal({ title: 'Rename', input: true, value: entry.name, ok: 'Rename' });
+    if (name == null || name === entry.name) return;
+    const r = await this.api('/api/fs/rename', 'POST', { path: entry.path, name });
+    if (r) { await this.load(this.cwd); this.setStatus(`renamed to ${r.name}`); }
+  },
+
+  async remove(entry) {
+    const ok = await openModal({
+      title: entry.is_dir ? 'Delete folder?' : `Delete ${entry.type === 'link' ? 'symlink' : 'file'}?`,
+      text: entry.is_dir
+        ? `“${entry.name}” and everything inside it will be deleted.`
+        : `“${entry.name}” will be deleted.`,
+      ok: 'Delete',
+      danger: true,
+    });
+    if (!ok) return;
+    const r = await this.api(`/api/fs?path=${encodeURIComponent(entry.path)}`, 'DELETE');
+    if (r) {
+      if (this.selected && this.selected.path === entry.path) {
+        this.selected = null;
+        this.info = null;
+      }
+      await this.load(this.cwd);
+      this.setStatus(`deleted ${entry.name}`);
+    }
+  },
+};

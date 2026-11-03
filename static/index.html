@@ -281,62 +281,112 @@
         <div class="files-head">
           <div class="files-title">
             <h2>Files</h2>
-            <span class="files-path-label" id="files-path-label">~</span>
+            <span class="files-path-label" id="files-path-label" x-text="cwd || '~'" :title="cwd || ''">~</span>
           </div>
           <div class="files-actions">
-            <button class="brief-btn" id="files-up" title="Up one level">↑ up</button>
-            <button class="brief-btn" id="files-home" title="Go to home directory">~ home</button>
-            <button class="brief-btn" id="files-refresh" title="Reload this folder">⟳ refresh</button>
-            <button class="brief-btn toggled" id="files-hidden" title="Show or hide dotfiles">◌ hidden</button>
-            <button class="brief-btn" id="files-mkdir" title="Create a new folder">+ folder</button>
-            <button class="brief-btn" id="files-touch" title="Create a new empty file">+ file</button>
-            <button class="brief-btn" id="files-upload" title="Upload files into this folder">⬆ upload</button>
-            <input type="file" id="files-upload-input" multiple hidden>
+            <button class="brief-btn" id="files-up" title="Up one level" @click="up()">↑ up</button>
+            <button class="brief-btn" id="files-home" title="Go to home directory" @click="goHome()">~ home</button>
+            <button class="brief-btn" id="files-refresh" title="Reload this folder" @click="refresh()">⟳ refresh</button>
+            <button class="brief-btn" id="files-hidden" title="Show or hide dotfiles" :class="{ toggled: showHidden }" @click="toggleHidden()">◌ hidden</button>
+            <button class="brief-btn" id="files-mkdir" title="Create a new folder" @click="newFolder()">+ folder</button>
+            <button class="brief-btn" id="files-touch" title="Create a new empty file" @click="newFile()">+ file</button>
+            <button class="brief-btn" id="files-upload" title="Upload files into this folder" @click="$refs.upload.click()">⬆ upload</button>
+            <input type="file" id="files-upload-input" x-ref="upload" multiple hidden @change="upload($event.target.files)">
           </div>
         </div>
 
-        <nav class="files-breadcrumb" id="files-breadcrumb" aria-label="Current folder"></nav>
+        <nav class="files-breadcrumb" id="files-breadcrumb" aria-label="Current folder" x-show="!editor.open">
+          <template x-for="item in crumbs" :key="item.key">
+            <span :class="item.sep ? 'files-crumb-sep' : ('files-crumb' + (item.current ? ' current' : ''))"
+                  x-text="item.label" @click="!item.sep && !item.current && cd(item.path)"></span>
+          </template>
+        </nav>
 
         <div class="files-body">
-          <div class="files-editor" id="files-editor" hidden>
+          <div class="files-editor" id="files-editor" x-show="editor.open">
             <div class="files-editor-head">
-              <span class="files-editor-name" id="files-editor-name"></span>
-              <span class="files-editor-dirty" id="files-editor-dirty" hidden>unsaved</span>
+              <span class="files-editor-name" id="files-editor-name" x-text="editor.name"></span>
+              <span class="files-editor-dirty" id="files-editor-dirty" x-show="editor.dirty">unsaved</span>
               <div class="files-editor-actions">
-                <button class="brief-btn" id="files-editor-save" title="Save (Cmd/Ctrl+S)">save</button>
-                <button class="brief-btn" id="files-editor-download" title="Download current content">download</button>
-                <button class="brief-btn" id="files-editor-close" title="Close (Esc)">close</button>
+                <button class="brief-btn" id="files-editor-save" title="Save (Cmd/Ctrl+S)" @click="saveEditor()">save</button>
+                <button class="brief-btn" id="files-editor-download" title="Download current content" @click="downloadCurrent()">download</button>
+                <button class="brief-btn" id="files-editor-close" title="Close (Esc)" @click="closeEditor()">close</button>
               </div>
             </div>
-            <div class="files-editor-host" id="files-editor-host"></div>
-            <div class="files-editor-status" id="files-editor-status"></div>
+            <div class="files-editor-host" id="files-editor-host" x-ref="host"></div>
+            <div class="files-editor-status" id="files-editor-status" x-text="editor.status"></div>
           </div>
-          <div class="files-list-wrap" id="files-list-wrap">
+          <div class="files-list-wrap" id="files-list-wrap" x-show="!editor.open"
+               :class="{ dragover: dragging }"
+               @dragover.prevent="dragging = true" @dragleave.self="dragging = false" @drop.prevent="onDrop($event)">
             <table class="files-table">
               <thead>
                 <tr>
-                  <th class="col-name sorted asc" data-sort="name">Name</th>
-                  <th class="col-size" data-sort="size">Size</th>
-                  <th class="col-date" data-sort="mtime">Modified</th>
-                  <th class="col-mode" data-sort="mode">Mode</th>
+                  <th class="col-name" @click="sortBy('name')" :class="{ sorted: isSorted('name'), asc: sortAsc('name') }">Name</th>
+                  <th class="col-size" @click="sortBy('size')" :class="{ sorted: isSorted('size'), asc: sortAsc('size') }">Size</th>
+                  <th class="col-date" @click="sortBy('mtime')" :class="{ sorted: isSorted('mtime'), asc: sortAsc('mtime') }">Modified</th>
+                  <th class="col-mode" @click="sortBy('mode')" :class="{ sorted: isSorted('mode'), asc: sortAsc('mode') }">Mode</th>
                   <th class="col-actions" aria-label="Actions"></th>
                 </tr>
               </thead>
-              <tbody id="files-tbody"></tbody>
+              <tbody id="files-tbody">
+                <template x-for="entry in visible" :key="entry.path">
+                  <tr class="files-row" :class="{ selected: isSelected(entry) }"
+                      @click="select(entry)" @dblclick="entry.is_dir ? cd(entry.path) : openEntry(entry)">
+                    <td>
+                      <div class="files-name-cell">
+                        <span class="files-icon" x-text="fileIcon(entry)"></span>
+                        <span class="files-name" x-text="entry.name"></span>
+                        <span class="files-link-note" x-show="entry.is_link">link</span>
+                      </div>
+                    </td>
+                    <td class="files-size" x-text="entry.is_dir ? '—' : fmtSize(entry.size)"></td>
+                    <td class="files-date" x-text="fmtTime(entry.mtime)"></td>
+                    <td class="files-mode" x-text="entry.mode"></td>
+                    <td class="files-actions-cell">
+                      <div class="files-row-actions">
+                        <button type="button" class="files-act" title="Open folder" x-show="entry.is_dir" @click.stop="cd(entry.path)">▸</button>
+                        <button type="button" class="files-act" title="Open in editor" x-show="!entry.is_dir" @click.stop="openEntry(entry)">⤢</button>
+                        <button type="button" class="files-act" title="Download" x-show="!entry.is_dir" @click.stop="download(entry)">⬇</button>
+                        <button type="button" class="files-act" title="Rename" @click.stop="rename(entry)">✎</button>
+                        <button type="button" class="files-act danger" title="Delete" @click.stop="remove(entry)">✕</button>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
             </table>
-            <div class="files-empty" id="files-empty" hidden></div>
+            <div class="files-empty" id="files-empty" x-show="!visible.length">// this folder is empty</div>
             <div class="files-drop-hint">drop to upload into this folder</div>
           </div>
-          <aside class="files-info" aria-label="Selection details">
+          <aside class="files-info" aria-label="Selection details" x-show="!editor.open">
             <h3>details</h3>
-            <div id="files-info-body"><div class="files-info-empty">click a file or folder to see its info</div></div>
-            <div class="files-places" id="files-places"></div>
+            <div id="files-info-body">
+              <div class="files-info-empty" x-show="!info">click a file or folder to see its info</div>
+              <div x-show="info">
+                <div class="files-info-name"><span class="files-icon" x-text="info?.icon"></span><span x-text="info?.name"></span></div>
+                <dl>
+                  <template x-for="row in (info?.rows || [])" :key="row.k">
+                    <dt x-text="row.k"></dt>
+                    <dd x-text="row.v"></dd>
+                  </template>
+                </dl>
+              </div>
+            </div>
+            <div class="files-places" id="files-places">
+              <h3>Places</h3>
+              <template x-for="place in places" :key="place.path">
+                <button type="button" class="files-place" :class="{ active: place.path === cwd }"
+                        :title="place.path" @click="cd(place.path)"
+                        x-text="place.name + '  ' + placeLabel(place.path)"></button>
+              </template>
+            </div>
           </aside>
         </div>
 
-        <div class="files-status" id="files-status-bar">
-          <span id="files-status">opening ~ …</span>
-          <span id="files-count"></span>
+        <div class="files-status" id="files-status-bar" :class="{ error: statusError }">
+          <span id="files-status" x-text="status">opening ~ …</span>
+          <span id="files-count" x-text="countText"></span>
         </div>
       </section>
 
@@ -586,6 +636,6 @@
   </div>
 
   <script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}))}</script>
-  <script type="module" src="/static/js/main.js?v=alpine3"></script>
+  <script type="module" src="/static/js/main.js?v=alpine4"></script>
 </body>
 </html>
