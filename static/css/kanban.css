@@ -298,7 +298,7 @@
 .kb-group-btn.active { color: #050805; background: var(--phos, #4ce08a); border-color: var(--phos, #4ce08a); font-weight: 700; }
 .kb-owner-col .kb-lane-name { cursor: default; }
 .kb-owner-col .kb-cards { min-height: 3rem; }
-.kb-badge-lane { color: var(--amber, #ffb000); border: 1px dotted currentColor; }
+.kb-badge-lane { color: var(--amber, #ffb000); border: 1px dotted currentColor; padding: 0 0.4ch; }
 
 /* Doc references on cards and in the detail modal */
 .kb-card-docs { display: flex; flex-direction: column; gap: 0.1rem; margin-top: 0.3rem; }

@@ -52,6 +52,9 @@
 .kb-id { margin-left: auto; color: var(--dim); }
 .kb-badge { color: var(--dim); white-space: nowrap; }
 .kb-badge-tasks.done { color: var(--ok); }
+/* Lane badge on cards in owner grouping: the lane name, boxed and amber so it
+   reads as a label rather than another meta token. */
+.kb-badge-lane { color: var(--amber, #ffb000); border: 1px dotted currentColor; padding: 0 0.4ch; }
 .kb-opname {
   display: inline-flex; align-items: center; gap: 0.4ch;
   margin: 0 0 0.3rem; padding: 0;
