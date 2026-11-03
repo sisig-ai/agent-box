@@ -34,6 +34,7 @@ function treeDocRow(doc, depth) {
   if (state.current && state.current.prefix === doc.prefix) leaf.classList.add('open');
   leaf.addEventListener('click', () => selectDoc(doc.prefix));
   row.append(el('span', 'docs-tree-twist', '·'), leaf);
+  if (doc.card_count) row.append(el('span', 'docs-tree-cards', `⧉${doc.card_count}`));
   item.append(row);
   return item;
 }

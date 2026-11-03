@@ -34,7 +34,7 @@ There are eight views in the sidebar, and a thin telemetry strip runs along the 
 
 ### Ops Board
 
-The board is where the work lives, and most days it is the only view I have open. A card can also point at Docs: a list of prefixes on the card, rendered as nested links that open the doc itself, so the spec or handoff behind a job is one click from the board.
+The board is where the work lives, and most days it is the only view I have open. A card can also point at Docs: a list of prefixes on the card, rendered as nested links that open the doc itself, so the spec or handoff behind a job is one click from the board. The relation is many-to-many, and it reads in both directions: open a doc and a "cards · N" row lists every card that references it, each one a link back to the board.
 
 Lanes are columns and cards are jobs, or the same cards grouped by owner instead: that column layout puts a lane badge on every card and turns drag-and-drop off, because a card moves between lanes, not between people. A card carries an owner, an optional operation name that groups related cards under one label, a markdown body, and a thread of comments. Search is full text and reaches into titles, bodies, comments, owners, and operation names, so a half-remembered phrase from a comment three days ago is enough to find the card.
 

@@ -13,7 +13,7 @@ exclude, ``"two words"`` for a phrase) so both surfaces behave the same.
 import json
 import threading
 
-from . import db, docs_embed
+from . import card_docs, db, docs_embed
 from .dates import now_iso
 from .docs_keys import (
     DEFAULT_LIMIT,
@@ -127,7 +127,11 @@ def fetch(prefix):
     prefix = clean_prefix(prefix)
     conn = db.get_db()
     row = conn.execute("SELECT * FROM doc WHERE prefix = ?", (prefix,)).fetchone()
-    return _row(row) if row else None
+    if row is None:
+        return None
+    doc = _row(row)
+    doc["cards"] = card_docs.cards_for(conn, prefix)
+    return doc
 
 
 def put(prefix, content=None, author=None, tags=None, create_only=False):
@@ -189,6 +193,7 @@ def delete(prefix):
             raise DocsError(f"no doc at prefix {prefix}", 404)
         with conn:
             conn.execute("DELETE FROM doc WHERE id = ?", (row["id"],))
+            card_docs.forget_prefix(conn, prefix)
         docs_embed.drop(row["id"], conn)
     return prefix
 
@@ -207,8 +212,12 @@ def listing(prefix=None, limit=DEFAULT_LIMIT, offset=0, with_content=False):
         (*args, limit, max(0, offset)),
     ).fetchall()
     total = conn.execute("SELECT count(*) FROM doc" + where, args).fetchone()[0]
+    docs = [_row(row, with_content) for row in rows]
+    counts = card_docs.counts_for(conn, [doc["prefix"] for doc in docs])
+    for doc in docs:
+        doc["card_count"] = counts.get(doc["prefix"], 0)
     return {
-        "docs": [_row(row, with_content) for row in rows],
+        "docs": docs,
         "count": len(rows),
         "total": total,
         "limit": limit,
@@ -249,6 +258,7 @@ def tree(per_folder=5, include_content=False):
     rows = conn.execute(
         "SELECT id, prefix, author, tags, updated_at, length(content) AS size FROM doc"
     ).fetchall()
+    counts = card_docs.counts_for(conn, [row["prefix"] for row in rows])
 
     folders = {}  # path -> {"docs": [...], "children": set()}
     root_docs = []
@@ -269,6 +279,7 @@ def tree(per_folder=5, include_content=False):
             "tags": json.loads(row["tags"] or "[]"),
             "updated_at": row["updated_at"],
             "size": row["size"],
+            "card_count": counts.get(row["prefix"], 0),
         }
         if not parents:
             root_docs.append(entry)

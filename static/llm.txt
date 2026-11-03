@@ -175,6 +175,10 @@ Comments stay in the FTS index only. Indexing runs per card write; use
 
 **Cards pointing at Docs**
 
+Cards and docs are many-to-many: the binding lives in `card_doc(card_id, prefix)`.
+A card carries `docs: [...]`, a doc carries `cards: [{id, title, status}]`, and
+`/api/docs` rows add `card_count`. Deleting either side drops the binding.
+
 A card can carry `docs`, a list of up to 20 doc prefixes it depends on. Pass it
 to `create_card` / `update_card` (`["handoffs/x.md", "specs/y.md"]`, empty list
 clears). The target does not need to exist yet, so a handoff can link the doc it

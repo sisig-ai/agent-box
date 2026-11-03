@@ -3,8 +3,8 @@
 // A doc's prefix is its identity: it is editable while creating, read-only once
 // the doc exists, so a rename can never orphan or clobber another entry.
 import { armDelete } from '../kanban/edit.js?v=kanban29';
-
-import { createTree } from './tree.js?v=tree8';
+import { createTree } from './tree.js?v=docs4';
+import { paintBacklinks } from './backlinks.js?v=docs4';
 
 const $ = (id) => document.getElementById(id);
 const DEBOUNCE_MS = 180;
@@ -183,6 +183,7 @@ function flatRow(doc) {
   if (state.current && state.current.prefix === doc.prefix) row.classList.add('selected');
   const prefixCell = el('span', 'docs-flat-cell is-prefix');
   prefixCell.append(el('span', 'docs-flat-prefix', doc.prefix));
+  if (doc.card_count) prefixCell.append(el('span', 'docs-tree-cards', `⧉${doc.card_count}`));
   if (doc.tags && doc.tags.length) prefixCell.append(el('span', 'docs-flat-tags', tagLabel(doc.tags)));
   row.append(prefixCell);
   row.append(el('span', 'docs-flat-cell is-updated', fmtTime(doc.updated_at)));
@@ -361,6 +362,7 @@ function fillEditor(doc) {
   $('doc-tags').value = (doc?.tags || []).join(', ');
   $('doc-content').value = doc?.content || '';
   $('doc-delete').hidden = !doc;
+  paintBacklinks($('doc-backlinks'), doc, el);
   $('doc-status').textContent = doc
     ? `rev ${doc.revision} · created ${fmtTime(doc.created_at)} · updated ${fmtTime(doc.updated_at)}`
     : 'new doc';

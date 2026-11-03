@@ -2,7 +2,7 @@
 // and the markdown body (rendered view, or Write + live Preview editor).
 // Deep-linkable: #/kanban/card-<id> opens it, #/kanban/card-<id>/edit opens
 // straight into the editor (board.js routes the hash here).
-import { api } from './api.js?v=docs3';
+import { api } from './api.js?v=docs4';
 import { inlineEdit } from './edit.js?v=kanban20';
 import { loadPurify, renderBody, toggleTask } from './markdown.js?v=kanban20';
 import { buildComments, paintComments, resetComments } from './comments.js?v=kanban28';

@@ -9,7 +9,7 @@ are serialised with a process lock (gunicorn runs one worker, many threads).
 import json
 import threading
 
-from . import db, kanban_embed
+from . import card_docs, db, kanban_embed
 from .dates import now_iso
 from .kanban_body import with_body_summary
 
@@ -93,7 +93,7 @@ def migrate(conn):
 
 CARD_SQL = (
     "SELECT c.id, c.title, c.owner, l.name AS status, c.lane_id, c.position,"
-    " c.created_at, c.updated_at, c.archived_at, c.body, c.opname, c.doc_refs,"
+    " c.created_at, c.updated_at, c.archived_at, c.body, c.opname,"
     " (SELECT COUNT(*) FROM kanban_comment k WHERE k.card_id = c.id) AS comment_count"
     " FROM kanban_card c JOIN kanban_lane l ON l.id = c.lane_id"
 )
@@ -165,7 +165,11 @@ def cards(conn, lane_id=None, owner=None, archived="exclude", include_body=False
     else:
         sql += " ORDER BY c.archived_at IS NOT NULL, l.position, l.id, c.position, c.id"
     rows = conn.execute(sql, args).fetchall()
-    return [with_body_summary(r, include_body) for r in rows]
+    out = [with_body_summary(r, include_body) for r in rows]
+    refs = card_docs.refs_for(conn, [item["id"] for item in out])
+    for item in out:
+        item["docs"] = refs.get(item["id"], [])
+    return out
 
 
 def card(conn, card_id):
@@ -173,7 +177,9 @@ def card(conn, card_id):
     row = conn.execute(CARD_SQL + " WHERE c.id = ?", (card_id,)).fetchone()
     if row is None:
         raise KanbanError("card not found", 404)
-    return with_body_summary(row)
+    out = with_body_summary(row)
+    out["docs"] = card_docs.refs_for(conn, [card_id]).get(card_id, [])
+    return out
 
 
 def board(status=None, owner=None, archived="exclude", include_body=False, opname=None):
@@ -271,6 +277,7 @@ def create_card(title, owner=None, status=None, position=None, body="", opname=N
         new_id = cur.lastrowid
         ids = _place(_lane_card_ids(conn, lane["id"], exclude=new_id), new_id, position)
         _write_order(conn, lane["id"], ids)
+        card_docs.set_refs(conn, new_id, docs or [])
         result = card(conn, new_id)
     kanban_embed.enqueue(new_id)
     return result
@@ -288,8 +295,7 @@ def update_card(card_id, changes):
         was = current["archived_at"] is not None
         will = changes.get("archived", was)
         fields = {k: changes[k] for k in ("title", "owner", "body", "opname") if k in changes}
-        if "docs" in changes:
-            fields["doc_refs"] = json.dumps(changes["docs"] or [])
+        docs = changes.get("docs")
         target = require_lane(conn, changes["status"])["id"] if "status" in changes else old_lane
         if will:
             if not was:
@@ -310,6 +316,8 @@ def update_card(card_id, changes):
         fields["updated_at"] = now_iso()
         sets = ", ".join(f"{k} = ?" for k in fields)
         conn.execute(f"UPDATE kanban_card SET {sets} WHERE id = ?", (*fields.values(), card_id))
+        if docs is not None:
+            card_docs.set_refs(conn, card_id, docs)
         result = card(conn, card_id)
     if {"title", "body", "opname", "owner"} & set(fields):
         kanban_embed.enqueue(card_id)
@@ -337,6 +345,7 @@ def delete_card(card_id):
     with _WRITE_LOCK, db.get_db() as conn:
         current = card(conn, card_id)
         conn.execute("DELETE FROM kanban_comment WHERE card_id = ?", (card_id,))
+        card_docs.forget_card(conn, card_id)
         conn.execute("DELETE FROM kanban_card WHERE id = ?", (card_id,))
         _write_order(conn, current["lane_id"], _lane_card_ids(conn, current["lane_id"]))
         kanban_embed.drop(card_id, conn)

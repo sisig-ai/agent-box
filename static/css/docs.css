@@ -349,3 +349,38 @@
   .docs-flat-row { grid-template-columns: minmax(0, 1fr) 6.5rem; }
   .docs-flat-cell.is-author { display: none; }
 }
+
+/* Cards that reference the open doc (many-to-many backlinks). */
+.docs-backlinks {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 0.35rem 0 0;
+  padding: 0.3rem 0.45rem;
+  border: 1px dotted var(--line, #2b3037);
+  background: var(--tui-head, rgba(255, 255, 255, 0.03));
+}
+.docs-backlinks[hidden] { display: none; }
+.docs-backlinks-label {
+  font-family: var(--mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.docs-backlink-list { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.docs-backlink {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--phos, #4ce08a);
+  text-decoration: none;
+  border-bottom: 1px dotted currentColor;
+}
+.docs-backlink:hover { color: var(--amber, #ffb000); }
+.docs-tree-cards {
+  font-family: var(--mono);
+  font-size: 0.52rem;
+  color: var(--amber, #ffb000);
+  margin-left: 0.35rem;
+}

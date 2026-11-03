@@ -6,11 +6,11 @@
 // "op" filter (or clicking a chip) narrows the board to one operation.
 import { api } from './api.js?v=owner1';
 import { inlineEdit, armDelete } from './edit.js?v=kanban20';
-import { closeCard, openCard, openId, setupDetail, syncFromBoard } from './detail.js?v=docs3';
+import { closeCard, openCard, openId, setupDetail, syncFromBoard } from './detail.js?v=docs4';
 import * as search from './search.js?v=owner1';
 import * as attention from '../attention.js?v=attention7';
-import { createGrouping } from './group.js?v=docs3';
-import { appendDocRefs } from './docrefs.js?v=docs3';
+import { createGrouping } from './group.js?v=docs4';
+import { appendDocRefs } from './docrefs.js?v=docs4';
 
 const POLL_MS = 3000;
 const $ = (id) => document.getElementById(id);

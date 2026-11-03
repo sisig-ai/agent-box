@@ -91,9 +91,11 @@ def init_db():
             from .progress import init_schema as init_progress_schema
 
             init_kanban_schema(conn)
+            from .card_docs import init_schema as init_card_docs_schema
             from .kanban_embed import init_schema as init_card_embed_schema
 
             init_card_embed_schema(conn)
+            init_card_docs_schema(conn)
             init_progress_schema(conn)
             init_docs_schema(conn)
             init_embed_schema(conn)
