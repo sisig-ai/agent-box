@@ -46,8 +46,21 @@ def _wrap(fn, *args, **kwargs):
         raise ToolError(exc.message) from None
 
 
+ORDER = {
+    "type": "string",
+    "enum": ["asc", "desc"],
+    "default": "asc",
+    "description": "Sort direction.",
+}
+
+
 def list_tables(args):
-    return _wrap(tables.list_tables, bool(args.get("include_archived")))
+    return _wrap(
+        tables.list_tables,
+        bool(args.get("include_archived")),
+        args.get("order_by") or "name",
+        args.get("order") or "asc",
+    )
 
 
 def describe_table(args):
@@ -144,6 +157,8 @@ def list_records(args):
         include_archived=bool(args.get("include_archived")),
         limit=limit,
         offset=offset,
+        order_by=args.get("order_by") or None,
+        order=args.get("order") or "asc",
     )
 
 
@@ -191,9 +206,16 @@ TOOLS = {
         "spec": tool_spec(
             "list_tables",
             "List tables",
-            "Every table with column and record counts, alphabetical. "
-            "Archives excluded unless asked.",
-            {"include_archived": {"type": "boolean"}},
+            "Every table with column and record counts. Archives excluded unless asked. "
+            "order_by = name | updated | created | records.",
+            {
+                "include_archived": {"type": "boolean"},
+                "order_by": {
+                    "type": "string",
+                    "enum": ["name", "updated", "created", "records"],
+                },
+                "order": ORDER,
+            },
             read_only=True,
         ),
         "handler": list_tables,
@@ -302,11 +324,20 @@ TOOLS = {
         "spec": tool_spec(
             "list_records",
             "List records",
-            "Rows with values keyed by column name; computed columns are included.",
+            "One page of rows with values keyed by column name; computed columns are "
+            "included. Returns total, count, has_more, limit and offset, so page with "
+            "offset += limit.",
             {
                 "table": TABLE_REF,
                 "limit": {"type": "integer", "minimum": 1, "maximum": 500, "default": 100},
                 "offset": {"type": "integer", "minimum": 0, "default": 0},
+                "order_by": {
+                    "type": "string",
+                    "description": (
+                        "Column name to sort by, or position | id | created_at | updated_at."
+                    ),
+                },
+                "order": ORDER,
                 "include_archived": {"type": "boolean"},
             },
             ["table"],

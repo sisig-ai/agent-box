@@ -1,7 +1,7 @@
 // Columns and table-level actions: the column dialog, rename, archive, delete.
 
 import { openModal } from '../modal.js';
-import { api } from './api.js?v=tables4';
+import { api } from './api.js?v=tables5';
 
 export const columnActions = {
   startColumnRename(column) {

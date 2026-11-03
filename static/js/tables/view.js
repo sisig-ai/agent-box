@@ -3,9 +3,9 @@
 
 import Alpine from '../alpine.js';
 import { openModal } from '../modal.js';
-import { api } from './api.js?v=tables4';
-import { cellActions } from './cells.js?v=tables4';
-import { columnActions } from './columns.js?v=tables4';
+import { api } from './api.js?v=tables5';
+import { cellActions } from './cells.js?v=tables5';
+import { columnActions } from './columns.js?v=tables5';
 
 const TYPES = [
   ['string', 'string'],
@@ -26,6 +26,9 @@ export function tablesView() {
     current: null,
     columns: [],
     records: [],
+    page: { limit: 100, total: 0, hasMore: false, loading: false },
+    orderBy: null,
+    order: 'asc',
     showArchived: false,
     status: 'loading…',
     failed: false,
@@ -79,19 +82,66 @@ export function tablesView() {
 
     async openTable(ref, announce = true) {
       try {
-        const schema = await api(`/api/tables/${encodeURIComponent(ref)}`);
-        const data = await api(
-          `/api/tables/${encodeURIComponent(ref)}/records?include_archived=${this.showArchived ? 1 : 0}&limit=500`,
-        );
-        this.current = schema.id;
-        this.columns = schema.columns || [];
+        const data = await this.fetchPage(ref, 0);
+        this.current = data.id;
+        this.columns = data.columns || [];
         this.records = data.records || [];
+        this.page = {
+          limit: data.limit || this.page.limit,
+          total: data.total || 0,
+          hasMore: !!data.has_more,
+          loading: false,
+        };
         this.menuColumn = null;
-        if (announce) this.status = `opened ${schema.name}`;
+        if (announce) this.status = `opened ${data.name}`;
       } catch (err) {
         this.failed = true;
         this.status = `open failed: ${err.message}`;
       }
+    },
+
+    // One page from the direct table endpoint (same one non-agent clients use).
+    fetchPage(ref, offset) {
+      const params = new URLSearchParams({
+        limit: String(this.page.limit),
+        offset: String(offset),
+        order: this.order,
+      });
+      if (this.orderBy) params.set('order_by', this.orderBy);
+      if (this.showArchived) params.set('include_archived', '1');
+      return api(`/api/tables/${encodeURIComponent(ref)}?${params}`);
+    },
+
+    async loadMore() {
+      if (!this.table || this.page.loading || !this.page.hasMore) return;
+      this.page.loading = true;
+      try {
+        const data = await this.fetchPage(this.current, this.records.length);
+        this.records = this.records.concat(data.records || []);
+        this.page.total = data.total || this.records.length;
+        this.page.hasMore = !!data.has_more;
+        this.status = `loaded ${this.records.length} of ${this.page.total}`;
+      } catch (err) {
+        this.failed = true;
+        this.status = `load failed: ${err.message}`;
+      } finally {
+        this.page.loading = false;
+      }
+    },
+
+    onScroll(event) {
+      const el = event.currentTarget;
+      if (el.scrollTop + el.clientHeight >= el.scrollHeight - 120) this.loadMore();
+    },
+
+    sortBy(column) {
+      if (column.computed) return;
+      if (this.orderBy === column.name) this.order = this.order === 'asc' ? 'desc' : 'asc';
+      else {
+        this.orderBy = column.name;
+        this.order = 'asc';
+      }
+      this.openTable(this.current, false);
     },
 
     get table() {
@@ -110,11 +160,13 @@ export function tablesView() {
     async addRecord() {
       if (!this.table) return;
       try {
-        const record = await api(`/api/tables/${this.table.id}/records`, {
+        const record = await api(`/api/tables/${this.table.id}`, {
           method: 'POST',
           body: JSON.stringify({ values: {} }),
         });
-        this.records.push(record);
+        this.page.total += 1;
+        if (this.orderBy) await this.openTable(this.current, false);
+        else this.records.push(record);
         this.status = `added record #${record.id}`;
       } catch (err) {
         this.failed = true;
@@ -129,7 +181,7 @@ export function tablesView() {
           method: 'PATCH',
           body: JSON.stringify({ archived: !record.archived_at }),
         });
-        await this.openTable(this.current);
+        await this.openTable(this.current, false);
       } catch (err) {
         this.failed = true;
         this.status = `archive failed: ${err.message}`;
@@ -148,6 +200,7 @@ export function tablesView() {
       try {
         await api(`/api/tables/${this.table.id}/records/${record.id}`, { method: 'DELETE' });
         this.records = this.records.filter((row) => row.id !== record.id);
+        this.page.total = Math.max(0, this.page.total - 1);
       } catch (err) {
         this.failed = true;
         this.status = `delete failed: ${err.message}`;

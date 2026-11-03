@@ -10,7 +10,7 @@ import json
 from . import db, table_formula
 from .dates import now_iso
 from .table_types import COMPUTED, clean_cell_multi, fail
-from .tables import _WRITE_LOCK, _column, _json, resolve_table
+from .tables import _WRITE_LOCK, _column, _json, resolve_column, resolve_table
 
 # ---------------- records ----------------
 
@@ -194,28 +194,58 @@ def _record(row, values):
     }
 
 
-def list_records(table_ref, include_archived=False, limit=100, offset=0):
+ORDER_COLUMNS = {"position", "id", "created_at", "updated_at"}
+
+
+def _order_by(conn, table_id, order_by, order):
+    """SQL ORDER BY for one page, or the stable insertion order by default."""
+    direction = "DESC" if str(order).lower() == "desc" else "ASC"
+    if not order_by:
+        return "", "r.position ASC, r.id ASC", [], None
+    if str(order_by).lower() in ORDER_COLUMNS:
+        return "", f"r.{str(order_by).lower()} {direction}, r.id ASC", [], str(order_by).lower()
+    column = resolve_column(conn, table_id, order_by)
+    if column["type"] in COMPUTED:
+        fail(f"cannot order by computed column “{column['name']}”; sort by a stored column")
+    if column["type"] in ("number", "bool"):
+        expr = "CAST(json_extract(c.value, '$') AS REAL)"
+    elif column["type"] == "timestamp":
+        expr = "json_extract(c.value, '$')"
+    else:
+        expr = "json_extract(c.value, '$') COLLATE NOCASE"
+    clause = f"CASE WHEN c.value IS NULL THEN 1 ELSE 0 END ASC, {expr} {direction}, r.id ASC"
+    join = "LEFT JOIN db_cell c ON c.row_id = r.id AND c.column_id = ?"
+    return join, clause, [column["id"]], column["name"]
+
+
+def list_records(
+    table_ref, include_archived=False, limit=100, offset=0, order_by=None, order="asc"
+):
     conn = db.get_db()
     table = resolve_table(conn, table_ref)
     columns = _columns(conn, table["id"])
-    sql = "SELECT * FROM db_row WHERE table_id = ?"
-    if not include_archived:
-        sql += " AND archived_at IS NULL"
+    size, start = max(1, int(limit)), max(0, int(offset))
+    join, clause, join_args, ordered = _order_by(conn, table["id"], order_by, order)
+    where = "r.table_id = ?" + ("" if include_archived else " AND r.archived_at IS NULL")
     rows = conn.execute(
-        sql + " ORDER BY position, id LIMIT ? OFFSET ?",
-        (table["id"], max(1, limit), max(0, offset)),
+        f"SELECT r.* FROM db_row r {join} WHERE {where} ORDER BY {clause} LIMIT ? OFFSET ?",
+        (*join_args, table["id"], size, start),
     ).fetchall()
     cells = _cells_by_row(conn, rows, columns)
+    total = conn.execute("SELECT count(*) FROM db_row r WHERE " + where, (table["id"],)).fetchone()[
+        0
+    ]
     return {
         "records": [
             _record(row, _values_for(conn, table, columns, row, cells[row["id"]])) for row in rows
         ],
         "count": len(rows),
-        "total": conn.execute(
-            "SELECT count(*) FROM db_row WHERE table_id = ?"
-            + ("" if include_archived else " AND archived_at IS NULL"),
-            (table["id"],),
-        ).fetchone()[0],
+        "total": total,
+        "limit": size,
+        "offset": start,
+        "has_more": start + len(rows) < total,
+        "order_by": ordered,
+        "order": "desc" if str(order).lower() == "desc" else "asc",
         "columns": columns,
     }
 

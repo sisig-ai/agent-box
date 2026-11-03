@@ -276,11 +276,13 @@ refs and rollups. Records are plain objects keyed by column name.
 
 | Method | Path |
 |--------|------|
-| GET/POST | `/api/tables` (`?include_archived=1` lists archives) |
-| GET/PATCH/DELETE | `/api/tables/:table` (`:table` = name or id) |
-| GET/POST | `/api/tables/:table/columns` |
+| GET/POST | `/api/tables` (`?include_archived=1`, `?order_by=name\|updated\|created\|records&order=asc\|desc`) |
+| GET | `/api/tables/:table` (schema + first page: `?limit=100&offset=0&order_by=Name&order=desc`) |
+| POST | `/api/tables/:table` (append one record: same body as `/records`) |
+| PATCH/DELETE | `/api/tables/:table` (`:table` = name or id) |
+| GET/POST | `/api/tables/:table/columns` (`?order_by=position\|name\|type\|created`) |
 | PATCH/DELETE | `/api/tables/:table/columns/:column` |
-| GET/POST | `/api/tables/:table/records` (`?limit=`, `?offset=`, `?include_archived=1`) |
+| GET/POST | `/api/tables/:table/records` (`?limit=`, `?offset=`, `?order_by=`, `?order=`, `?include_archived=1`) |
 | GET/PATCH/DELETE | `/api/tables/:table/records/:record` |
 
 Column types: `bool`; `string` (`subtype` `text`, `select`, `multi_select`);
@@ -296,7 +298,12 @@ Formula and rollup columns are computed on read and refuse writes. Formulas use
 and the functions `IF, AND, OR, NOT, CONCAT, LEN, UPPER, LOWER, TRIM, ROUND,
 ABS, MIN, MAX, SUM, AVG, COUNT, ISEMPTY, TODAY, NOW, YEAR, MONTH, DAY, LOOKUP`.
 
-MCP tools: `list_tables`, `describe_table`, `create_table` (accepts a `columns`
-array), `update_table`, `delete_table`, `add_column`, `update_column`,
-`delete_column`, `list_records`, `get_record`, `create_record`,
-`update_record`, `delete_record`.
+Records paginate: every listing returns `total`, `count`, `limit`, `offset` and
+`has_more`; page with `offset += limit`. Order by any stored column
+(`order_by=Name&order=desc`, nulls last) or `position`/`id`/`created_at`/
+`updated_at`; computed columns refuse ordering.
+
+MCP tools: `list_tables` (`order_by`, `order`), `describe_table`, `create_table`
+(accepts a `columns` array), `update_table`, `delete_table`, `add_column`,
+`update_column`, `delete_column`, `list_records` (`limit`, `offset`, `order_by`,
+`order`), `get_record`, `create_record`, `update_record`, `delete_record`.

@@ -30,9 +30,13 @@ def _flag(params: dict, name: str) -> bool:
 
 
 @router.get("/api/tables")
-async def list_tables(request: Request):
+async def list_tables(
+    request: Request,
+    order_by: str = "name",
+    order: str = "asc",
+):
     include = _flag(dict(request.query_params), "include_archived")
-    return await run_in_threadpool(tables.list_tables, include)
+    return await run_in_threadpool(tables.list_tables, include, order_by, order)
 
 
 @router.post("/api/tables")
@@ -43,8 +47,43 @@ async def create_table(request: Request):
 
 
 @router.get("/api/tables/{table_ref}")
-async def get_table(table_ref: str):
-    return await run_in_threadpool(tables.get_table, table_ref)
+async def get_table(
+    table_ref: str,
+    limit: str = "100",
+    offset: str = "0",
+    order_by: str | None = None,
+    order: str = "asc",
+    include_archived: str = "",
+):
+    """One table for direct clients: schema, columns and the first records page.
+
+    Same query parameters as /records, so a script can page through a table with
+    one URL: ?limit=100&offset=200&order_by=Name&order=desc.
+    """
+    try:
+        size, start = int(limit), int(offset)
+    except ValueError:
+        raise TableError("limit and offset must be numbers") from None
+    schema = await run_in_threadpool(tables.get_table, table_ref)
+    page = await run_in_threadpool(
+        table_records.list_records,
+        table_ref,
+        include_archived=include_archived.strip().lower() in {"1", "true", "yes", "on"},
+        limit=max(1, min(size, 500)),
+        offset=max(0, start),
+        order_by=order_by,
+        order=order,
+    )
+    return {**schema, **page}
+
+
+@router.post("/api/tables/{table_ref}")
+async def append_record(table_ref: str, request: Request):
+    """Append one record: POST values straight at the table URL."""
+    body = await _body(request)
+    values = body.get("values", body)
+    record = await run_in_threadpool(table_records.create_record, table_ref, values)
+    return JSONResponse(status_code=201, content=record)
 
 
 @router.patch("/api/tables/{table_ref}")
@@ -65,8 +104,8 @@ async def delete_table(table_ref: str):
 
 
 @router.get("/api/tables/{table_ref}/columns")
-async def list_columns(table_ref: str):
-    return await run_in_threadpool(tables.list_columns, table_ref)
+async def list_columns(table_ref: str, order_by: str = "position", order: str = "asc"):
+    return await run_in_threadpool(tables.list_columns, table_ref, order_by, order)
 
 
 @router.post("/api/tables/{table_ref}/columns")
@@ -110,6 +149,8 @@ async def list_records(
     table_ref: str,
     limit: str = "100",
     offset: str = "0",
+    order_by: str | None = None,
+    order: str = "asc",
     include_archived: str = "",
 ):
     try:
@@ -122,6 +163,8 @@ async def list_records(
         include_archived=include_archived.strip().lower() in {"1", "true", "yes", "on"},
         limit=max(1, min(size, 500)),
         offset=max(0, start),
+        order_by=order_by,
+        order=order,
     )
 
 

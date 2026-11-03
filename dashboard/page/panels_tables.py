@@ -69,7 +69,7 @@ def _cell() -> object:
 
 
 def _grid() -> object:
-    return div(".tbl-grid-wrap")[
+    return div(".tbl-grid-wrap", **{"@scroll": "onScroll($event)"})[
         table(".tbl-grid", id="tbl-grid")[
             thead[
                 tr[
@@ -104,6 +104,17 @@ def _grid() -> object:
                                 )[""],
                             ],
                             span(".tbl-th-type", **{"x-text": "column.subtype || column.type"})[""],
+                            button(
+                                ".tbl-th-sort",
+                                type="button",
+                                **{
+                                    ":class": "{ active: orderBy === column.name }",
+                                    ":title": "'Sort by ' + column.name",
+                                    ":disabled": "column.computed",
+                                    "@click.stop": "sortBy(column)",
+                                    "x-text": "orderBy === column.name ? (order === 'asc' ? '▲' : '▼') : '⇅'",
+                                },
+                            )["⇅"],
                             button(
                                 ".tbl-th-edit",
                                 type="button",
@@ -282,6 +293,14 @@ def main_block() -> object:
                 title="Add a record",
                 **{"@click": "addRecord()", "x-show": "!!table"},
             )["+ row"],
+            span(
+                ".tbl-page",
+                **{
+                    "x-text": "page.total ? (records.length + ' of ' + page.total + ' rows')"
+                    " + (page.hasMore ? ' · scroll for more' : '')"
+                    " + (page.loading ? ' · loading…' : '') : ''"
+                },
+            )[""],
             span(".tbl-status", **{":class": "{ err: failed }", "x-text": "status"})["loading…"],
         ],
     ]

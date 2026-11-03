@@ -131,3 +131,11 @@
 #tables-column-dialog label select,
 #tables-new-dialog label input[type="text"],
 #tables-new-dialog label textarea { flex: 1 1 auto; min-width: 0; }
+.tbl-th-sort {
+  margin-left: 0.35rem; color: var(--dim, var(--muted));
+  background: none; border: 0; cursor: pointer; font-size: 0.62rem;
+}
+.tbl-th-sort:hover { color: var(--amber, #ffb000); }
+.tbl-th-sort.active { color: var(--amber, #ffb000); }
+.tbl-th-sort:disabled { opacity: 0.25; cursor: default; }
+.tbl-page { margin-left: auto; font-family: var(--mono); font-size: 0.6rem; color: var(--dim, var(--muted)); }

@@ -105,13 +105,34 @@ def _table_row(row, conn):
     }
 
 
-def list_tables(include_archived=False):
+TABLE_ORDERS = {
+    "name": "t.name COLLATE NOCASE",
+    "updated": "t.updated_at",
+    "created": "t.created_at",
+    "records": "live_rows",
+}
+
+
+def list_tables(include_archived=False, order_by="name", order="asc"):
+    """Tables alphabetical by default; order_by name|updated|created|records."""
+    key = str(order_by or "name").lower()
+    if key not in TABLE_ORDERS:
+        fail(f"order_by must be one of: {', '.join(TABLE_ORDERS)}")
+    direction = "DESC" if str(order).lower() == "desc" else "ASC"
+    where = "" if include_archived else " WHERE t.archived_at IS NULL"
+    sql = (
+        "SELECT t.*, (SELECT count(*) FROM db_row r"
+        " WHERE r.table_id = t.id AND r.archived_at IS NULL) AS live_rows"
+        f" FROM db_table t{where}"
+        f" ORDER BY {TABLE_ORDERS[key]} {direction}, t.id ASC"
+    )
     conn = db.get_db()
-    sql = "SELECT * FROM db_table"
-    if not include_archived:
-        sql += " WHERE archived_at IS NULL"
-    rows = conn.execute(sql + " ORDER BY name COLLATE NOCASE").fetchall()
-    return {"tables": [_table_row(row, conn) for row in rows]}
+    rows = conn.execute(sql).fetchall()
+    return {
+        "tables": [_table_row(row, conn) for row in rows],
+        "order_by": key,
+        "order": direction.lower(),
+    }
 
 
 def resolve_table(conn, ref):
@@ -212,11 +233,26 @@ def _column(row):
     }
 
 
-def list_columns(table_ref):
+COLUMN_ORDERS = {
+    "position": "position",
+    "name": "name COLLATE NOCASE",
+    "type": "type",
+    "created": "created_at",
+}
+
+
+def list_columns(table_ref, order_by="position", order="asc"):
+    """Columns in display order by default; order_by position|name|type|created."""
+    key = str(order_by or "position").lower()
+    if key not in COLUMN_ORDERS:
+        fail(f"order_by must be one of: {', '.join(COLUMN_ORDERS)}")
+    direction = "DESC" if str(order).lower() == "desc" else "ASC"
     conn = db.get_db()
     table = resolve_table(conn, table_ref)
     rows = conn.execute(
-        "SELECT * FROM db_column WHERE table_id = ? ORDER BY position, id", (table["id"],)
+        f"SELECT * FROM db_column WHERE table_id = ?"
+        f" ORDER BY {COLUMN_ORDERS[key]} {direction}, id ASC",
+        (table["id"],),
     ).fetchall()
     return {"columns": [_column(row) for row in rows]}
 
