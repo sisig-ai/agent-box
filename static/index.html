@@ -375,16 +375,60 @@
             <span class="progress-sub">shared tracking for humans and agents · nested bars · k-v fields · <code>/api/progress</code></span>
           </div>
           <div class="progress-actions">
-            <button class="brief-btn" id="progress-archived" title="Show archived bars">archived</button>
-            <button class="brief-btn" id="progress-add" title="Add a top-level progress bar">+ bar</button>
-            <button class="brief-btn" id="progress-refresh" title="Reload every bar">⟳ refresh</button>
+            <button class="brief-btn" id="progress-archived" @click="toggleArchived()" :class="{ toggled: archivedOnly }"
+                    :title="archivedOnly ? 'Back to live bars' : 'Show archived bars'" x-text="archivedLabel">archived</button>
+            <button class="brief-btn" id="progress-add" title="Add a top-level progress bar" @click="openDialog(null)">+ bar</button>
+            <button class="brief-btn" id="progress-refresh" title="Reload every bar" @click="refresh()">⟳ refresh</button>
           </div>
         </div>
-        <div class="progress-grid" id="progress-grid"></div>
+        <div class="progress-grid" id="progress-grid" x-html="gridHtml" @click="onAction($event)"></div>
         <div class="progress-status">
-          <span id="progress-status">loading…</span>
-          <span id="progress-count"></span>
+          <span id="progress-status" x-text="status">loading…</span>
+          <span id="progress-count" x-text="countText"></span>
         </div>
+        <dialog class="ascii-dialog progress-dialog" id="progress-dialog" x-ref="dialog"
+                aria-labelledby="progress-dialog-title" @close="editingId = null">
+          <h3 id="progress-dialog-title" x-text="editingId == null ? 'new bar' : 'edit bar'">new bar</h3>
+          <form id="progress-form" @submit.prevent="save()">
+            <label>title
+              <input type="text" id="pb-title" x-ref="title" x-model="form.title" maxlength="200" autocomplete="off" spellcheck="false" placeholder="e.g. 1,000-document enrichment batch">
+            </label>
+            <div class="pb-form-row">
+              <label>percent
+                <input type="number" id="pb-percent" x-model="form.percent" min="0" max="100" step="0.1" placeholder="0–100">
+              </label>
+              <label>owner
+                <input type="text" id="pb-owner" x-model="form.owner" maxlength="100" autocomplete="off" spellcheck="false" placeholder="who is tracking this">
+              </label>
+            </div>
+            <label>parent
+              <select id="pb-parent" x-model="form.parent">
+                <option value="">— none (top level) —</option>
+                <template x-for="node in parentOptions" :key="node.id">
+                  <option :value="String(node.id)" x-text="node.label"></option>
+                </template>
+              </select>
+            </label>
+            <fieldset class="pb-fieldset">
+              <legend>fields — any key/value pairs shown on the card</legend>
+              <div id="pb-fields">
+                <template x-for="(field, index) in fields" :key="index">
+                  <div class="pb-field-row">
+                    <input type="text" class="pb-field-key" x-model="field.key" placeholder="field">
+                    <input type="text" class="pb-field-value" x-model="field.value" placeholder="value">
+                    <button type="button" class="pb-field-del" @click="fields.splice(index, 1)" title="Remove this field">×</button>
+                  </div>
+                </template>
+              </div>
+              <button type="button" class="brief-btn" id="pb-add-field" @click="addField()">+ field</button>
+            </fieldset>
+            <p class="pb-error" id="pb-error" x-show="!!error" x-text="error"></p>
+            <div class="progress-dialog-actions">
+              <button type="button" class="brief-btn" id="pb-cancel" @click="$refs.dialog.close()">cancel</button>
+              <button type="submit" class="brief-btn" id="pb-save">save</button>
+            </div>
+          </form>
+        </dialog>
       </section>
 
 
@@ -522,35 +566,6 @@
     </div>
   </div>
 
-  <dialog class="ascii-dialog progress-dialog" id="progress-dialog" aria-labelledby="progress-dialog-title">
-    <h3 id="progress-dialog-title">new bar</h3>
-    <form id="progress-form">
-      <label>title
-        <input type="text" id="pb-title" maxlength="200" autocomplete="off" spellcheck="false" placeholder="e.g. 1,000-document enrichment batch">
-      </label>
-      <div class="pb-form-row">
-        <label>percent
-          <input type="number" id="pb-percent" min="0" max="100" step="0.1" placeholder="0–100">
-        </label>
-        <label>owner
-          <input type="text" id="pb-owner" maxlength="100" autocomplete="off" spellcheck="false" placeholder="who is tracking this">
-        </label>
-      </div>
-      <label>parent
-        <select id="pb-parent"></select>
-      </label>
-      <fieldset class="pb-fieldset">
-        <legend>fields — any key/value pairs shown on the card</legend>
-        <div id="pb-fields"></div>
-        <button type="button" class="brief-btn" id="pb-add-field">+ field</button>
-      </fieldset>
-      <p class="pb-error" id="pb-error" hidden></p>
-      <div class="progress-dialog-actions">
-        <button type="button" class="brief-btn" id="pb-cancel">cancel</button>
-        <button type="submit" class="brief-btn" id="pb-save">save</button>
-      </div>
-    </form>
-  </dialog>
 
   <dialog class="ascii-dialog" id="keys-dialog" aria-labelledby="keys-title">
     <h3 id="keys-title">keys</h3>
@@ -571,6 +586,6 @@
   </div>
 
   <script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}))}</script>
-  <script type="module" src="/static/js/main.js?v=alpine2"></script>
+  <script type="module" src="/static/js/main.js?v=alpine3"></script>
 </body>
 </html>
