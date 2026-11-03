@@ -38,6 +38,11 @@ MAX_UPLOAD_MB = env_int("DASH_MAX_UPLOAD_MB", 1024)
 # The model is small (nomic-embed-text is 274 MB, 768-d) and runs offline.
 OLLAMA_URL = os.environ.get("DASH_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
 EMBED_MODEL = os.environ.get("DASH_EMBED_MODEL", "nomic-embed-text")
+# nomic-embed-text is trained with these task prefixes; dropping them cost one
+# of twelve doc questions in the model review (11/12 -> 12/12 hit@1) and a
+# little card MRR. Override per model if the default changes.
+EMBED_DOC_PREFIX = os.environ.get("DASH_EMBED_DOC_PREFIX", "search_document: ")
+EMBED_QUERY_PREFIX = os.environ.get("DASH_EMBED_QUERY_PREFIX", "search_query: ")
 EMBED_TIMEOUT_S = env_int("DASH_EMBED_TIMEOUT_S", 60)
 
 # Telemetry ring-buffer window (seconds); /api/stats/history caps here too.

@@ -21,9 +21,11 @@ from .embed import (
     chunk,
     content_hash,
     cosine,
+    document_input,
     embed_texts,
     order_hits,
     pack,
+    query_input,
     unpack,
 )
 
@@ -96,10 +98,10 @@ def index_card(conn, card_id, model=None):
             )
             conn.execute(
                 "UPDATE kanban_card SET embed_hash = ?, embed_model = ?, embed_at = ? WHERE id = ?",
-                (content_hash(text), model, stamp, card_id),
+                (input_hash(text), model, stamp, card_id),
             )
         return 0
-    vectors = embed_texts(pieces)
+    vectors = embed_texts([document_input(piece) for piece in pieces])
     with conn:
         conn.execute(
             "DELETE FROM kanban_embedding WHERE card_id = ? AND model = ?", (card_id, model)
@@ -114,15 +116,20 @@ def index_card(conn, card_id, model=None):
         )
         conn.execute(
             "UPDATE kanban_card SET embed_hash = ?, embed_model = ?, embed_at = ? WHERE id = ?",
-            (content_hash(text), model, stamp, card_id),
+            (input_hash(text), model, stamp, card_id),
         )
     return len(pieces)
+
+
+def input_hash(text):
+    """Hash of what the model actually sees, so a prefix change invalidates too."""
+    return content_hash(document_input(text))
 
 
 def needs_index(row, model=None):
     model = model or config.EMBED_MODEL
     text = card_text(row["title"], row["body"], row["opname"], row["owner"])
-    return row["embed_model"] != model or row["embed_hash"] != content_hash(text)
+    return row["embed_model"] != model or row["embed_hash"] != input_hash(text)
 
 
 def pending_count():
@@ -199,7 +206,7 @@ def search(
     query = (query or "").strip()
     if not query:
         raise EmbedError("q is required")
-    vector = embed_texts([query])[0]
+    vector = embed_texts([query_input(query)])[0]
     own = conn is None
     conn = conn or db.connect()
     try:

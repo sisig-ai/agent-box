@@ -178,3 +178,22 @@ def test_default_order_blends_score_with_age(client, monkeypatch):
 
     scored = client.get("/api/docs/semantic?q=tuya&sort=score").get_json()["hits"]
     assert {hit["prefix"] for hit in scored} == {"notes/fresh.md", "notes/stale.md"}
+
+
+def test_documents_and_queries_carry_the_model_prefixes(client, monkeypatch):
+    from dashboard import embed
+
+    seen = []
+
+    def capture(texts):
+        seen.append(list(texts))
+        return [[1.0, 0.0] for _ in texts]
+
+    monkeypatch.setattr(docs_embed, "embed_texts", capture)
+    docs.put("notes/prefix.md", content="tuya body")
+    index(client)
+    client.get("/api/docs/semantic?q=tuya")
+
+    assert any(text.startswith(embed.document_input("")) for text in seen[0])
+    assert seen[-1] == [embed.query_input("tuya")]
+    assert embed.document_input("x") == f"{embed.config.EMBED_DOC_PREFIX}x"

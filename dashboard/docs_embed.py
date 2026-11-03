@@ -17,9 +17,11 @@ from .embed import (
     chunk,
     content_hash,
     cosine,
+    document_input,
     embed_texts,
     order_hits,
     pack,
+    query_input,
     unpack,
 )
 
@@ -87,10 +89,10 @@ def index_doc(conn, doc_id, prefix=None, content=None, model=None):
             )
             conn.execute(
                 "UPDATE doc SET embed_hash = ?, embed_model = ?, embed_at = ? WHERE id = ?",
-                (content_hash(content), model, now_iso(), doc_id),
+                (input_hash(content), model, now_iso(), doc_id),
             )
         return 0
-    vectors = embed_texts(pieces)
+    vectors = embed_texts([document_input(piece) for piece in pieces])
     stamp = now_iso()
     with conn:
         conn.execute("DELETE FROM doc_embedding WHERE doc_id = ? AND model = ?", (doc_id, model))
@@ -104,15 +106,20 @@ def index_doc(conn, doc_id, prefix=None, content=None, model=None):
         )
         conn.execute(
             "UPDATE doc SET embed_hash = ?, embed_model = ?, embed_at = ? WHERE id = ?",
-            (content_hash(content), model, stamp, doc_id),
+            (input_hash(content), model, stamp, doc_id),
         )
     return len(pieces)
+
+
+def input_hash(content):
+    """Hash of what the model actually sees, so a prefix change invalidates too."""
+    return content_hash(document_input(content))
 
 
 def should_index(content, embed_hash, embed_model, model=None):
     """True when new content (or a new model) makes the stored vectors stale."""
     model = model or config.EMBED_MODEL
-    return embed_model != model or embed_hash != content_hash(content)
+    return embed_model != model or embed_hash != input_hash(content)
 
 
 def needs_index(row, model=None):
@@ -200,7 +207,7 @@ def search(query, prefix=None, prefix_q=None, limit=50, sort="blend", conn=None)
     if not query:
         raise EmbedError("q is required")
     started = time.time()
-    vector = embed_texts([query])[0]
+    vector = embed_texts([query_input(query)])[0]
     own = conn is None
     conn = conn or db.connect()
     try:

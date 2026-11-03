@@ -38,6 +38,16 @@ class EmbedError(Exception):
 # ---------------------------------------------------------------- embedding
 
 
+def document_input(text):
+    """Text as the model expects a document: task prefix plus the chunk."""
+    return config.EMBED_DOC_PREFIX + text
+
+
+def query_input(text):
+    """Text as the model expects a query: task prefix plus the question."""
+    return config.EMBED_QUERY_PREFIX + text
+
+
 def embed_texts(texts):
     """Return one vector per text from the configured Ollama model."""
     if not texts:

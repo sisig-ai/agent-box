@@ -146,7 +146,10 @@ so a fresh item wins a tie against a stale one, and a month-old item keeps a
 
 Semantic search runs fully offline: Ollama on this host (`DASH_OLLAMA_URL`,
 default `http://127.0.0.1:11434`) with `DASH_EMBED_MODEL` (default
-`nomic-embed-text`, 768-d). Vectors are chunked at ~1200 characters and stored
+`nomic-embed-text`, 768-d). Documents are embedded with the model's
+`search_document: ` prefix and queries with `search_query: `
+(`DASH_EMBED_DOC_PREFIX` / `DASH_EMBED_QUERY_PREFIX`); the stored hash covers
+the prefixed text, so changing a prefix reindexes on the next pass. Vectors are chunked at ~1200 characters and stored
 as float32 blobs in the `doc_embedding` table; a query scores them in Python, so
 there is no separate vector service to run. Indexing happens on a background
 thread after each write, so a write never waits on the model. Prefer
