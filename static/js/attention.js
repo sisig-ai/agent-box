@@ -377,7 +377,11 @@ export function markAllRead() {
 // editors keep their own Esc (close / cancel / clear search), so skip those.
 function dismissKey(e) {
   if (e.key !== 'Escape' || e.ctrlKey || e.metaKey || e.altKey) return false;
-  if (document.querySelector('dialog[open], .kbd-backdrop:not([hidden]), #fs-modal:not([hidden])')) return false;
+  if (document.querySelector('dialog[open]')) return false;
+  // The card modal and the files dialog hide with CSS, not the hidden attribute.
+  for (const node of document.querySelectorAll('.kbd-backdrop, #fs-modal')) {
+    if (getComputedStyle(node).display !== 'none') return false;
+  }
   const a = document.activeElement;
   if (a && a !== document.body && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable)) return false;
   return true;

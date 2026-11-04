@@ -100,12 +100,12 @@ def _comments() -> object:
 def card_modal() -> object:
     return div(
         ".kbd-backdrop",
-        hidden=True,
         **{
+            ":class": "{ open: open }",
             "x-data": "cardDetail",
             "x-ref": "backdrop",
-            "x-show": "open",
             "@click": "closeFromBackdrop($event)",
+            "@keydown.window": "onEscape($event)",
         },
     )[
         div(

@@ -105,7 +105,8 @@
 .kb-lane-input { width: 10rem; }
 
 /* Card detail modal (Trello-style) */
-.kbd-backdrop { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-start; justify-content: center; padding: 5vh 1.25rem 1.25rem; background: rgba(8,10,12,0.8); overflow-y: auto; }
+.kbd-backdrop { position: fixed; inset: 0; z-index: 60; display: none; align-items: flex-start; justify-content: center; padding: 5vh 1.25rem 1.25rem; background: rgba(8,10,12,0.8); overflow-y: auto; }
+.kbd-backdrop.open { display: flex; }
 .kbd-modal { width: min(760px, 100%); display: flex; flex-direction: column; gap: 0.8rem; padding: 1rem 1.1rem; background: var(--well); border: 1px solid var(--line); }
 .kbd-head { display: flex; align-items: flex-start; gap: 0.7ch; }
 .kbd-id { color: var(--dim); font-size: 0.72rem; padding-top: 0.3rem; }

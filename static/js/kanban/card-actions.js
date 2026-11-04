@@ -3,7 +3,7 @@
 
 import { api } from './api.js';
 import { armDelete, inlineEdit } from './edit.js?v=kanban20';
-import * as attention from '../attention.js?v=attention7';
+import * as attention from '../attention.js?v=attention8';
 import { markedParts } from './search.js';
 
 const signature = (card) => [

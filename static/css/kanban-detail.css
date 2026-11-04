@@ -5,7 +5,7 @@ body.kbd-open { overflow: hidden; }
   position: fixed;
   inset: 0;
   z-index: 60;
-  display: flex;
+  display: none;
   align-items: flex-start;
   justify-content: center;
   padding: 6vh 1.25rem 1.25rem;
@@ -14,7 +14,7 @@ body.kbd-open { overflow: hidden; }
   overflow-y: auto;
 }
 
-.kbd-backdrop[hidden] { display: none; }
+.kbd-backdrop.open { display: flex; }
 
 .kbd-modal {
   width: min(760px, 100%);
@@ -199,4 +199,4 @@ body.kbd-open { overflow: hidden; }
 /* The card modal markup ships inside the (lazily mounted) board panel. Until
    Alpine takes it over, the author display rule above would beat the UA
    [hidden] rule, so keep it hidden explicitly. */
-.kbd-backdrop[hidden] { display: none; }
+.kbd-backdrop.open { display: flex; }

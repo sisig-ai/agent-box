@@ -6,7 +6,7 @@
 import Alpine from '../alpine.js';
 import { esc } from '../dom.js';
 import { openModal } from '../modal.js';
-import * as attention from '../attention.js?v=attention7';
+import * as attention from '../attention.js?v=attention8';
 
 const API = '/api/progress';
 const POLL_MS = 10000;
