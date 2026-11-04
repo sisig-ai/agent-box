@@ -5,7 +5,7 @@ import Alpine from '../alpine.js';
 import { api } from './api.js';
 import { inlineEdit } from './edit.js?v=kanban20';
 import { loadPurify, renderBody, toggleTask } from './markdown.js?v=kanban20';
-import { subtaskActions } from './subtasks.js?v=subtasks2';
+import { subtaskActions } from './subtasks.js?v=subtasks3';
 import * as attention from '../attention.js?v=attention8';
 
 const AUTHOR_KEY = 'opsboard.commentAuthor';
