@@ -31,6 +31,11 @@ export const api = {
   patchCard: (id, changes) => call('PATCH', `/api/opsboard/cards/${id}`, changes),
   deleteCard: (id) => call('DELETE', `/api/opsboard/cards/${id}`),
   comments: (id) => call('GET', `/api/opsboard/cards/${id}/comments`),
+  subtasks: (id) => call('GET', `/api/opsboard/cards/${id}/subtasks`),
+  addSubtask: (id, subtask) => call('POST', `/api/opsboard/cards/${id}/subtasks`, subtask),
+  patchSubtask: (id, subId, changes) =>
+    call('PATCH', `/api/opsboard/cards/${id}/subtasks/${subId}`, changes),
+  deleteSubtask: (id, subId) => call('DELETE', `/api/opsboard/cards/${id}/subtasks/${subId}`),
   addComment: (id, c) => call('POST', `/api/opsboard/cards/${id}/comments`, c),
   deleteComment: (id, cid) => call('DELETE', `/api/opsboard/cards/${id}/comments/${cid}`),
   opnames: () => call('GET', '/api/opsboard/opnames'),

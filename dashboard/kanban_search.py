@@ -43,7 +43,8 @@ _TRIGGERS = (
     f"""
     CREATE TRIGGER IF NOT EXISTS kanban_fts_card_ai AFTER INSERT ON kanban_card BEGIN
         INSERT INTO kanban_fts (card_id, comment_id, title, body, tags)
-        VALUES (new.id, 0, new.title, new.body, {_TAGS.format(t="new")});
+        SELECT new.id, 0, new.title, new.body, {_TAGS.format(t="new")}
+        WHERE new.parent_id IS NULL;
     END
     """,
     f"""
@@ -51,7 +52,8 @@ _TRIGGERS = (
     ON kanban_card BEGIN
         DELETE FROM kanban_fts WHERE card_id = new.id AND comment_id = 0;
         INSERT INTO kanban_fts (card_id, comment_id, title, body, tags)
-        VALUES (new.id, 0, new.title, new.body, {_TAGS.format(t="new")});
+        SELECT new.id, 0, new.title, new.body, {_TAGS.format(t="new")}
+        WHERE new.parent_id IS NULL;
     END
     """,
     """
@@ -63,7 +65,8 @@ _TRIGGERS = (
     """
     CREATE TRIGGER IF NOT EXISTS kanban_fts_comment_ai AFTER INSERT ON kanban_comment BEGIN
         INSERT INTO kanban_fts (card_id, comment_id, title, body, tags)
-        VALUES (new.card_id, new.id, '', new.body, coalesce(new.author, ''));
+        SELECT new.card_id, new.id, '', new.body, coalesce(new.author, '')
+        WHERE (SELECT parent_id FROM kanban_card WHERE id = new.card_id) IS NULL;
     END
     """,
     """
@@ -77,6 +80,15 @@ _TRIGGERS = (
 def init_schema(conn):
     """Create the FTS table + triggers, and rebuild when the index looks stale."""
     conn.execute(_SCHEMA)
+    # Trigger bodies changed with subtasks; IF NOT EXISTS would keep the old ones.
+    for name in (
+        "kanban_fts_card_ai",
+        "kanban_fts_card_au",
+        "kanban_fts_card_ad",
+        "kanban_fts_comment_ai",
+        "kanban_fts_comment_ad",
+    ):
+        conn.execute(f"DROP TRIGGER IF EXISTS {name}")
     for statement in _TRIGGERS:
         conn.execute(statement)
     indexed = conn.execute("SELECT count(*) FROM kanban_fts").fetchone()[0]
@@ -91,11 +103,13 @@ def rebuild(conn):
     conn.execute("DELETE FROM kanban_fts")
     conn.execute(
         "INSERT INTO kanban_fts (card_id, comment_id, title, body, tags)"
-        f" SELECT id, 0, title, body, {_TAGS.format(t='kanban_card')} FROM kanban_card"
+        f" SELECT id, 0, title, body, {_TAGS.format(t='kanban_card')}"
+        " FROM kanban_card WHERE parent_id IS NULL"
     )
     conn.execute(
         "INSERT INTO kanban_fts (card_id, comment_id, title, body, tags)"
         " SELECT card_id, id, '', body, coalesce(author, '') FROM kanban_comment"
+        " WHERE card_id IN (SELECT id FROM kanban_card WHERE parent_id IS NULL)"
     )
 
 

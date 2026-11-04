@@ -248,6 +248,67 @@ def card_modal() -> object:
                 )[""],
                 div(".kbd-preview.kbd-md", **{"x-show": "previewOn", "x-html": "previewHtml"})[""],
             ],
+            div(".kbd-section", **{"x-show": "card && card.parent_id"})[
+                button(
+                    ".kbd-parent-link",
+                    type="button",
+                    **{
+                        "@click": "openParent()",
+                        "x-text": "'↳ subtask of #' + (card?.parent_id || '')",
+                    },
+                )[""],
+            ],
+            div(".kbd-section.kbd-subtask-head")[
+                span(
+                    ".kbd-section-label",
+                    **{
+                        "x-text": "subtasks.length ? 'Subtasks (' + subtasks.length + ')' : 'Subtasks'"
+                    },
+                )[""],
+                button(
+                    ".brief-btn.kbd-add-subtask",
+                    type="button",
+                    title="Add a subtask under this card",
+                    **{"@click": "addSubtask()"},
+                )["+ subtask"],
+            ],
+            div(".kbd-subtasks")[
+                template(**{"x-for": "sub in subtasks", ":key": "sub.id"})[
+                    div(".kbd-subtask")[
+                        button(
+                            ".kbd-subtask-title",
+                            type="button",
+                            **{
+                                "@click": "openSubtask(sub)",
+                                "x-text": "sub.title",
+                                "title": "Open this subtask",
+                            },
+                        )[""],
+                        span(".kbd-subtask-meta")[
+                            span(".kbd-subtask-lane", **{"x-text": "sub.status"})[""],
+                            span(
+                                **{
+                                    "x-show": "!!sub.comment_count",
+                                    "x-text": "'c:' + sub.comment_count",
+                                }
+                            )[""],
+                            span(
+                                **{
+                                    "x-show": "(sub.docs || []).length",
+                                    "x-text": "'docs:' + (sub.docs || []).length",
+                                }
+                            )[""],
+                        ],
+                        button(
+                            ".kb-icon.danger.kbd-subtask-del",
+                            type="button",
+                            title="Delete this subtask",
+                            **{"@click.stop": "deleteSubtask(sub)"},
+                        )["×"],
+                    ],
+                ],
+                p(".kbd-empty", **{"x-show": "!subtasks.length"})["No subtasks yet."],
+            ],
             div(".kbd-foot", **{"x-show": "editing"})[
                 span(".kbd-msg", **{":class": "{ err: msgError }", "x-text": "msg"})[""],
                 div(".kbd-foot-actions")[

@@ -200,3 +200,38 @@ body.kbd-open { overflow: hidden; }
    Alpine takes it over, the author display rule above would beat the UA
    [hidden] rule, so keep it hidden explicitly. */
 .kbd-backdrop.open { display: flex; }
+
+/* Subtasks inside a card: nested, compact, one line each. */
+.kbd-subtask-head { display: flex; align-items: center; gap: 0.6rem; }
+.kbd-add-subtask { margin-left: auto; }
+.kbd-subtasks {
+  display: flex; flex-direction: column; gap: 0.1rem;
+  margin: 0 0 0.6rem 1.2ch;
+  padding-left: 1ch;
+  border-left: 1px dotted var(--line, #2b3037);
+}
+.kbd-subtask {
+  display: flex; align-items: baseline; gap: 0.5rem;
+  padding: 0.14rem 0.2rem;
+  font-family: var(--mono); font-size: 0.72rem;
+  border-bottom: 1px dotted rgba(255, 255, 255, 0.06);
+}
+.kbd-subtask:hover { background: rgba(255, 255, 255, 0.04); }
+.kbd-subtask-title {
+  flex: 1 1 auto; min-width: 0; text-align: left;
+  color: var(--ink, #d8ffd2); background: none; border: 0; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.kbd-subtask-title:hover { color: var(--amber, #ffb000); text-decoration: underline dotted; }
+.kbd-subtask-meta {
+  display: inline-flex; gap: 0.6ch; color: var(--dim, #5d7a58);
+  font-size: 0.6rem; white-space: nowrap;
+}
+.kbd-subtask-lane { color: var(--amber, #ffb000); }
+.kbd-subtask-del { opacity: 0.55; }
+.kbd-parent-link {
+  font-family: var(--mono); font-size: 0.62rem;
+  color: var(--amber, #ffb000); background: none; border: 0; cursor: pointer;
+  padding: 0;
+}
+.kbd-parent-link:hover { text-decoration: underline dotted; }

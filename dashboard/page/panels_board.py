@@ -113,6 +113,14 @@ def _card_body() -> object:
                 },
             )[""],
             span(
+                ".kb-badge.kb-badge-subtasks",
+                **{
+                    "x-show": "!!card.subtask_count",
+                    "title": "Open subtasks",
+                    "x-text": "'↳' + card.subtask_count",
+                },
+            )[""],
+            span(
                 ".kb-badge.kb-badge-lane",
                 **{
                     "x-show": "group === 'owner'",

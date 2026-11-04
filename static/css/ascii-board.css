@@ -348,3 +348,4 @@
   font-family: var(--mono); font-size: 0.64rem;
   color: var(--bg); background: var(--amber); border: 1px solid var(--amber); cursor: pointer;
 }
+.kb-badge-subtasks { color: var(--amber, #ffb000); }

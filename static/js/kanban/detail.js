@@ -5,6 +5,7 @@ import Alpine from '../alpine.js';
 import { api } from './api.js';
 import { inlineEdit } from './edit.js?v=kanban20';
 import { loadPurify, renderBody, toggleTask } from './markdown.js?v=kanban20';
+import { subtaskActions } from './subtasks.js?v=subtasks2';
 import * as attention from '../attention.js?v=attention8';
 
 const AUTHOR_KEY = 'opsboard.commentAuthor';
@@ -44,6 +45,9 @@ export function cardDetail() {
     msgError: false,
     form: { title: '', owner: '', opname: '', status: '', docs: '', body: '' },
     comments: [],
+    subtasks: [],
+
+    ...subtaskActions,
     commentsShown: PAGE,
     newCommentIds: [],
     commentAuthor: 'Kix',
@@ -86,6 +90,7 @@ export function cardDetail() {
         const [card] = await Promise.all([api.getCard(id), loadPurify()]);
         if (seq !== this.seq) return;
         this.paint(card);
+        this.subtasks = card.subtasks || [];
         if (edit) this.setEditing(true);
         this.loadComments();
       } catch (err) {
@@ -118,6 +123,7 @@ export function cardDetail() {
 
     paint(card) {
       this.card = card;
+      if (card.subtasks) this.subtasks = card.subtasks;
       this.form = {
         title: card.title,
         owner: card.owner || '',

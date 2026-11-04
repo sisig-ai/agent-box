@@ -82,14 +82,20 @@ def migrate(conn):
     if "opname" not in columns:
         # Optional operation name ("Operation Valhalla"); nullable, so old rows stay valid.
         conn.execute("ALTER TABLE kanban_card ADD COLUMN opname TEXT")
+    if "parent_id" not in columns:
+        # Subtasks are cards with a parent; the board only lists parent_id IS NULL.
+        conn.execute("ALTER TABLE kanban_card ADD COLUMN parent_id INTEGER")
+    conn.execute("CREATE INDEX IF NOT EXISTS kanban_card_parent ON kanban_card (parent_id)")
 
 
 # ---------------- reads ----------------
 
 CARD_SQL = (
     "SELECT c.id, c.title, c.owner, l.name AS status, c.lane_id, c.position,"
-    " c.created_at, c.updated_at, c.archived_at, c.body, c.opname,"
-    " (SELECT COUNT(*) FROM kanban_comment k WHERE k.card_id = c.id) AS comment_count"
+    " c.created_at, c.updated_at, c.archived_at, c.body, c.opname, c.parent_id,"
+    " (SELECT COUNT(*) FROM kanban_comment k WHERE k.card_id = c.id) AS comment_count,"
+    " (SELECT COUNT(*) FROM kanban_card s WHERE s.parent_id = c.id AND s.archived_at IS NULL)"
+    " AS subtask_count"
     " FROM kanban_card c JOIN kanban_lane l ON l.id = c.lane_id"
 )
 
@@ -135,7 +141,7 @@ def cards(conn, lane_id=None, owner=None, archived="exclude", include_body=False
     Full ``body`` only with ``include_body``; the summary fields are always set.
     ``opname``: None = no filter, "" = cards without an opname, else a
     case-insensitive exact match."""
-    sql, args, where = CARD_SQL, [], []
+    sql, args, where = CARD_SQL, [], ["c.parent_id IS NULL"]
     if archived == "exclude":
         where.append("c.archived_at IS NULL")
     elif archived == "only":
@@ -191,7 +197,7 @@ def opnames(conn, archived="include"):
 
     Spelling variants that differ only by case are merged under the most
     recently updated spelling. ``archived`` as in ``cards()``."""
-    where = ["c.opname IS NOT NULL"]
+    where = ["c.opname IS NOT NULL", "c.parent_id IS NULL"]
     if archived == "exclude":
         where.append("c.archived_at IS NULL")
     elif archived == "only":
@@ -219,7 +225,7 @@ def _lane_card_ids(conn, lane_id, exclude=None):
     """Visible (non-archived) card ids of a lane, in order."""
     rows = conn.execute(
         "SELECT id FROM kanban_card WHERE lane_id = ? AND archived_at IS NULL"
-        " ORDER BY position, id",
+        " AND parent_id IS NULL ORDER BY position, id",
         (lane_id,),
     ).fetchall()
     return [r["id"] for r in rows if r["id"] != exclude]
@@ -329,9 +335,19 @@ def archive_lane(lane_name="Done"):
 def delete_card(card_id):
     with _WRITE_LOCK, db.get_db() as conn:
         current = card(conn, card_id)
-        conn.execute("DELETE FROM kanban_comment WHERE card_id = ?", (card_id,))
-        card_docs.forget_card(conn, card_id)
+        children = [
+            row["id"]
+            for row in conn.execute(
+                "SELECT id FROM kanban_card WHERE parent_id = ?", (card_id,)
+            ).fetchall()
+        ]
+        for child in [*children, card_id]:
+            conn.execute("DELETE FROM kanban_comment WHERE card_id = ?", (child,))
+            card_docs.forget_card(conn, child)
+            kanban_embed.drop(child, conn)
+        if children:
+            marks = ",".join("?" for _ in children)
+            conn.execute(f"DELETE FROM kanban_card WHERE id IN ({marks})", children)
         conn.execute("DELETE FROM kanban_card WHERE id = ?", (card_id,))
         _write_order(conn, current["lane_id"], _lane_card_ids(conn, current["lane_id"]))
-        kanban_embed.drop(card_id, conn)
         return current

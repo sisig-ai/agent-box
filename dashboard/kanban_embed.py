@@ -137,6 +137,7 @@ def pending_count():
     try:
         rows = conn.execute(
             "SELECT title, body, opname, owner, embed_hash, embed_model FROM kanban_card"
+            " WHERE parent_id IS NULL"
         )
         return sum(1 for row in rows if needs_index(row))
     finally:
@@ -148,6 +149,7 @@ def reindex_all(limit=None):
     try:
         rows = conn.execute(
             "SELECT id, title, body, opname, owner, embed_hash, embed_model FROM kanban_card"
+            " WHERE parent_id IS NULL"
         ).fetchall()
         stale = [row["id"] for row in rows if needs_index(row)]
     finally:
@@ -210,11 +212,13 @@ def search(
     own = conn is None
     conn = conn or db.connect()
     try:
-        clauses, args = ["e.model = ?"], [config.EMBED_MODEL]
+        clauses, args = ["e.model = ?", "c.parent_id IS NULL"], [config.EMBED_MODEL]
         if archived == "exclude":
             clauses.append("c.archived_at IS NULL")
         elif archived == "only":
             clauses.append("c.archived_at IS NOT NULL")
+        if not any(clause.startswith("c.parent_id") for clause in clauses):
+            clauses.append("c.parent_id IS NULL")
         if lane_id is not None:
             clauses.append("c.lane_id = ?")
             args.append(lane_id)

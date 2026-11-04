@@ -8,12 +8,14 @@ from .tools_lanes import TOOLS as LANE_TOOLS
 from .tools_logs import TOOLS as LOG_TOOLS
 from .tools_notes import TOOLS as NOTE_TOOLS
 from .tools_progress import TOOLS as PROGRESS_TOOLS
+from .tools_subtasks import TOOLS as SUBTASK_TOOLS
 from .tools_tables import TOOLS as TABLE_TOOLS
 
 _GROUPS = (
     BOARD_TOOLS,
     LANE_TOOLS,
     COMMENT_TOOLS,
+    SUBTASK_TOOLS,
     NOTE_TOOLS,
     PROGRESS_TOOLS,
     DOC_TOOLS,

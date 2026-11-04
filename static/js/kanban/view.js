@@ -4,7 +4,7 @@
 
 import Alpine from '../alpine.js';
 import { api } from './api.js';
-import { cardDetail, closeCard, openCard, syncCards } from './detail.js';
+import { cardDetail, closeCard, openCard, syncCards } from './detail.js?v=subtasks3';
 import { inlineEdit, armDelete } from './edit.js?v=kanban20';
 import * as attention from '../attention.js?v=attention8';
 import { activeOp, loadFilters, matches, saveFilters } from './filters.js';

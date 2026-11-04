@@ -21,6 +21,7 @@ from .kanban import KanbanError
 from .kanban_api import router as board_router
 from .kanban_comments_api import router as comment_router
 from .kanban_search_api import router as board_search_router
+from .kanban_subtasks_api import router as subtask_router
 from .logs_api import router as logs_router
 from .mcp import router as mcp_router
 from .notes_api import router as notes_router
@@ -87,6 +88,7 @@ def create_app() -> FastAPI:
     app.include_router(procs_router)
     app.include_router(progress_router)
     app.include_router(board_router)
+    app.include_router(subtask_router)
     app.include_router(board_search_router)
     app.include_router(comment_router)
     app.include_router(mcp_router)

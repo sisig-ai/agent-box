@@ -9,7 +9,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
-from . import db, kanban, kanban_embed, kanban_lanes
+from . import db, kanban, kanban_embed, kanban_lanes, kanban_subtasks
 from .kanban import KanbanError
 
 router = APIRouter()
@@ -265,7 +265,11 @@ def _card_with_comments(raw_id):
     from .kanban_comments import comments
 
     conn, card_id = db.get_db(), parse_card_id(raw_id)
-    return {**kanban.card(conn, card_id), "comments": comments(conn, card_id)}
+    return {
+        **kanban.card(conn, card_id),
+        "comments": comments(conn, card_id),
+        "subtasks": kanban_subtasks.list_for(conn, card_id),
+    }
 
 
 @router.get("/api/opsboard/cards/{card_id}")
