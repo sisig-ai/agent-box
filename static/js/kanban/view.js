@@ -9,7 +9,7 @@ import { inlineEdit, armDelete } from './edit.js?v=kanban20';
 import * as attention from '../attention.js?v=attention8';
 import { activeOp, loadFilters, matches, saveFilters } from './filters.js';
 import { cardActions } from './card-actions.js';
-import { filterBar } from './filter-bar.js';
+import { filterBar } from './filter-bar.js?v=negate1';
 
 const POLL_MS = 3000;
 const GROUP_KEY = 'opsboard.group';

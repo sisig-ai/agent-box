@@ -67,6 +67,10 @@ export const filterBar = {
   },
 
   toggleFilterNegate() {
+    if (this.filterIndex == null && !this.filterValues.length) {
+      this.filterNegate = !this.filterNegate;
+      return;
+    }
     this.commitFilter(this.filterValues, !this.filterNegate);
   },
 
