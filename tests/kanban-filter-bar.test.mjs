@@ -51,3 +51,19 @@ test('negate after a committed value still flips the condition', () => {
   m.toggleFilterNegate();
   assert.deepEqual(m.filters, [{ field: 'author', negate: true, values: ['Cody'] }]);
 });
+
+test('un-ticking the last value, negate, then re-ticking commits negated', () => {
+  const m = menu({
+    filters: [{ field: 'author', negate: false, values: ['Cody'] }],
+    filterField: 'author',
+    filterIndex: 0,
+    filterValues: ['Cody'],
+  });
+  m.toggleFilterValue('Cody');
+  assert.deepEqual(m.filters, []);
+  assert.equal(m.filterIndex, null);
+  m.toggleFilterNegate();
+  assert.equal(m.filterNegate, true);
+  m.toggleFilterValue('Cody');
+  assert.deepEqual(m.filters, [{ field: 'author', negate: true, values: ['Cody'] }]);
+});
