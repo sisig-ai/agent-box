@@ -141,7 +141,7 @@ def document(*panels: object) -> str:
             files_modal(),
             keys_dialog(),
             tui_bar(),
-            script(type="module", src="/static/js/main.js?v=alpine10"),
+            script(type="module", src="/static/js/main.js?v=alpine11"),
         ],
     ]
     return str(page)

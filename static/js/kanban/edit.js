@@ -44,6 +44,7 @@ export function armDelete(btn, action, armedLabel = 'delete?') {
     if (btn.classList.contains('armed')) {
       clearTimeout(timer);
       btn.classList.remove('armed');
+      btn.textContent = btn.dataset.label;
       action();
       return;
     }

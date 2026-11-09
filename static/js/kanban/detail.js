@@ -3,7 +3,7 @@
 
 import Alpine from '../alpine.js';
 import { api } from './api.js?v=movelane1';
-import { inlineEdit } from './edit.js?v=kanban20';
+import { inlineEdit } from './edit.js?v=kanban30';
 import { loadPurify, renderBody, toggleTask } from './markdown.js?v=kanban20';
 import { subtaskActions } from './subtasks.js?v=subtasks4';
 import * as attention from '../attention.js?v=attention8';

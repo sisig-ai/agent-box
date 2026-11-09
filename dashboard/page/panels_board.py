@@ -215,7 +215,7 @@ def _lane() -> object:
                     ".kb-archive-btn.kb-move-done-btn",
                     **{
                         "x-show": "lane.name.toLowerCase() === 'waiting for command'",
-                        "@click": "moveLaneToDone($event, lane)",
+                        "x-init": "armMoveToDone($el, lane)",
                         ":disabled": "!laneLiveCards(lane.id).length",
                         "title": "Move every card in this lane to Done (click twice)",
                     },

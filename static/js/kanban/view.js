@@ -4,11 +4,11 @@
 
 import Alpine from '../alpine.js';
 import { api } from './api.js?v=movelane1';
-import { cardDetail, closeCard, openCard, syncCards } from './detail.js?v=subtasks4';
-import { inlineEdit } from './edit.js?v=kanban20';
+import { cardDetail, closeCard, openCard, syncCards } from './detail.js?v=subtasks5';
+import { inlineEdit } from './edit.js?v=kanban30';
 import * as attention from '../attention.js?v=attention8';
 import { activeOp, loadFilters, matches, saveFilters } from './filters.js';
-import { cardActions } from './card-actions.js?v=movelane1';
+import { cardActions } from './card-actions.js?v=movelane2';
 import { filterBar } from './filter-bar.js?v=negate1';
 
 const POLL_MS = 3000;

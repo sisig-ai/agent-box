@@ -2,7 +2,7 @@
 // fields, delete, and drag/drop. Methods run with the board component as `this`.
 
 import { api } from './api.js?v=movelane1';
-import { armDelete, inlineEdit } from './edit.js?v=kanban20';
+import { armDelete, inlineEdit } from './edit.js?v=kanban30';
 import * as attention from '../attention.js?v=attention8';
 import { markedParts } from './search.js';
 
@@ -81,11 +81,16 @@ export const cardActions = {
     }), 'archive?');
   },
 
-  moveLaneToDone(event, lane) {
-    armDelete(event?.currentTarget, () => this.mutate(async () => {
+  armMoveToDone(el, lane) {
+    armDelete(el, () => this.moveLaneToDone(lane),
+      () => `move ${this.laneLiveCards(lane.id).length}?`);
+  },
+
+  moveLaneToDone(lane) {
+    this.mutate(async () => {
       const r = await api.moveLane(lane.name, this.doneLane?.name || 'Done');
       this.setStatus(`moved ${r.moved} card${r.moved === 1 ? '' : 's'} to ${r.to}`);
-    }), `move ${this.laneLiveCards(lane.id).length}?`);
+    });
   },
 
   canDrag(card) {
