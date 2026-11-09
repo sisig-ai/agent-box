@@ -1,9 +1,23 @@
 /* ==========================================================================
-   Attention: 8-bit, dithered "this changed since you last looked" effects.
-   Hard-edged pixel bands, square particles in 2-4px sizes, stepped timing.
-   No glows, blurs, gradients or smooth easing.
+   Attention: "this changed since you last looked" effects. Dithered bands,
+   square particles, stepped timing. No glows, blurs or gradients.
+
+   Motion intensity is tokenized so the theme framework owns it: the
+   defaults below are deliberately quiet, and any theme overlay may
+   re-point them (board.css / board-dark.css do). JS and class names
+   are untouched.
    ========================================================================== */
 
+:root {
+  --attn-band: rgb(198 169 106 / 0.13);   /* sweep band fill */
+  --attn-band-opacity: 0.6;               /* one-shot sweep strength */
+  --attn-loop-opacity: 0.45;              /* persistent unread shimmer */
+  --attn-loop-speed: 3.6s;                /* slower = calmer */
+  --attn-meter-band: rgb(232 235 239 / 0.2);
+  --attn-lane-flash: #2b2518;             /* lane-head flash, step colors */
+  --attn-lane-flash-2: #211f1a;
+  --attn-new-bg: #1c1a16;                 /* new-comment row background */
+}
 .attention-hit {
   position: relative;
   outline: 2px solid transparent;
@@ -31,11 +45,11 @@
   bottom: 0;
   left: -55%;
   width: 55%;
-  background-color: rgba(198, 169, 106, 0.13);
+  background-color: var(--attn-band);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='2' shape-rendering='crispEdges'%3E%3Cpath fill='%23e8ebef' fill-opacity='.5' d='M0 0h1v1H0zM1 1h1v1H1z'/%3E%3C/svg%3E");
   background-repeat: repeat;
   background-size: 2px 2px;
-  opacity: 0.95;
+  opacity: var(--attn-band-opacity);
   animation: attention-sweep-x 1.3s steps(9) both;
 }
 .attention-sweep::after {
@@ -59,7 +73,7 @@
   outline-offset: 1px;
 }
 .pb-meter .attention-sweep {
-  background-color: rgba(232, 235, 239, 0.2);
+  background-color: var(--attn-meter-band);
   animation-duration: 1.15s;
 }
 
@@ -101,8 +115,8 @@
 }
 @keyframes attention-lane-pulse {
   0%, 100% { background: transparent; }
-  35% { background: #2b2518; }
-  65% { background: #211f1a; }
+  35% { background: var(--attn-lane-flash); }
+  65% { background: var(--attn-lane-flash-2); }
 }
 
 /* Reduced motion: keep a static marker instead of movement. */
@@ -122,13 +136,13 @@
   border-left: 2px solid var(--warn);
 }
 .attention-sweep-wrap.is-loop .attention-sweep {
-  opacity: 0.85;
-  animation: attention-loop 2.8s steps(8, end) infinite;
+  opacity: var(--attn-loop-opacity);
+  animation: attention-loop var(--attn-loop-speed) steps(8, end) infinite;
 }
 @keyframes attention-loop {
   0% { left: -55%; opacity: 0; }
-  4% { opacity: 0.85; }
-  60% { left: 105%; opacity: 0.85; }
+  4% { opacity: var(--attn-loop-opacity); }
+  60% { left: 105%; opacity: var(--attn-loop-opacity); }
   61%, 100% { left: 105%; opacity: 0; }
 }
 
@@ -137,7 +151,7 @@
   position: relative;
   overflow: hidden;
   border-left: 2px solid var(--warn);
-  background: #1c1a16;
+  background: var(--attn-new-bg);
 }
 .kbc-item.is-new .kbc-new {
   margin-left: auto;

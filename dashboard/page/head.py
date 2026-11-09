@@ -6,7 +6,7 @@ from .. import theme
 
 STYLES = [
     ("base.css", None),
-    ("header.css", "clockpill1"),
+    ("header.css", "clockpill2"),
     ("telemetry.css", "procs3"),
     ("power-alerts.css", "compact1"),
     ("scanner.css", None),
@@ -28,7 +28,7 @@ STYLES = [
     ("docs.css", "author1"),
     ("tables.css", "tables1"),
     ("logs.css", "alpine1"),
-    ("ascii-attention.css", "attention8"),
+    ("ascii-attention.css", "attention9"),
     ("theme-picker.css", "theme1"),
     ("pwa.css", "pwa1"),
 ]

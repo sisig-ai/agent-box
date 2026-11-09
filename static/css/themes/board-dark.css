@@ -1,0 +1,72 @@
+/* ==========================================================================
+   Board Dark — the Board language on a dark neutral ramp. board.css holds
+   every layout rule (its selectors target both data-theme values); this
+   sheet imports it, then re-points the palette tokens. Keep the token
+   names in lockstep with board.css.
+   ========================================================================== */
+
+@import url("/static/css/themes/board.css?v=board4");
+
+html[data-theme="board-dark"] {
+  color-scheme: dark;
+
+  /* the neutral ramp, inverted */
+  --bg: #0f1012;
+  --well: #17181b;
+  --line: #26272b;
+  --ink: #f2f3f5;
+  --text: #b9bcc2;
+  --muted: #8a8d94;
+  --dim: #61646b;
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --bad: #f87171;
+  --void: var(--bg);
+  --blue: #5b9dff;
+  --violet: #5b9dff;
+  --surface: #17181b;
+  --border: var(--line);
+  --mono: "Inter", "InterVariable", ui-sans-serif, system-ui, "Segoe UI", sans-serif,
+    "FiraCode Nerd Font Mono", monospace;
+
+  /* board framework tokens, dark equivalents */
+  --board-line-dim: #1e1f23;
+  --board-line-strong: #34363c;
+  --board-raised: #1d1e22;
+  --board-hover: #1d1e22;
+  --board-hover-row: #16171a;
+  --board-lane: #16171a;
+  --board-surface: #17181b;
+  --board-thumb: #34363c;
+  --board-thumb-hover: #575a61;
+  --board-scrim: rgba(0, 0, 0, 0.55);
+  --board-on-ink: #0f1012;
+  --board-armed-bg: rgb(248 113 113 / 0.12);
+  --board-armed-border: rgb(248 113 113 / 0.35);
+  --board-warn-bg: rgb(251 191 36 / 0.12);
+  --board-warn-border: rgb(251 191 36 / 0.35);
+  --board-warn-ink: #fbbf24;
+
+  --board-accent: #5b9dff;
+  --board-accent-ink: #8ab4ff;
+  --board-accent-dim: rgb(91 157 255 / 0.45);
+  --board-accent-bg: rgb(91 157 255 / 0.14);
+  --board-shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+  --board-pop: 0 12px 32px rgb(0 0 0 / 0.5);
+  --board-card-hover: 0 2px 8px rgb(0 0 0 / 0.45);
+
+  /* quieter shimmer on dark: a dim band, not a white flash */
+  --shimmer-band: #3a4a66;
+  --brand-glow: drop-shadow(0 0 12px rgb(91 157 255 / 0.18));
+
+  /* attention motion, dark-page equivalents */
+  --attn-band: rgb(251 191 36 / 0.08);
+  --attn-lane-flash: rgb(251 191 36 / 0.1);
+  --attn-lane-flash-2: rgb(251 191 36 / 0.06);
+  --attn-new-bg: #23201a;
+}
+
+html[data-theme="board-dark"] body {
+  background: var(--bg);
+  color: var(--text);
+}
