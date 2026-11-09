@@ -2,7 +2,7 @@
 // Alpine component; the markup lives in index.html next to the board.
 
 import Alpine from '../alpine.js';
-import { api } from './api.js';
+import { api } from './api.js?v=movelane1';
 import { inlineEdit } from './edit.js?v=kanban20';
 import { loadPurify, renderBody, toggleTask } from './markdown.js?v=kanban20';
 import { subtaskActions } from './subtasks.js?v=subtasks3';

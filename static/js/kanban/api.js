@@ -40,6 +40,7 @@ export const api = {
   deleteComment: (id, cid) => call('DELETE', `/api/opsboard/cards/${id}/comments/${cid}`),
   opnames: () => call('GET', '/api/opsboard/opnames'),
   archiveDone: () => call('POST', '/api/opsboard/archive-done'),
+  moveLane: (from, to) => call('POST', '/api/opsboard/move-lane', { from, to }),
   addLane: (name) => call('POST', '/api/opsboard/lanes', { name }),
   patchLane: (id, changes) => call('PATCH', `/api/opsboard/lanes/${id}`, changes),
   deleteLane: (id) => call('DELETE', `/api/opsboard/lanes/${id}`),

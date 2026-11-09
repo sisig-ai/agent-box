@@ -1,7 +1,7 @@
 // Card-level behaviour for the board: search decoration, opening, inline
 // fields, delete, and drag/drop. Methods run with the board component as `this`.
 
-import { api } from './api.js';
+import { api } from './api.js?v=movelane1';
 import { armDelete, inlineEdit } from './edit.js?v=kanban20';
 import * as attention from '../attention.js?v=attention8';
 import { markedParts } from './search.js';

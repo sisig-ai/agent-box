@@ -3,7 +3,7 @@
 // filter-bar.js, and the card modal in detail.js.
 
 import Alpine from '../alpine.js';
-import { api } from './api.js';
+import { api } from './api.js?v=movelane1';
 import { cardDetail, closeCard, openCard, syncCards } from './detail.js?v=subtasks3';
 import { inlineEdit, armDelete } from './edit.js?v=kanban20';
 import * as attention from '../attention.js?v=attention8';
@@ -291,11 +291,17 @@ export function boardView() {
     },
 
     archiveDone(event) {
-      const button = event?.currentTarget;
-      armDelete(button, () => this.mutate(async () => {
+      armDelete(event?.currentTarget, () => this.mutate(async () => {
         const r = await api.archiveDone();
         this.setStatus(`archived ${r.archived} card${r.archived === 1 ? '' : 's'}`);
       }), 'archive?');
+    },
+
+    moveLaneToDone(event, lane) {
+      armDelete(event?.currentTarget, () => this.mutate(async () => {
+        const r = await api.moveLane(lane.name, this.doneLane?.name || 'Done');
+        this.setStatus(`moved ${r.moved} card${r.moved === 1 ? '' : 's'} to ${r.to}`);
+      }), `move ${this.cardsFor(lane.id).length}?`);
     },
 
     async addLane() {

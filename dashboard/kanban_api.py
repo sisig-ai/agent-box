@@ -241,6 +241,20 @@ async def archive_done():
     return await run_in_threadpool(kanban.archive_lane, "Done")
 
 
+@router.post("/api/opsboard/move-lane")
+@router.post("/api/kanban/move-lane")
+async def move_lane_route(request: Request):
+    """Move every live card of one lane to the bottom of another, in order."""
+    body = await json_body(request, ("from", "to"))
+    names = []
+    for key in ("from", "to"):
+        raw = body.get(key)
+        if not isinstance(raw, str) or not raw.strip():
+            raise KanbanError(f"{key} is required and must be a non-empty lane name")
+        names.append(raw.strip())
+    return await run_in_threadpool(kanban.move_lane, names[0], names[1])
+
+
 @router.post("/api/opsboard/cards")
 @router.post("/api/kanban/cards")
 async def card_create(request: Request):

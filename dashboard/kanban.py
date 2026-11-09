@@ -332,6 +332,32 @@ def archive_lane(lane_name="Done"):
         return {"archived": len(ids), "ids": ids, "lane": row["name"], "archived_at": stamp}
 
 
+def move_lane(from_name, to_name):
+    """Move every visible card of one lane to the bottom of another, in order."""
+    with _WRITE_LOCK, db.get_db() as conn:
+        source = conn.execute(
+            "SELECT * FROM kanban_lane WHERE name = ? COLLATE NOCASE", (from_name,)
+        ).fetchone()
+        target = conn.execute(
+            "SELECT * FROM kanban_lane WHERE name = ? COLLATE NOCASE", (to_name,)
+        ).fetchone()
+        if source is None:
+            raise KanbanError(f"no lane named {from_name!r}", 404)
+        if target is None:
+            raise KanbanError(f"no lane named {to_name!r}", 404)
+        if source["id"] == target["id"]:
+            raise KanbanError("source and target lane are the same", 400)
+        ids = _lane_card_ids(conn, source["id"])
+        if ids:
+            _write_order(conn, target["id"], _lane_card_ids(conn, target["id"]) + ids)
+            stamp = now_iso()
+            conn.executemany(
+                "UPDATE kanban_card SET updated_at = ? WHERE id = ?",
+                [(stamp, cid) for cid in ids],
+            )
+        return {"moved": len(ids), "ids": ids, "from": source["name"], "to": target["name"]}
+
+
 def delete_card(card_id):
     with _WRITE_LOCK, db.get_db() as conn:
         current = card(conn, card_id)

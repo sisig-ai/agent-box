@@ -256,7 +256,7 @@ Listings take `?archived=exclude|include|only` (default `exclude`) and return
 | GET | `/api/opsboard/cards`, `/api/opsboard/archived` |
 | GET | `/api/opsboard/search?q=&limit=&archived=&status=&owner=&opname=` |
 | GET | `/api/opsboard/opnames` |
-| POST | `/api/opsboard/cards`, `/api/opsboard/archive-done` |
+| POST | `/api/opsboard/cards`, `/api/opsboard/archive-done`, `/api/opsboard/move-lane` |
 | GET/PATCH/DELETE | `/api/opsboard/cards/:id` |
 | GET/POST | `/api/opsboard/cards/:id/comments` |
 | DELETE | `/api/opsboard/cards/:id/comments/:commentId` |

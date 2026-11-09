@@ -212,6 +212,15 @@ def _lane() -> object:
                     },
                 )["Archive Done"],
                 button(
+                    ".kb-archive-btn.kb-move-done-btn",
+                    **{
+                        "x-show": "lane.name.toLowerCase() === 'waiting for command'",
+                        "@click": "moveLaneToDone($event, lane)",
+                        ":disabled": "!cardsFor(lane.id).length",
+                        "title": "Move every card in this lane to Done (click twice)",
+                    },
+                )["Move to Done"],
+                button(
                     ".kb-icon.kb-lane-del",
                     title="Delete empty lane",
                     **{
