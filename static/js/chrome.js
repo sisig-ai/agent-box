@@ -1,6 +1,7 @@
 // Page chrome: host name, site title, system count, greeting and the clock.
 // Registered before Alpine.start so the header is live on every view; the
-// stack grid reads the same config promise.
+// stack grid reads the same config promise. The clock opens the theme
+// picker, which lives on the dialog as its own component (theme.js).
 
 import { loadConfig } from './config.js';
 
@@ -50,3 +51,5 @@ export function chrome() {
     },
   };
 }
+
+

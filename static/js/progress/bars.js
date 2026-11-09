@@ -82,6 +82,8 @@ export function progressView() {
     total: 0,
     archivedCount: 0,
     archivedOnly: false,
+    archiveArmed: false,
+    archiveTimer: 0,
     status: 'loading…',
     failed: false,
     editingId: null,
@@ -103,6 +105,7 @@ export function progressView() {
 
     destroy() {
       clearInterval(this.timer);
+      clearTimeout(this.archiveTimer);
       document.removeEventListener('visibilitychange', this.onVisible);
     },
 
@@ -139,6 +142,53 @@ export function progressView() {
 
     get archivedLabel() {
       return this.archivedCount ? `archived ${this.archivedCount}` : 'archived';
+    },
+
+    // Bulk archive: every live bar at 100% plus its subtree. Two-click arm,
+    // same contract as the Ops Board's Archive Done.
+    get doneCount() {
+      return flatten(this.bars).filter((bar) => !bar.archived_at && clamp(bar.percent) >= 100)
+        .length;
+    },
+
+    get archiveDisabled() {
+      return this.doneCount === 0;
+    },
+
+    get archiveLabel() {
+      return this.archiveArmed ? `archive ${this.doneCount}?` : 'archive done';
+    },
+
+    get archiveTitle() {
+      return this.archiveDisabled
+        ? 'No bar is at 100% yet'
+        : `Archive all ${this.doneCount} finished bar(s) and their children (click twice)`;
+    },
+
+    archiveDone() {
+      if (this.archiveDisabled) return;
+      if (!this.archiveArmed) {
+        this.archiveArmed = true;
+        clearTimeout(this.archiveTimer);
+        this.archiveTimer = setTimeout(() => {
+          this.archiveArmed = false;
+        }, 3000);
+        return;
+      }
+      clearTimeout(this.archiveTimer);
+      this.archiveArmed = false;
+      return (async () => {
+        try {
+          const res = await fetch(`${API}/archive-done`, { method: 'POST' });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+          await this.refresh();
+          const n = data.archived || 0;
+          this.status = n ? `archived ${n} bar${n === 1 ? '' : 's'}` : 'nothing at 100% to archive';
+        } catch (err) {
+          this.status = `archive failed — ${err.message}`;
+        }
+      })();
     },
 
     // Parent choices: every bar except the edited one and its descendants.

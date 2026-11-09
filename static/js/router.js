@@ -30,7 +30,7 @@ function current() {
 }
 const lazy = {};
 const KANBAN = './kanban/view.js?v=subtasks6';
-const PROGRESS = './progress/bars.js?v=alpine3';
+const PROGRESS = './progress/bars.js?v=alpine4';
 const DOCS = './docs/view.js?v=alpine6';
 const TABLES = './tables/view.js?v=tables8';
 const LOGS = './logs/view.js?v=alpine1';

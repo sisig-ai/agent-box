@@ -92,6 +92,50 @@ def test_archived_parent_refuses_children_and_bad_flag(client):
     assert client.patch(f"/api/progress/{root['id']}", json={"archived": "yes"}).status_code == 400
 
 
+def test_archive_done_hides_finished_bars_and_their_subtree(client):
+    live = create(client, "Live", percent=40).get_json()
+    done = create(client, "Done", percent=100).get_json()
+    kid = create(client, "Kid", percent=10, parent_id=done["id"]).get_json()
+    leaf = create(client, "Leaf", percent=100, parent_id=kid["id"]).get_json()
+
+    body = client.post("/api/progress/archive-done").get_json()
+    assert body["archived"] == 3
+    assert body["done"] == sorted([done["id"], leaf["id"]])
+    assert sorted(body["ids"]) == sorted([done["id"], kid["id"], leaf["id"]])
+
+    listing = client.get("/api/progress").get_json()
+    assert [bar["id"] for bar in listing["bars"]] == [live["id"]]
+    assert listing["count"] == 1
+    assert listing["archived_count"] == 3
+
+    both = client.get("/api/progress?archived=include").get_json()
+    assert both["count"] == 4
+    assert [bar["id"] for bar in both["bars"]] == [live["id"], done["id"]]
+    assert both["bars"][1]["children"][0]["id"] == kid["id"]
+
+    only = client.get("/api/progress?archived=only").get_json()
+    assert [bar["id"] for bar in only["bars"]] == [done["id"]]
+    assert only["bars"][0]["children"][0]["id"] == kid["id"]
+    assert only["bars"][0]["children"][0]["children"][0]["id"] == leaf["id"]
+
+
+def test_archive_done_is_idempotent_and_empty_when_nothing_is_finished(client):
+    done = create(client, "Done", percent=100).get_json()
+    assert client.post("/api/progress/archive-done").get_json()["archived"] == 1
+    again = client.post("/api/progress/archive-done").get_json()
+    assert again == {"archived": 0, "done": [], "ids": [], "archived_at": None}
+
+    restored = client.patch(f"/api/progress/{done['id']}", json={"archived": False})
+    assert restored.get_json()["archived_at"] is None
+    assert client.get("/api/progress").get_json()["count"] == 1
+
+    client.patch(f"/api/progress/{done['id']}", json={"percent": 50})
+    create(client, "Half", percent=50)
+    empty = client.post("/api/progress/archive-done").get_json()
+    assert empty["archived"] == 0
+    assert client.get("/api/progress").get_json()["count"] == 2
+
+
 def test_validation_errors(client):
     assert create(client, "").status_code == 400
     assert create(client, "x", percent=-1).status_code == 400

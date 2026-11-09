@@ -134,7 +134,7 @@ There is no authentication anywhere in this, so it belongs on a private network 
 
 Two edits cover most setups. The first is the title: open `static/config.json` and change `title`, and the header, the sidebar, and the browser tab will all pick it up. Start from `static/config.example.json` if you do not have a config yet. The second is the stack page, which is the `services` list in the same file, one entry per service with a name, an icon, a short description, a color, and a port.
 
-If you want it to look different, the theme is plain CSS. The stylesheets in `static/css/` load in the order listed in `static/index.html`, and later files override earlier ones, so adding one stylesheet at the end is enough to reskin the whole dashboard. Leave the element ids and classes as they are, because the JavaScript looks them up by name.
+If you want it to look different, pick a theme from the header clock: the picker lists what `static/themes.json` installs, and the choice is saved to `config.json`. A theme is one overlay stylesheet, loaded after every base sheet, so it can restyle anything without touching markup. Adding your own is one entry in `themes.json` plus one CSS file. Leave the element ids and classes as they are, because the JavaScript looks them up by name.
 
 ## Quick start
 

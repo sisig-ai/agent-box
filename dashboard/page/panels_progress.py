@@ -139,6 +139,17 @@ def progress() -> object:
             div(".progress-actions")[
                 button(
                     ".brief-btn",
+                    id="progress-archive",
+                    **{
+                        "@click": "archiveDone()",
+                        ":disabled": "archiveDisabled",
+                        ":class": "{ armed: archiveArmed }",
+                        ":title": "archiveTitle",
+                        "x-text": "archiveLabel",
+                    },
+                )["archive done"],
+                button(
+                    ".brief-btn",
                     id="progress-archived",
                     **{
                         "@click": "toggleArchived()",

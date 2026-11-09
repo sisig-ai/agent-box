@@ -1,0 +1,19 @@
+/* Theme picker dialog (the header clock opens it). Markup: frame.theme_dialog,
+   component: js/theme.js. Kept tiny — the active theme's overlay loads after
+   this sheet and may restyle the dialog further. */
+
+.readout { cursor: pointer; }
+.readout:focus-visible { outline: 1px solid var(--violet); outline-offset: 2px; }
+
+.theme-dialog { width: min(360px, calc(100vw - 2rem)); }
+
+.theme-sub {
+  margin: 0 0 0.8rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.theme-list { display: grid; gap: 0.45rem; margin-bottom: 0.9rem; }
+
+.theme-item { justify-self: stretch; text-align: left; }
+.theme-item.toggled { outline: 1px solid var(--violet); }

@@ -222,6 +222,7 @@ view, not an archive.
 - Docs REST: `GET /api/docs?prefix=&limit=&offset=&content=1`, `GET|PUT|PATCH|DELETE /api/docs/<path:prefix>`, `POST /api/docs` (body carries `prefix`, 409 if taken), `GET /api/docs/search?q=&prefix=&prefix_q=`, `GET /api/docs/semantic?q=&prefix=&prefix_q=&sort=&limit=`, `GET /api/docs/index`, `POST /api/docs/reindex`, `GET /api/docs/prefixes`, `GET /api/docs/tree?per=5`.
 - Ops Board semantic: `GET /api/opsboard/semantic?q=&limit=&status=&owner=&opname=&archived=&sort=`, `POST /api/opsboard/reindex`.
 - MCP access log: `GET /api/logs?limit=&tool=&entity=&ok=1|0` — every `tools/call`, newest first, plus `retention_days` and the retained daily files; `POST /api/logs/rotate` forces a new day file and sweeps the window. Files live in `data/logs/access-YYYY-MM-DD.log`, one JSON object per line, 7-day retention.
+- Themes: `GET /api/themes` lists the installed looks with the active one; `POST /api/theme` with `{"theme":"<id>"}` saves the choice to `config.json`. The theme registry is `static/themes.json`; the choice is applied server-side on the next page load and live client-side from the header clock.
 - Page tabs: `#/brief` (Daily Sitrep), `#/` (Stack), `#/files`, `#/shell`, `#/kanban` (Ops Board), `#/progress` (Progress Bars), `#/docs` (Docs), `#/logs` (Access Logs).
 
 ## Raw REST API (legacy — same data as the MCP tools)
@@ -240,7 +241,7 @@ change independently of them. No auth headers are needed on any of them.
 |--------|------|
 | GET | `/api/progress` (roots with nested children), `/api/progress/flat` |
 | GET/DELETE | `/api/progress/:id` (`DELETE …?cascade=1` removes the subtree) |
-| POST | `/api/progress` |
+| POST | `/api/progress`, `/api/progress/archive-done` (archives every 100% bar and its subtree) |
 | PATCH | `/api/progress/:id` |
 
 Listings take `?archived=exclude|include|only` (default `exclude`) and return

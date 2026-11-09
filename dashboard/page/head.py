@@ -2,6 +2,8 @@
 
 from htpy import head, link, meta, script, title
 
+from .. import theme
+
 STYLES = [
     ("base.css", None),
     ("header.css", "clockpill1"),
@@ -27,7 +29,7 @@ STYLES = [
     ("tables.css", "tables1"),
     ("logs.css", "alpine1"),
     ("ascii-attention.css", "attention8"),
-    ("tui.css", "tui80b"),
+    ("theme-picker.css", "theme1"),
     ("pwa.css", "pwa1"),
 ]
 
@@ -37,7 +39,14 @@ def _stylesheet(name: str, version: str | None) -> object:
     return link(rel="stylesheet", href=href)
 
 
-def document_head() -> object:
+def document_head(active_theme: str | None = None) -> object:
+    """The head, ending with the active theme's overlay so it loads last.
+
+    ``tui.css`` is not in ``STYLES`` any more: it is the classic-386 theme's
+    overlay, and the theme registry owns it.
+    """
+    theme_id = active_theme or theme.read_theme()
+    theme_css = theme.css_for(theme_id) or theme.css_for(theme.DEFAULT_THEME)
     return head[
         meta(charset="UTF-8"),
         meta(name="viewport", content="width=device-width, initial-scale=1, viewport-fit=cover"),
@@ -62,4 +71,5 @@ def document_head() -> object:
         ),
         title["macmini"],
         *[_stylesheet(name, version) for name, version in STYLES],
+        link(rel="stylesheet", href=theme_css, **{"data-theme-css": theme_id}),
     ]

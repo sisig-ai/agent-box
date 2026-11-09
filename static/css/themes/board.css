@@ -1,0 +1,205 @@
+/* ==========================================================================
+   Board — a light, neutral dashboard look (BoardUI language): off-white page,
+   white panes, 1px neutral rules, 12px radii, Inter, and blue reserved for
+   "selected" and "act". An overlay stylesheet: it loads after every base
+   sheet and restyles what the tokens can't reach. No markup or JS hooks.
+   ========================================================================== */
+
+@font-face {
+  font-family: "Inter";
+  src: url("/static/fonts/InterVariable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+html[data-theme="board"] {
+  color-scheme: light;
+
+  --void: #f7f7f7;
+  --blue: #2b7fff;
+  --violet: #2b7fff;
+  --text: #171717;
+  --muted: #5f5f5f;
+  --surface: #ffffff;
+  --border: rgba(10, 10, 10, 0.12);
+
+  --board-ink: #0a0a0a;
+  --board-muted: #737373;
+  --board-dim: #a1a1a1;
+  --board-line: rgba(10, 10, 10, 0.09);
+  --board-line-strong: rgba(10, 10, 10, 0.18);
+  --board-raised: #f5f5f5;
+  --board-hover: #f0f4ff;
+  --board-shadow: 0 1px 2px rgba(10, 10, 10, 0.05);
+  --board-radius: 12px;
+}
+
+html[data-theme="board"] body {
+  background: var(--void);
+  color: var(--text);
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 0.9375rem;
+}
+
+html[data-theme="board"] ::selection { background: #2b7fff; color: #ffffff; }
+
+html[data-theme="board"] ::-webkit-scrollbar-track { background: var(--void); }
+html[data-theme="board"] ::-webkit-scrollbar-thumb {
+  background: #d4d4d4;
+  border-radius: 6px;
+}
+html[data-theme="board"] ::-webkit-scrollbar-thumb:hover { background: #b4b4b4; }
+
+/* The classic-386 status bar belongs to the TUI look only. */
+html[data-theme="board"] .tui-bar { display: none; }
+
+/* ---------- Sidebar and header ---------- */
+
+html[data-theme="board"] .side .home {
+  color: var(--board-ink);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+html[data-theme="board"] .side .home:hover { background: var(--board-ink); color: #ffffff; }
+html[data-theme="board"] .side .by { color: var(--board-muted); }
+
+html[data-theme="board"] .view-btn {
+  color: var(--board-muted);
+  border-color: transparent;
+}
+html[data-theme="board"] .view-btn:hover {
+  color: var(--board-ink);
+  background: var(--board-raised);
+  border-color: var(--board-line);
+}
+html[data-theme="board"] .view-btn.active {
+  color: #ffffff;
+  background: var(--blue);
+  border-color: var(--blue);
+  box-shadow: none;
+}
+
+html[data-theme="board"] header h1 {
+  color: var(--board-ink);
+  font-weight: 600;
+  letter-spacing: -0.011em;
+}
+html[data-theme="board"] header .subtitle,
+html[data-theme="board"] header .eyebrow { color: var(--board-muted); }
+
+html[data-theme="board"] .readout {
+  background: #ffffff;
+  border: 1px solid var(--board-line);
+  border-radius: 12px;
+  box-shadow: var(--board-shadow);
+}
+html[data-theme="board"] .readout::after { background: var(--blue); box-shadow: none; opacity: 1; }
+html[data-theme="board"] .readout:hover { border-color: var(--board-line-strong); }
+html[data-theme="board"] .readout-time,
+html[data-theme="board"] .readout-date { color: var(--board-ink); }
+html[data-theme="board"] .readout-tz { color: var(--board-muted); }
+
+/* ---------- Panes: shells, cards, dialogs ---------- */
+
+html[data-theme="board"] .shell {
+  background: #ffffff;
+  border: 1px solid var(--board-line);
+  border-radius: var(--board-radius);
+  box-shadow: var(--board-shadow);
+}
+html[data-theme="board"] .shell-head {
+  border-bottom: 1px solid var(--board-line);
+  background: transparent;
+}
+html[data-theme="board"] .shell-title,
+html[data-theme="board"] .shell-title .shell-sess { color: var(--board-ink); }
+html[data-theme="board"] .shell-dot.on { background: #16a34a; box-shadow: none; }
+html[data-theme="board"] .shell-dot.off { background: var(--board-dim); box-shadow: none; }
+
+/* The terminal stays a terminal: dark glass inside the light pane. */
+html[data-theme="board"] .term,
+html[data-theme="board"] .term-screen {
+  background: #0d1117;
+  border-color: var(--board-line);
+}
+
+html[data-theme="board"] .card {
+  background: #ffffff;
+  border: 1px solid var(--board-line);
+  border-radius: var(--board-radius);
+  box-shadow: var(--board-shadow);
+  color: var(--text);
+}
+html[data-theme="board"] .card:hover,
+html[data-theme="board"] .card:focus-visible {
+  border-color: var(--blue);
+  box-shadow: 0 2px 8px rgba(43, 127, 255, 0.12);
+  transform: none;
+}
+html[data-theme="board"] .card::before,
+html[data-theme="board"] .card::after { display: none; }
+html[data-theme="board"] .card .name { color: var(--board-ink); font-weight: 600; }
+html[data-theme="board"] .card .description,
+html[data-theme="board"] .card .meta { color: var(--board-muted); }
+
+html[data-theme="board"] .ascii-dialog {
+  background: #ffffff;
+  color: var(--text);
+  border: 1px solid var(--board-line-strong);
+  border-radius: var(--board-radius);
+  box-shadow: 0 12px 32px rgba(10, 10, 10, 0.14);
+}
+html[data-theme="board"] .ascii-dialog::backdrop { background: rgba(20, 22, 26, 0.45); }
+html[data-theme="board"] .ascii-dialog h3 { color: var(--board-ink); }
+
+html[data-theme="board"] input,
+html[data-theme="board"] select,
+html[data-theme="board"] textarea {
+  background: #ffffff;
+  color: var(--board-ink);
+  border: 1px solid var(--board-line-strong);
+  border-radius: 8px;
+}
+html[data-theme="board"] input:focus,
+html[data-theme="board"] select:focus,
+html[data-theme="board"] textarea:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 2px rgba(43, 127, 255, 0.18);
+}
+
+/* ---------- Buttons ---------- */
+
+html[data-theme="board"] .brief-btn::before,
+html[data-theme="board"] .brief-btn::after { color: var(--board-dim); }
+html[data-theme="board"] .brief-btn,
+html[data-theme="board"] .tool-btn,
+html[data-theme="board"] .key-btn { color: var(--board-muted); }
+html[data-theme="board"] .brief-btn:hover,
+html[data-theme="board"] .tool-btn:hover,
+html[data-theme="board"] .key-btn:hover {
+  color: var(--board-ink);
+  background: var(--board-hover);
+  border-color: var(--board-line);
+}
+html[data-theme="board"] .brief-btn.toggled,
+html[data-theme="board"] .tab-btn.active {
+  color: var(--blue);
+  background: #eaf2ff;
+  border-color: rgba(43, 127, 255, 0.35);
+}
+html[data-theme="board"] .brief-btn.armed { color: #dc2626; }
+html[data-theme="board"] .brief-btn:disabled { opacity: 0.45; }
+
+html[data-theme="board"] a { color: var(--blue); }
+
+/* ---------- Dim text ramp ---------- */
+
+html[data-theme="board"] .dim { color: var(--board-muted); }
+html[data-theme="board"] .empty { color: var(--board-muted); }
+html[data-theme="board"] code,
+html[data-theme="board"] .mono {
+  font-family: var(--mono);
+  font-size: 0.85em;
+}

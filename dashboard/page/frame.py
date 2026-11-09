@@ -19,6 +19,7 @@ from htpy import (
     pre,
     script,
     span,
+    template,
 )
 
 from .head import document_head
@@ -62,7 +63,17 @@ def header_block() -> object:
             h1(id="title", **{"x-text": "title"})["macmini"],
             p(".subtitle", id="greeting", **{"x-text": "greeting"})["all systems standing by."],
         ],
-        div(".readout", **{"aria-label": "Local time"})[
+        div(
+            ".readout",
+            **{
+                "aria-label": "Local time and theme picker",
+                "role": "button",
+                "tabindex": "0",
+                "@click": "$dispatch('open-themes')",
+                "@keydown.enter.prevent": "$dispatch('open-themes')",
+                "title": "Switch theme",
+            },
+        )[
             span(".readout-time", id="readout-time", **{"x-text": "time"})["--:--"],
             span(".readout-meta")[
                 span(id="readout-date", **{"x-text": "date"})[""],
@@ -77,6 +88,36 @@ def page_footer() -> object:
     return footer(".foot")[
         span(".dim")["// edit ", code["config.json"], " to add systems"],
         span(".dim")["? keys · macmini:5555"],
+    ]
+
+
+def theme_dialog() -> object:
+    """Theme picker behind the clock: one button per installed theme."""
+    return dialog(
+        ".ascii-dialog.theme-dialog",
+        id="theme-dialog",
+        **{
+            "aria-labelledby": "theme-title",
+            "x-data": "themePicker",
+            "@open-themes.window": "open()",
+        },
+    )[
+        h3(id="theme-title")["theme"],
+        p(".theme-sub")["pick a look; the choice is saved to config.json"],
+        div(".theme-list")[
+            template(**{"x-for": "t in themes", ":key": "t.id"})[
+                button(
+                    ".brief-btn.theme-item",
+                    type="button",
+                    **{
+                        "@click": "chooseTheme(t)",
+                        ":class": "{ toggled: t.id === active }",
+                        "x-text": "t.name",
+                    },
+                )["theme"],
+            ],
+        ],
+        form(method="dialog")[button(".brief-btn")["close"]],
     ]
 
 
@@ -131,8 +172,11 @@ def tui_bar() -> object:
 
 
 def document(*panels: object) -> str:
-    page = html(lang="en")[
-        document_head(),
+    from .. import theme
+
+    active = theme.read_theme()
+    page = html(lang="en", **{"data-theme": active})[
+        document_head(active),
         body(**{"data-view": "stack"})[
             div(".container", **{"x-data": "chrome"})[
                 sidebar(),
@@ -140,8 +184,9 @@ def document(*panels: object) -> str:
             ],
             files_modal(),
             keys_dialog(),
+            theme_dialog(),
             tui_bar(),
-            script(type="module", src="/static/js/main.js?v=alpine11"),
+            script(type="module", src="/static/js/main.js?v=alpine13"),
         ],
     ]
     return str(page)

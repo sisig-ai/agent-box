@@ -6,10 +6,12 @@ import './router.js?v=subtasks6';
 import './hotkeys.js?v=ascii2';
 import Alpine from './alpine.js';
 import { chrome } from './chrome.js?v=alpine2';
+import { themePicker } from './theme.js?v=theme3';
 
 // One Alpine instance owns every x-data node. Views register and mount
 // themselves from the router, so nothing waits on this call.
 Alpine.data('chrome', chrome);
+Alpine.data('themePicker', themePicker);
 Alpine.start();
 
 // The retired GMGN PWA registered a service worker; drop any leftover one, then

@@ -99,6 +99,15 @@ async def progress_update(bar_id: int, request: Request):
     return bar
 
 
+@router.post("/api/progress/archive-done")
+async def progress_archive_done():
+    """Archive every bar at 100% and its subtree."""
+    try:
+        return await run_in_threadpool(progress.archive_done)
+    except ProgressError as exc:
+        return error(exc.message, exc.status)
+
+
 @router.delete("/api/progress/{bar_id}")
 async def progress_delete(bar_id: int, cascade: str | None = None):
     wanted = str(cascade or "").lower() in TRUTHY

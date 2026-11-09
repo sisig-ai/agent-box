@@ -1,6 +1,6 @@
 /* macmini PWA shell: cache versioned static, never cache /api. */
-const CACHE = "macmini-v2";
-const SHELL = ["/", "/static/css/tui.css?v=tui4", "/static/css/pwa.css?v=pwa1"];
+const CACHE = "macmini-v3";
+const SHELL = ["/", "/static/css/base.css", "/static/css/pwa.css?v=pwa1"];
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });

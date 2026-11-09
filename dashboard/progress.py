@@ -445,6 +445,34 @@ def archive(bar_id, archived=True):
     return fetch(bar_id)
 
 
+def archive_done():
+    """Archive every live bar at 100% together with its subtree."""
+    with _WRITE_LOCK:
+        conn = db.get_db()
+        rows = _all(conn, "exclude")
+        kids = {}
+        for row in rows:
+            if row["parent_id"] is not None:
+                kids.setdefault(row["parent_id"], []).append(row["id"])
+        done = sorted(row["id"] for row in rows if row["percent"] >= 100)
+        stack, ids = list(done), set(done)
+        while stack:
+            current = stack.pop()
+            fresh = [kid for kid in kids.get(current, []) if kid not in ids]
+            ids.update(fresh)
+            stack.extend(fresh)
+        if not ids:
+            return {"archived": 0, "done": [], "ids": [], "archived_at": None}
+        ordered = sorted(ids)
+        stamp = now_iso()
+        with conn:
+            conn.executemany(
+                "UPDATE progress_bar SET archived_at = ?, updated_at = ? WHERE id = ?",
+                [(stamp, stamp, bar_id) for bar_id in ordered],
+            )
+    return {"archived": len(ordered), "done": done, "ids": ordered, "archived_at": stamp}
+
+
 def delete(bar_id, cascade=False):
     """Delete a bar. With children it requires ``cascade``; returns the count."""
     bar_id = clean_id(bar_id)
