@@ -46,16 +46,19 @@ h1::after{content:"█";margin-left:.35ch;color:var(--amber);-webkit-text-fill-c
 .side .home:hover{background:var(--amber);color:#050805;text-shadow:none!important}
 .side .by{color:var(--dim)}
 .side .by::before{content:":: "}
+.linkbtn::before{content:"[";color:var(--dim)}
+.linkbtn::after{content:"]";color:var(--dim)}
+.glyph::before{content:"[";color:var(--dim)}
+.glyph::after{content:"]";color:var(--dim)}
 .view-tabs{position:relative;gap:.08rem;margin-top:.5rem;padding:.65rem .35rem .5rem;
   background:var(--well);border:1px solid var(--line);outline:1px solid var(--line-dim);outline-offset:2px}
 .view-tabs::before{content:"┤ VIEWS ├";position:absolute;top:-.66em;left:.6ch;padding:0 .5ch;
   background:var(--bg);color:var(--dim);font-size:.56rem;letter-spacing:.14em}
 .view-btn{position:relative;display:block;width:100%;padding:.08rem .5rem .08rem 2ch;color:var(--muted)}
-.view-btn::before{content:"▶";position:absolute;left:.3ch;color:var(--amber);opacity:0;font-size:.8em}
+.view-btn::before{content:"[";color:var(--dim)}
+.view-btn::after{content:"]";color:var(--dim)}
 .view-btn:hover{color:var(--ink);background:var(--tui-hi)}
-.view-btn:hover::before{opacity:1}
 .view-btn.active{color:#050805;background:var(--phos);font-weight:700}
-.view-btn.active::before{color:#050805;opacity:1}
 .side-foot{margin-top:1.8rem;padding-top:.7rem;border-top:3px double var(--line)}
 .side-foot .dim::before{content:"── "}
 .linkbtn{color:var(--amber)}

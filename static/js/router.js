@@ -34,7 +34,7 @@ const PROGRESS = './progress/bars.js?v=alpine4';
 const DOCS = './docs/view.js?v=alpine6';
 const TABLES = './tables/view.js?v=tables8';
 const LOGS = './logs/view.js?v=alpine1';
-const STACK = './stack/view.js?v=alpine2';
+const STACK = './stack/view.js?v=alpine3';
 const BRIEF = './notes/brief.js?v=alpine5';
 let lastView = null;
 function ensure(v) {

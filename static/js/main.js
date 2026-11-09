@@ -2,7 +2,7 @@
 // (Module scripts are deferred and evaluate in import order, so init order —
 // and therefore every implicit dependency — is preserved.)
 import './telemetry/poll.js';
-import './router.js?v=subtasks6';
+import './router.js?v=subtasks7';
 import './hotkeys.js?v=ascii2';
 import Alpine from './alpine.js';
 import { chrome } from './chrome.js?v=alpine2';

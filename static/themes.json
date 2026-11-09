@@ -2,11 +2,11 @@
   {
     "id": "classic-386",
     "name": "Classic 386",
-    "css": "/static/css/tui.css?v=tui80b"
+    "css": "/static/css/tui.css?v=tui80c"
   },
   {
     "id": "board",
     "name": "Board",
-    "css": "/static/css/themes/board.css?v=board1"
+    "css": "/static/css/themes/board.css?v=board3"
   }
 ]

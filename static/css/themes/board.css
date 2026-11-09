@@ -1,8 +1,9 @@
 /* ==========================================================================
-   Board — a light, neutral dashboard look (BoardUI language): off-white page,
-   white panes, 1px neutral rules, 12px radii, Inter, and blue reserved for
-   "selected" and "act". An overlay stylesheet: it loads after every base
-   sheet and restyles what the tokens can't reach. No markup or JS hooks.
+   Board — the BoardUI dashboard language: light neutral page, white panes,
+   1px neutral rules, real rounded corners, Inter, blue only where it means
+   "selected" or "act". Loads after every base sheet, so it must out-gun the
+   ascii base's `!important` flattening (border-radius:0, box-shadow:none)
+   with later, more specific !important rules of its own. No markup, no JS.
    ========================================================================== */
 
 @font-face {
@@ -16,190 +17,372 @@
 html[data-theme="board"] {
   color-scheme: light;
 
-  --void: #f7f7f7;
+  /* the ascii palette, re-pointed to the light ramp */
+  --bg: #f7f7f7;
+  --well: #ffffff;
+  --line: #e5e5e5;
+  --ink: #0a0a0a;
+  --text: #404040;
+  --muted: #737373;
+  --dim: #a1a1a1;
+  --ok: #16a34a;
+  --warn: #b45309;
+  --bad: #dc2626;
+  --void: var(--bg);
   --blue: #2b7fff;
   --violet: #2b7fff;
-  --text: #171717;
-  --muted: #5f5f5f;
   --surface: #ffffff;
-  --border: rgba(10, 10, 10, 0.12);
+  --border: var(--line);
+  /* Inter everywhere the base asks for mono; FiraCode stays as the fallback
+     so any stray Nerd Font glyph still resolves, and the terminal keeps its
+     own hard-coded face. */
+  --mono: "Inter", "InterVariable", ui-sans-serif, system-ui, "Segoe UI", sans-serif,
+    "FiraCode Nerd Font Mono", monospace;
 
-  --board-ink: #0a0a0a;
-  --board-muted: #737373;
-  --board-dim: #a1a1a1;
-  --board-line: rgba(10, 10, 10, 0.09);
-  --board-line-strong: rgba(10, 10, 10, 0.18);
+  --board-line-dim: #f0f0f0;
+  --board-line-strong: #d4d4d4;
   --board-raised: #f5f5f5;
-  --board-hover: #f0f4ff;
+  --board-hover: #f5f5f5;
+  --board-accent: #2b7fff;
+  --board-accent-ink: #155dfc;
+  --board-accent-dim: #bedbff;
+  --board-accent-bg: #eaf2ff;
   --board-shadow: 0 1px 2px rgba(10, 10, 10, 0.05);
-  --board-radius: 12px;
+  --board-pop: 0 12px 32px rgba(10, 10, 10, 0.14);
+}
+
+/* Shape: undo the ascii base's square-everything with a rounded default,
+   then size specific surfaces below. Same trick for depth and glow. */
+html[data-theme="board"] *,
+html[data-theme="board"] *::before,
+html[data-theme="board"] *::after {
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
 }
 
 html[data-theme="board"] body {
-  background: var(--void);
+  background: var(--bg);
   color: var(--text);
-  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  font-size: 0.9375rem;
+  font-family: "Inter", "InterVariable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: -0.006em;
+  font-variant-ligatures: normal;
 }
 
-html[data-theme="board"] ::selection { background: #2b7fff; color: #ffffff; }
+html[data-theme="board"] ::selection { background: var(--board-accent); color: #fff; }
+html[data-theme="board"] :focus-visible { outline: 2px solid var(--board-accent-dim); outline-offset: 1px; }
 
-html[data-theme="board"] ::-webkit-scrollbar-track { background: var(--void); }
-html[data-theme="board"] ::-webkit-scrollbar-thumb {
-  background: #d4d4d4;
-  border-radius: 6px;
-}
-html[data-theme="board"] ::-webkit-scrollbar-thumb:hover { background: #b4b4b4; }
+html[data-theme="board"] ::-webkit-scrollbar { width: 10px; height: 10px; }
+html[data-theme="board"] ::-webkit-scrollbar-track { background: transparent; }
+html[data-theme="board"] ::-webkit-scrollbar-thumb { background: #d4d4d4; border: 2px solid transparent; background-clip: content-box; }
+html[data-theme="board"] ::-webkit-scrollbar-thumb:hover { background: #a1a1a1; background-clip: content-box; }
 
-/* The classic-386 status bar belongs to the TUI look only. */
 html[data-theme="board"] .tui-bar { display: none; }
 
-/* ---------- Sidebar and header ---------- */
-
-html[data-theme="board"] .side .home {
-  color: var(--board-ink);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-html[data-theme="board"] .side .home:hover { background: var(--board-ink); color: #ffffff; }
-html[data-theme="board"] .side .by { color: var(--board-muted); }
-
-html[data-theme="board"] .view-btn {
-  color: var(--board-muted);
-  border-color: transparent;
-}
-html[data-theme="board"] .view-btn:hover {
-  color: var(--board-ink);
-  background: var(--board-raised);
-  border-color: var(--board-line);
-}
-html[data-theme="board"] .view-btn.active {
-  color: #ffffff;
-  background: var(--blue);
-  border-color: var(--blue);
-  box-shadow: none;
-}
-
-html[data-theme="board"] header h1 {
-  color: var(--board-ink);
+/* type */
+html[data-theme="board"] h1,
+html[data-theme="board"] h2,
+html[data-theme="board"] h3 {
+  color: var(--ink) !important;
   font-weight: 600;
   letter-spacing: -0.011em;
+  text-transform: none;
 }
-html[data-theme="board"] header .subtitle,
-html[data-theme="board"] header .eyebrow { color: var(--board-muted); }
+html[data-theme="board"] h1 { font-size: 1.35rem; }
+html[data-theme="board"] h2 { font-size: 0.95rem; }
+html[data-theme="board"] h2::before { content: none !important; }
+html[data-theme="board"] a { color: var(--board-accent-ink); }
+
+/* ---------- Frame: sidebar + page ---------- */
+
+html[data-theme="board"] .container { grid-template-columns: 200px minmax(0, 1fr); gap: 2rem; }
+
+html[data-theme="board"] .side { font-size: 0.875rem; }
+html[data-theme="board"] .side .home {
+  color: var(--ink);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+html[data-theme="board"] .side .home:hover { background: var(--ink); color: #fff; }
+html[data-theme="board"] .side .by { color: var(--muted); }
+
+html[data-theme="board"] .view-tabs { gap: 2px; margin-top: 0.75rem; }
+html[data-theme="board"] .view-btn {
+  width: 100%;
+  padding: 5px 10px;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+html[data-theme="board"] .view-btn::before,
+html[data-theme="board"] .view-btn::after { content: none !important; }
+html[data-theme="board"] .view-btn:hover { color: var(--ink); background: var(--board-hover); }
+html[data-theme="board"] .view-btn.active {
+  color: var(--board-accent-ink);
+  background: var(--board-accent-bg);
+  font-weight: 550;
+}
+
+html[data-theme="board"] .side-foot { margin-top: 2rem; padding-top: 0.75rem; border-top: 1px solid var(--line); }
+html[data-theme="board"] .linkbtn { color: var(--muted); }
+html[data-theme="board"] .linkbtn:hover { background: var(--board-hover); color: var(--ink); }
+
+/* ---------- Header ---------- */
+
+html[data-theme="board"] header { border-bottom: 1px solid var(--line); }
+
+html[data-theme="board"] .subtitle { color: var(--muted); font-size: 0.875rem; }
 
 html[data-theme="board"] .readout {
-  background: #ffffff;
-  border: 1px solid var(--board-line);
-  border-radius: 12px;
-  box-shadow: var(--board-shadow);
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  background: #fff;
+  box-shadow: var(--board-shadow) !important;
+  cursor: pointer;
 }
-html[data-theme="board"] .readout::after { background: var(--blue); box-shadow: none; opacity: 1; }
-html[data-theme="board"] .readout:hover { border-color: var(--board-line-strong); }
-html[data-theme="board"] .readout-time,
-html[data-theme="board"] .readout-date { color: var(--board-ink); }
-html[data-theme="board"] .readout-tz { color: var(--board-muted); }
+html[data-theme="board"] .readout:hover { background: var(--board-hover); }
+html[data-theme="board"] .readout::after { display: none; }
+html[data-theme="board"] .readout-time { color: var(--ink); font-size: 1.125rem; font-weight: 600; letter-spacing: -0.01em; }
+html[data-theme="board"] .readout-meta { text-transform: none; letter-spacing: 0; }
+html[data-theme="board"] .readout:focus-visible { outline: 2px solid var(--board-accent-dim); }
 
-/* ---------- Panes: shells, cards, dialogs ---------- */
+/* ---------- Telemetry strip ---------- */
 
-html[data-theme="board"] .shell {
-  background: #ffffff;
-  border: 1px solid var(--board-line);
-  border-radius: var(--board-radius);
-  box-shadow: var(--board-shadow);
+html[data-theme="board"] .telemetry {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px !important;
+  box-shadow: var(--board-shadow) !important;
+  overflow: hidden;
 }
-html[data-theme="board"] .shell-head {
-  border-bottom: 1px solid var(--board-line);
+html[data-theme="board"] .tele-card { border-left: 1px solid var(--board-line-dim); }
+html[data-theme="board"] .tele-card:hover, html[data-theme="board"] .tele-card:focus-visible { background: #fafafa; }
+html[data-theme="board"] .tele-label { letter-spacing: 0.02em; color: var(--muted); font-weight: 500; }
+html[data-theme="board"] .tele-main { color: var(--ink); font-weight: 600; }
+html[data-theme="board"] .tele-bar { height: 4px; background: var(--board-line-dim); }
+html[data-theme="board"] .tele-bar i { background: var(--board-accent); }
+html[data-theme="board"] .tele-graph { background: #fff; border-color: var(--line); box-shadow: var(--board-pop) !important; }
+html[data-theme="board"] .graph-tip { background: #fff; border-color: var(--line); box-shadow: var(--board-shadow) !important; }
+html[data-theme="board"] .pwr-badge { border: 1px solid #fcd34d; background: #fef3c7; color: #92400e; }
+
+/* ---------- Buttons, tabs, toolbar ---------- */
+
+html[data-theme="board"] .brief-btn,
+html[data-theme="board"] .tool-btn,
+html[data-theme="board"] .key-btn,
+html[data-theme="board"] .pb-act,
+html[data-theme="board"] .kb-add {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--text);
+  font-size: 0.8125rem;
+  font-weight: 450;
+}
+html[data-theme="board"] .brief-btn::before,
+html[data-theme="board"] .brief-btn::after,
+html[data-theme="board"] .pb-act::before,
+html[data-theme="board"] .pb-act::after,
+html[data-theme="board"] .pb-done-tag::before,
+html[data-theme="board"] .pb-done-tag::after { content: none !important; }
+html[data-theme="board"] .brief-btn:hover,
+html[data-theme="board"] .tool-btn:hover,
+html[data-theme="board"] .key-btn:hover,
+html[data-theme="board"] .pb-act:hover,
+html[data-theme="board"] .kb-add:hover {
+  background: var(--board-hover);
+  border-color: var(--board-line-strong);
+  color: var(--ink);
+}
+html[data-theme="board"] .brief-btn.toggled,
+html[data-theme="board"] .key-btn.armed {
+  background: var(--board-accent-bg);
+  border-color: var(--board-accent-dim);
+  color: var(--board-accent-ink);
+  font-weight: 550;
+}
+html[data-theme="board"] .brief-btn.armed { color: var(--bad); border-color: #fecaca; background: #fef2f2; }
+html[data-theme="board"] .brief-btn:disabled { opacity: 0.45; }
+
+html[data-theme="board"] .tab-btn { border: 0; background: transparent; color: var(--muted); }
+html[data-theme="board"] .tab-btn.active {
+  color: var(--ink);
+  font-weight: 600;
+  border-bottom: 2px solid var(--board-accent);
+  border-radius: 0 !important;
+}
+
+/* ---------- Panes ---------- */
+
+html[data-theme="board"] .shell,
+html[data-theme="board"] .brief-editor,
+html[data-theme="board"] .files-editor-host {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px !important;
+  box-shadow: var(--board-shadow) !important;
+}
+html[data-theme="board"] .shell-head,
+html[data-theme="board"] .kanban-head,
+html[data-theme="board"] .progress-head,
+html[data-theme="board"] .files-head,
+html[data-theme="board"] .brief-head {
+  border-bottom: 1px solid var(--board-line-dim);
   background: transparent;
 }
-html[data-theme="board"] .shell-title,
-html[data-theme="board"] .shell-title .shell-sess { color: var(--board-ink); }
-html[data-theme="board"] .shell-dot.on { background: #16a34a; box-shadow: none; }
-html[data-theme="board"] .shell-dot.off { background: var(--board-dim); box-shadow: none; }
+html[data-theme="board"] .kanban-title h2,
+html[data-theme="board"] .progress-title h2,
+html[data-theme="board"] .files-title h2,
+html[data-theme="board"] .brief-title h2 { text-transform: none; }
+html[data-theme="board"] .shell-title { text-transform: none; letter-spacing: 0; color: var(--ink); font-weight: 600; }
+html[data-theme="board"] .shell-dot.on { background: var(--ok); box-shadow: none !important; }
+html[data-theme="board"] .shell-dot.off { background: var(--dim); box-shadow: none !important; }
 
-/* The terminal stays a terminal: dark glass inside the light pane. */
+/* the tty stays a terminal inside the light pane */
 html[data-theme="board"] .term,
 html[data-theme="board"] .term-screen {
-  background: #0d1117;
-  border-color: var(--board-line);
+  border-radius: 8px !important;
 }
 
+/* ---------- Service cards ---------- */
+
 html[data-theme="board"] .card {
-  background: #ffffff;
-  border: 1px solid var(--board-line);
-  border-radius: var(--board-radius);
-  box-shadow: var(--board-shadow);
-  color: var(--text);
+  background: #fff;
+  border: 1px solid var(--line) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--board-shadow) !important;
+  background-image: none !important;
 }
 html[data-theme="board"] .card:hover,
 html[data-theme="board"] .card:focus-visible {
-  border-color: var(--blue);
-  box-shadow: 0 2px 8px rgba(43, 127, 255, 0.12);
+  background: #fff !important;
+  border-color: var(--board-line-strong) !important;
+  box-shadow: 0 2px 8px rgba(10, 10, 10, 0.08) !important;
   transform: none;
 }
 html[data-theme="board"] .card::before,
 html[data-theme="board"] .card::after { display: none; }
-html[data-theme="board"] .card .name { color: var(--board-ink); font-weight: 600; }
+html[data-theme="board"] .card .name { color: var(--ink); font-weight: 600; }
 html[data-theme="board"] .card .description,
-html[data-theme="board"] .card .meta { color: var(--board-muted); }
+html[data-theme="board"] .card .meta { color: var(--muted); }
+html[data-theme="board"] .pod { background: var(--board-raised); border: 1px solid var(--board-line-dim); }
 
-html[data-theme="board"] .ascii-dialog {
-  background: #ffffff;
+/* ---------- Dialogs ---------- */
+
+html[data-theme="board"] .ascii-dialog,
+html[data-theme="board"] .fs-modal,
+html[data-theme="board"] .kbd-modal {
+  background: #fff;
   color: var(--text);
   border: 1px solid var(--board-line-strong);
-  border-radius: var(--board-radius);
-  box-shadow: 0 12px 32px rgba(10, 10, 10, 0.14);
+  border-radius: 14px !important;
+  box-shadow: var(--board-pop) !important;
 }
-html[data-theme="board"] .ascii-dialog::backdrop { background: rgba(20, 22, 26, 0.45); }
-html[data-theme="board"] .ascii-dialog h3 { color: var(--board-ink); }
+html[data-theme="board"] .ascii-dialog::backdrop,
+html[data-theme="board"] .kbd-backdrop,
+html[data-theme="board"] .fs-modal-backdrop { background: rgba(20, 22, 26, 0.4); backdrop-filter: none !important; }
+html[data-theme="board"] .ascii-dialog h3 { color: var(--ink); }
+
+/* ---------- Inputs ---------- */
 
 html[data-theme="board"] input,
 html[data-theme="board"] select,
 html[data-theme="board"] textarea {
-  background: #ffffff;
-  color: var(--board-ink);
+  background: #fff;
+  color: var(--ink);
   border: 1px solid var(--board-line-strong);
-  border-radius: 8px;
+  font-size: 0.875rem;
 }
 html[data-theme="board"] input:focus,
 html[data-theme="board"] select:focus,
 html[data-theme="board"] textarea:focus {
-  outline: none;
-  border-color: var(--blue);
-  box-shadow: 0 0 0 2px rgba(43, 127, 255, 0.18);
+  border-color: var(--board-accent);
+  outline: 3px solid rgba(43, 127, 255, 0.18);
+  outline-offset: 0;
+}
+html[data-theme="board"] input::placeholder { color: var(--dim); }
+
+/* ---------- Ops board ---------- */
+
+html[data-theme="board"] .kanban, html[data-theme="board"] .kb-lane {
+  background: transparent;
+  border: 0;
+}
+html[data-theme="board"] .kb-lane {
+  background: #f1f1f1;
+  border: 1px solid var(--board-line-dim);
+  border-radius: 12px !important;
+}
+html[data-theme="board"] .kb-lane-head {
+  background: transparent;
+  border-bottom: 1px solid var(--board-line-dim);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+}
+html[data-theme="board"] .kb-lane-name { color: var(--ink); font-weight: 600; }
+html[data-theme="board"] .kb-lane-name::before { content: none; }
+html[data-theme="board"] .kb-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px !important;
+  box-shadow: var(--board-shadow) !important;
+}
+html[data-theme="board"] .kb-card:hover { border-color: var(--board-line-strong); }
+html[data-theme="board"] .kb-opname { color: var(--ink); font-weight: 550; }
+html[data-theme="board"] .kb-search { background: #fff; border: 1px solid var(--line); }
+html[data-theme="board"] .kb-search input { background: transparent; border: 0; }
+
+/* ---------- Progress bars ---------- */
+
+html[data-theme="board"] .pb-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px !important;
+  box-shadow: var(--board-shadow) !important;
+}
+html[data-theme="board"] .pb-name { color: var(--ink); font-weight: 550; }
+html[data-theme="board"] .pb-meter { background: var(--board-line-dim); border: 0; }
+html[data-theme="board"] .pb-meter i { background: var(--board-accent); }
+html[data-theme="board"] .pb-meter i[data-pct="100"], html[data-theme="board"] .pb-card.is-done .pb-meter i { background: var(--ok); }
+
+/* ---------- Tables, files, docs, logs ---------- */
+
+html[data-theme="board"] table, html[data-theme="board"] .files-table td, html[data-theme="board"] .files-table th { border-color: var(--board-line-dim); }
+html[data-theme="board"] thead th { color: var(--muted); background: transparent; }
+html[data-theme="board"] tbody tr:hover { background: #fafafa; }
+html[data-theme="board"] .files-place.active, html[data-theme="board"] .files-place:hover { background: var(--board-accent-bg); color: var(--board-accent-ink); }
+html[data-theme="board"] code, html[data-theme="board"] pre:not(.term-screen) {
+  background: var(--board-raised);
+  border-radius: 6px !important;
+}
+html[data-theme="board"] .dim, html[data-theme="board"] .empty { color: var(--muted); }
+html[data-theme="board"] .foot .dim { color: var(--dim); }
+
+/* ---------- Sitrep: brief editor + weekly schedule ---------- */
+
+/* schedule.css paints the right panel with a dark translucent tint for the
+   old dark page; on Board's light page it reads as solid grey. */
+html[data-theme="board"] .brief-schedule {
+  background: #fff;
+}
+html[data-theme="board"] .brief-preview {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px !important;
+}
+html[data-theme="board"] .brief-preview pre {
+  background: var(--board-raised);
+  border: 1px solid var(--board-line-dim);
+}
+html[data-theme="board"] .brief-nav input[type="date"] {
+  color-scheme: light;
+  background: #fff;
 }
 
-/* ---------- Buttons ---------- */
-
-html[data-theme="board"] .brief-btn::before,
-html[data-theme="board"] .brief-btn::after { color: var(--board-dim); }
-html[data-theme="board"] .brief-btn,
-html[data-theme="board"] .tool-btn,
-html[data-theme="board"] .key-btn { color: var(--board-muted); }
-html[data-theme="board"] .brief-btn:hover,
-html[data-theme="board"] .tool-btn:hover,
-html[data-theme="board"] .key-btn:hover {
-  color: var(--board-ink);
-  background: var(--board-hover);
-  border-color: var(--board-line);
-}
-html[data-theme="board"] .brief-btn.toggled,
-html[data-theme="board"] .tab-btn.active {
-  color: var(--blue);
-  background: #eaf2ff;
-  border-color: rgba(43, 127, 255, 0.35);
-}
-html[data-theme="board"] .brief-btn.armed { color: #dc2626; }
-html[data-theme="board"] .brief-btn:disabled { opacity: 0.45; }
-
-html[data-theme="board"] a { color: var(--blue); }
-
-/* ---------- Dim text ramp ---------- */
-
-html[data-theme="board"] .dim { color: var(--board-muted); }
-html[data-theme="board"] .empty { color: var(--board-muted); }
-html[data-theme="board"] code,
-html[data-theme="board"] .mono {
-  font-family: var(--mono);
-  font-size: 0.85em;
-}
+/* numbers stay tabular even off the mono face */
+html[data-theme="board"] .tele-main,
+html[data-theme="board"] .readout-time,
+html[data-theme="board"] td,
+html[data-theme="board"] .pb-pct { font-variant-numeric: tabular-nums; }

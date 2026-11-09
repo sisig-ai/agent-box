@@ -37,7 +37,7 @@ function glyph(service) {
   const text = words.length > 1
     ? words.slice(0, 2).map((w) => w[0]).join('')
     : String(service.name || '?').trim().slice(0, 2);
-  return `[${text.toLowerCase()}]`;
+  return text;
 }
 
 export function stackView() {

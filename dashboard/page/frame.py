@@ -25,15 +25,15 @@ from htpy import (
 from .head import document_head
 
 VIEWS = [
-    ("brief", "#/brief", "Daily Sitrep (b)", "[sitrep]"),
-    ("stack", "#/", "Stack (s)", "[stack]"),
-    ("files", "#/files", "Files (f)", "[files]"),
-    ("shell", "#/shell", "Shell (t)", "[shell]"),
-    ("kanban", "#/kanban", "Ops Board (k)", "[ops board]"),
-    ("progress", "#/progress", "Progress Bars (p)", "[progress]"),
-    ("docs", "#/docs", "Docs (d)", "[docs]"),
-    ("tables", "#/tables", "Tables (a)", "[tables]"),
-    ("logs", "#/logs", "Access logs (l)", "[logs]"),
+    ("brief", "#/brief", "Daily Sitrep (b)", "sitrep"),
+    ("stack", "#/", "Stack (s)", "stack"),
+    ("files", "#/files", "Files (f)", "files"),
+    ("shell", "#/shell", "Shell (t)", "shell"),
+    ("kanban", "#/kanban", "Ops Board (k)", "ops board"),
+    ("progress", "#/progress", "Progress Bars (p)", "progress"),
+    ("docs", "#/docs", "Docs (d)", "docs"),
+    ("tables", "#/tables", "Tables (a)", "tables"),
+    ("logs", "#/logs", "Access logs (l)", "logs"),
 ]
 
 
@@ -50,7 +50,7 @@ def sidebar() -> object:
         div(".side-foot")[
             p(".dim")["host"],
             p(id="host", **{"x-text": "host"})["—"],
-            button(".linkbtn", id="keys-btn", type="button")["[keys]"],
+            button(".linkbtn", id="keys-btn", type="button")["keys"],
         ],
     ]
 
@@ -186,7 +186,7 @@ def document(*panels: object) -> str:
             keys_dialog(),
             theme_dialog(),
             tui_bar(),
-            script(type="module", src="/static/js/main.js?v=alpine13"),
+            script(type="module", src="/static/js/main.js?v=alpine14"),
         ],
     ]
     return str(page)
