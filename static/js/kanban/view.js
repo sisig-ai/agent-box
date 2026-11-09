@@ -4,11 +4,11 @@
 
 import Alpine from '../alpine.js';
 import { api } from './api.js?v=movelane1';
-import { cardDetail, closeCard, openCard, syncCards } from './detail.js?v=subtasks3';
-import { inlineEdit, armDelete } from './edit.js?v=kanban20';
+import { cardDetail, closeCard, openCard, syncCards } from './detail.js?v=subtasks4';
+import { inlineEdit } from './edit.js?v=kanban20';
 import * as attention from '../attention.js?v=attention8';
 import { activeOp, loadFilters, matches, saveFilters } from './filters.js';
-import { cardActions } from './card-actions.js';
+import { cardActions } from './card-actions.js?v=movelane1';
 import { filterBar } from './filter-bar.js?v=negate1';
 
 const POLL_MS = 3000;
@@ -156,6 +156,13 @@ export function boardView() {
       return (this.data?.lanes || []).find((lane) => lane.name.toLowerCase() === 'done') || null;
     },
 
+    // Every card the server would move for this lane: live, top-level.
+    laneLiveCards(laneId) {
+      return (this.data?.cards || []).filter(
+        (card) => card.lane_id === laneId && !card.archived_at && !card.parent_id,
+      );
+    },
+
     laneOf(card) {
       return card.archived_at && this.doneLane ? this.doneLane.id : card.lane_id;
     },
@@ -288,20 +295,6 @@ export function boardView() {
 
     deleteLane(lane) {
       this.mutate(() => api.deleteLane(lane.id));
-    },
-
-    archiveDone(event) {
-      armDelete(event?.currentTarget, () => this.mutate(async () => {
-        const r = await api.archiveDone();
-        this.setStatus(`archived ${r.archived} card${r.archived === 1 ? '' : 's'}`);
-      }), 'archive?');
-    },
-
-    moveLaneToDone(event, lane) {
-      armDelete(event?.currentTarget, () => this.mutate(async () => {
-        const r = await api.moveLane(lane.name, this.doneLane?.name || 'Done');
-        this.setStatus(`moved ${r.moved} card${r.moved === 1 ? '' : 's'} to ${r.to}`);
-      }), `move ${this.cardsFor(lane.id).length}?`);
     },
 
     async addLane() {

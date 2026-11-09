@@ -216,7 +216,7 @@ def _lane() -> object:
                     **{
                         "x-show": "lane.name.toLowerCase() === 'waiting for command'",
                         "@click": "moveLaneToDone($event, lane)",
-                        ":disabled": "!cardsFor(lane.id).length",
+                        ":disabled": "!laneLiveCards(lane.id).length",
                         "title": "Move every card in this lane to Done (click twice)",
                     },
                 )["Move to Done"],

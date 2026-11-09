@@ -73,6 +73,21 @@ export const cardActions = {
     armDelete(el, action);
   },
 
+  // ---- lane-header actions ----
+  archiveDone(event) {
+    armDelete(event?.currentTarget, () => this.mutate(async () => {
+      const r = await api.archiveDone();
+      this.setStatus(`archived ${r.archived} card${r.archived === 1 ? '' : 's'}`);
+    }), 'archive?');
+  },
+
+  moveLaneToDone(event, lane) {
+    armDelete(event?.currentTarget, () => this.mutate(async () => {
+      const r = await api.moveLane(lane.name, this.doneLane?.name || 'Done');
+      this.setStatus(`moved ${r.moved} card${r.moved === 1 ? '' : 's'} to ${r.to}`);
+    }), `move ${this.laneLiveCards(lane.id).length}?`);
+  },
+
   canDrag(card) {
     return this.group !== 'owner' && !this.searching && !card.archived_at;
   },
