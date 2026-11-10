@@ -207,6 +207,9 @@ def _semantic(params: dict):
                 opname=params.get("opname") or None,
                 sort=params.get("sort") or "blend",
                 conn=conn,
+                min_score=float(params["min_score"]) if params.get("min_score") is not None else None,
+                recency_weight=float(params["recency_weight"]) if params.get("recency_weight") is not None else None,
+                recency_tau_days=float(params["recency_tau_days"]) if params.get("recency_tau_days") is not None else None,
             )
         except kanban_embed.EmbedError as exc:
             return JSONResponse(status_code=503, content={"error": str(exc), "available": False})

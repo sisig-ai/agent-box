@@ -203,6 +203,9 @@ def search(
     opname=None,
     sort="blend",
     conn=None,
+    min_score=None,
+    recency_weight=None,
+    recency_tau_days=None,
 ):
     """Cosine-rank card chunks; best chunk per card wins."""
     query = (query or "").strip()
@@ -246,9 +249,12 @@ def search(
         if own:
             conn.close()
 
+    threshold = DEFAULT_MIN_SCORE if min_score is None else float(min_score)
     best = {}
     for row in rows:
         score = cosine(vector, unpack(row["vector"]))
+        if score < threshold:
+            continue
         current = best.get(row["card_id"])
         if current is None or score > current["score"]:
             best[row["card_id"]] = {
@@ -263,7 +269,7 @@ def search(
                 "score": round(score, 4),
                 "excerpt": " ".join((row["text"] or "").split())[:EXCERPT_CHARS],
             }
-    ranked = order_hits(list(best.values()), sort)
+    ranked = order_hits(list(best.values()), sort, recency_weight=recency_weight, recency_tau_days=recency_tau_days)
     hits = ranked[: max(1, min(int(limit or 15), 200))]
     return {
         "q": query,

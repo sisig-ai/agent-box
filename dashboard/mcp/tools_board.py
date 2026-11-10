@@ -121,6 +121,9 @@ def semantic_search_cards(args):
                 opname=args.get("opname") or None,
                 sort=args.get("sort") or "blend",
                 conn=conn,
+                min_score=float(args["min_score"]) if args.get("min_score") is not None else None,
+                recency_weight=float(args["recency_weight"]) if args.get("recency_weight") is not None else None,
+                recency_tau_days=float(args["recency_tau_days"]) if args.get("recency_tau_days") is not None else None,
             )
         except kanban_embed.EmbedError as exc:
             raise ToolError(str(exc)) from None
@@ -280,6 +283,22 @@ TOOLS = {
                     "maximum": 200,
                     "default": SEARCH_DEFAULT_LIMIT,
                     "description": (f"Maximum cards to return (default {SEARCH_DEFAULT_LIMIT})."),
+                },
+                "min_score": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "maximum": 1.0,
+                    "description": "Minimum cosine score threshold (default 0.35). Lower = more results, higher = stricter.",
+                },
+                "recency_weight": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "description": "Weight for recency boost in blend sort (default 0.10). Set 0 for pure relevance.",
+                },
+                "recency_tau_days": {
+                    "type": "number",
+                    "minimum": 1.0,
+                    "description": "Decay half-life in days for recency boost (default 30). Larger = slower decay.",
                 },
             },
             ["q"],

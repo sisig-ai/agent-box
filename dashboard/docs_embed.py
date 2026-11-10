@@ -201,7 +201,7 @@ def wait_idle(timeout=30):
 # ---------------------------------------------------------------- search
 
 
-def search(query, prefix=None, prefix_q=None, author=None, limit=50, sort="blend", conn=None):
+def search(query, prefix=None, prefix_q=None, author=None, limit=50, sort="blend", conn=None, min_score=None, recency_weight=None, recency_tau_days=None):
     """Cosine-rank chunks of the active model; best chunk per doc wins."""
     query = (query or "").strip()
     if not query:
@@ -242,9 +242,12 @@ def search(query, prefix=None, prefix_q=None, author=None, limit=50, sort="blend
         if own:
             conn.close()
 
+    threshold = DEFAULT_MIN_SCORE if min_score is None else float(min_score)
     best = {}
     for row in rows:
         score = cosine(vector, unpack(row["vector"]))
+        if score < threshold:
+            continue
         current = best.get(row["doc_id"])
         if current is None or score > current["score"]:
             excerpt = " ".join((row["text"] or "").split())[:EXCERPT_CHARS]
@@ -258,7 +261,7 @@ def search(query, prefix=None, prefix_q=None, author=None, limit=50, sort="blend
                 "score": round(score, 4),
                 "excerpt": excerpt,
             }
-    ranked = order_hits(list(best.values()), sort)
+    ranked = order_hits(list(best.values()), sort, recency_weight=recency_weight, recency_tau_days=recency_tau_days)
     hits = ranked[: max(1, min(limit, 200))]
     return {
         "q": query,

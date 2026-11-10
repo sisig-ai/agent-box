@@ -13,6 +13,7 @@ import re
 import urllib.error
 import urllib.request
 from datetime import datetime
+import numpy as np
 
 from . import config
 
@@ -28,6 +29,7 @@ SORTS = ("blend", "score", "recent")
 CHUNK_CHARS = 1200
 CHUNK_OVERLAP = 200
 MAX_CHUNKS = 60
+DEFAULT_MIN_SCORE = 0.35
 EXCERPT_CHARS = 280
 
 
@@ -122,12 +124,14 @@ def blend_rank(score, updated_at, now=None, weight=RECENCY_WEIGHT, tau_days=RECE
     return score + weight * math.exp(-age_days(updated_at, now) / tau_days)
 
 
-def order_hits(hits, sort="blend", now=None):
+def order_hits(hits, sort="blend", now=None, recency_weight=None, recency_tau_days=None):
     """Annotate hits with ``rank`` and return them in the requested order."""
     if sort not in SORTS:
         sort = "blend"
+    weight = RECENCY_WEIGHT if recency_weight is None else float(recency_weight)
+    tau = RECENCY_TAU_DAYS if recency_tau_days is None else float(recency_tau_days)
     for hit in hits:
-        hit["rank"] = round(blend_rank(hit["score"], hit.get("updated_at"), now), 4)
+        hit["rank"] = round(blend_rank(hit["score"], hit.get("updated_at"), now, weight, tau), 4)
     if sort == "recent":
         return sorted(hits, key=lambda hit: str(hit.get("updated_at") or ""), reverse=True)
     if sort == "score":
@@ -139,7 +143,8 @@ def cosine(a, b):
     """Dot product of two L2-normalised vectors (Ollama normalises)."""
     if len(a) != len(b):
         return 0.0
-    return float(sum(x * y for x, y in zip(a, b, strict=False)))
+    # numpy dot is ~10x faster than pure-Python zip-sum for 768-d vectors
+    return float(np.dot(a, b))
 
 
 def content_hash(text):

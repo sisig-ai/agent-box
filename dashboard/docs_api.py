@@ -98,6 +98,9 @@ async def docs_semantic(
     author: str | None = None,
     limit: str | None = None,
     sort: str = "blend",
+    min_score: str | None = None,
+    recency_weight: str | None = None,
+    recency_tau_days: str | None = None,
 ):
     """Cosine over the local vectors; 503 when the embedder is unavailable."""
     try:
@@ -110,6 +113,9 @@ async def docs_semantic(
             author=author,
             limit=docs.clean_limit(limit, default=10),
             sort=sort or "blend",
+            min_score=float(min_score) if min_score is not None else None,
+            recency_weight=float(recency_weight) if recency_weight is not None else None,
+            recency_tau_days=float(recency_tau_days) if recency_tau_days is not None else None,
         )
     except EmbedError as exc:
         return JSONResponse(status_code=503, content={"error": str(exc), "available": False})
