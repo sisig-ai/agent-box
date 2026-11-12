@@ -11,8 +11,8 @@ import {
   useMemo,
   useRef,
   useState,
-  type ChangeEvent,
   type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
 } from "react";
 import { notesApi } from "@/lib/api";
 import {
@@ -229,7 +229,11 @@ export function SitrepView() {
 
   /* ----- task checkboxes in the preview ----- */
 
-  async function onPreviewChange(event: ChangeEvent<HTMLDivElement>) {
+  /* Task checkboxes in the preview: bound to the div's click event, not
+     change — inputs injected via dangerouslySetInnerHTML carry no react
+     value tracker, so a delegated change event never reaches onChange.
+     The default action flips .checked before this handler reads it. */
+  async function onPreviewChange(event: ReactMouseEvent<HTMLDivElement>) {
     const cb = event.target as HTMLInputElement;
     if (!cb || cb.tagName !== "INPUT" || cb.type !== "checkbox") return;
     const box = previewRef.current;
@@ -433,7 +437,7 @@ export function SitrepView() {
               spellCheck={false}
             />
           ) : (
-            <div ref={previewRef} className="sitrep-preview" onChange={onPreviewChange}>
+            <div ref={previewRef} className="sitrep-preview" onClick={onPreviewChange}>
               {previewHtml ? (
                 <div className="sitrep-md" dangerouslySetInnerHTML={{ __html: previewHtml }} />
               ) : (

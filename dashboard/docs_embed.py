@@ -302,14 +302,16 @@ def search_unified(
     min_score=None,
     recency_weight=None,
     recency_tau_days=None,
+    semantic_limit=None,
     conn=None,
 ):
     """Merge FTS and semantic hits into a single ranked result set.
 
     FTS hits get score=1.0 (always above cosine ≤1.0) so exact matches lead,
     then both sources are blended by recency and sorted together. Semantic-only
-    hits fill in below. Each hit carries ``kind`` ("exact" or "semantic") so the
-    UI can still style them differently if desired.
+    hits fill in below, capped at ``semantic_limit`` when given (the weak-match
+    tail of a cosine search is usually noise). Each hit carries ``kind``
+    ("exact" or "semantic") so the UI can still style them differently.
     """
     from . import docs as docs_mod  # local import to avoid circular dependency
 
@@ -339,7 +341,7 @@ def search_unified(
                 prefix=prefix,
                 prefix_q=prefix_q,
                 author=author,
-                limit=limit,
+                limit=semantic_limit or limit,
                 sort="score",
                 conn=conn,
                 min_score=min_score,

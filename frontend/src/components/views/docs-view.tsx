@@ -33,6 +33,7 @@ import "../docs.css";
 
 const SEARCH_MIN = 2;
 const LIST_LIMIT = 200;
+/** Semantic-only additions below the exact hits, per search. */
 const SEMANTIC_LIMIT = 10;
 const DEBOUNCE_MS = 180;
 const ARM_MS = 3000;
@@ -174,9 +175,8 @@ export function DocsView({ openPrefix = "" }: { openPrefix?: string }) {
   const [sort, setSort] = useState<SortState>({ key: "updated", dir: -1 });
   const [q, setQ] = useState("");
   const [prefixQ, setPrefixQ] = useState("");
-  const [exactHits, setExactHits] = useState<DocHit[]>([]);
-  const [semanticHits, setSemanticHits] = useState<DocHit[]>([]);
-  const [semanticNote, setSemanticNote] = useState("");
+  /** One ranked list from /api/docs/search-unified: exact + semantic merged. */
+  const [searchHits, setSearchHits] = useState<DocHit[]>([]);
   const [prefix, setPrefix] = useState("");
   const [author, setAuthor] = useState("");
   const [authors, setAuthors] = useState<AuthorEntry[]>([]);
@@ -229,7 +229,7 @@ export function DocsView({ openPrefix = "" }: { openPrefix?: string }) {
     }
   }, [loadList, setStatus]);
 
-  /* ---- search: exact FTS first, semantic below, divided ---- */
+  /* ---- search: one unified request, one ranked list ---- */
 
   const runSearch = useCallback(async (over: SearchOverride = {}) => {
     const qv = (over.q ?? q).trim();
@@ -237,39 +237,39 @@ export function DocsView({ openPrefix = "" }: { openPrefix?: string }) {
     const scope = over.scope ?? prefix;
     const auth = over.author ?? author;
     if (!(qv.length >= SEARCH_MIN || pqv.length > 0)) {
-      setExactHits([]);
-      setSemanticHits([]);
-      setSemanticNote("");
+      setSearchHits([]);
       return;
     }
-    setSemanticHits([]);
-    setSemanticNote("");
     const seq = ++seqRef.current;
     try {
-      const params = { q: qv, limit: LIST_LIMIT, prefix: scope || undefined, prefix_q: pqv || undefined };
-      const data = await get<DocSearchResponse>(`/api/docs/search${docsQuery(params, auth)}`);
+      const params = {
+        q: qv,
+        limit: LIST_LIMIT,
+        prefix: scope || undefined,
+        prefix_q: pqv || undefined,
+        // keep the old semantic budget: weak cosine tail is noise
+        semantic_limit: SEMANTIC_LIMIT,
+      };
+      // The unified endpoint merges FTS and semantic hits into one ranked
+      // set; if the embedder is down it degrades to exact-only on its own.
+      const data = await get<DocSearchResponse>(
+        `/api/docs/search-unified${docsQuery(params, auth)}`,
+      );
       if (seq !== seqRef.current) return;
-      setExactHits(data.hits || []);
-      setStatus(`${data.count} of ${data.total} exact match${pqv ? ` · prefix ${pqv}` : ""}`);
-      if (!qv) return;
-      try {
-        const semParams = { q: qv, limit: SEMANTIC_LIMIT, prefix: scope || undefined, prefix_q: pqv || undefined };
-        const sem = await get<DocSearchResponse>(`/api/docs/semantic${docsQuery(semParams, auth)}`);
-        if (seq !== seqRef.current) return;
-        setSemanticHits(sem.hits || []);
-        setStatus(
-          `${data.count} exact · ${(sem.hits || []).length} semantic · ${sem.took_ms ?? 0}ms`
-          + (sem.pending ? ` · ${sem.pending} unindexed` : ""),
-        );
-      } catch (err) {
-        if (seq !== seqRef.current) return;
-        setSemanticHits([]);
-        setSemanticNote(`semantic unavailable · ${(err as Error).message}`);
-        setStatus(`exact only · ${(err as Error).message}`, true);
-      }
+      const hits = data.hits || [];
+      setSearchHits(hits);
+      const exact = hits.filter((h) => h.kind !== "semantic").length;
+      const semantic = hits.length - exact;
+      setStatus(
+        `${hits.length} result${hits.length === 1 ? "" : "s"}`
+        + (semantic ? ` · ${exact} exact · ${semantic} semantic` : "")
+        + ` · ${data.took_ms ?? 0}ms`
+        + (pqv ? ` · prefix ${pqv}` : "")
+        + (data.pending ? ` · ${data.pending} unindexed` : ""),
+      );
     } catch (err) {
       if (seq !== seqRef.current) return;
-      setExactHits([]);
+      setSearchHits([]);
       setStatus(`search failed: ${(err as Error).message}`, true);
     }
   }, [q, prefixQ, prefix, author, setStatus]);
@@ -286,9 +286,7 @@ export function DocsView({ openPrefix = "" }: { openPrefix?: string }) {
   const clearSearch = useCallback(() => {
     setQ("");
     setPrefixQ("");
-    setExactHits([]);
-    setSemanticHits([]);
-    setSemanticNote("");
+    setSearchHits([]);
     setStatus(`cleared · ${all.length} docs`);
   }, [all.length, setStatus]);
 
@@ -386,9 +384,7 @@ export function DocsView({ openPrefix = "" }: { openPrefix?: string }) {
       setEditorOpen(false);
       setQ("");
       setPrefixQ("");
-      setExactHits([]);
-      setSemanticHits([]);
-      setSemanticNote("");
+      setSearchHits([]);
       setStatus(`deleted ${docPrefix}`);
       await refresh();
     } catch (err) {
@@ -529,11 +525,6 @@ export function DocsView({ openPrefix = "" }: { openPrefix?: string }) {
     });
   }, [scopedDocs, sort]);
 
-  const semanticRows = useMemo(() => {
-    const seen = new Set(exactHits.map((hit) => hit.prefix));
-    return semanticHits.filter((hit) => !seen.has(hit.prefix));
-  }, [exactHits, semanticHits]);
-
   const treeRows = useMemo<TreeRow[]>(() => {
     if (!tree) return [];
     const rows: TreeRow[] = [];
@@ -576,22 +567,24 @@ export function DocsView({ openPrefix = "" }: { openPrefix?: string }) {
   }, [tree, collapsed, folderDocs, prefix, current]);
 
   const rowCount = searching
-    ? exactHits.length + semanticRows.length
+    ? searchHits.length
     : flatMode ? sortedDocs.length : scopedDocs.length;
 
   const countText = useMemo(() => {
     const total = all.length;
     const noun = total === 1 ? "doc" : "docs";
     if (searching) {
-      const semantic = semanticRows.length;
-      return `${exactHits.length} exact${semantic ? ` · ${semantic} semantic` : ""} · ${total} ${noun}`;
+      const semantic = searchHits.filter((h) => h.kind === "semantic").length;
+      const exact = searchHits.length - semantic;
+      const parts = [`${exact} exact`, ...(semantic ? [`${semantic} semantic`] : [])];
+      return `${parts.join(" · ")} · ${total} ${noun}`;
     }
     if (view === "flat") return `${total} ${noun} · sorted by ${sort.key}`;
     return `${total} ${noun}${prefix ? ` under ${prefix}` : ""}`;
-  }, [all.length, searching, exactHits.length, semanticRows.length, view, sort.key, prefix]);
+  }, [all.length, searching, searchHits, view, sort.key, prefix]);
 
   const emptyListText = searching
-    ? (q ? `no exact matches for “${q}”` : `no docs under prefix “${prefixQ}”`)
+    ? (q ? `no matches for “${q}”` : `no docs under prefix “${prefixQ}”`)
     : "no docs yet";
 
   /* ---- handlers ---- */
@@ -840,30 +833,14 @@ export function DocsView({ openPrefix = "" }: { openPrefix?: string }) {
                   </li>
                 )}
                 {searching ? (
-                  <>
-                    {exactHits.map((hit) => (
-                      <ItemRow
-                        key={`e:${hit.prefix}`}
-                        hit={{ ...hit, kind: "exact" }}
-                        selected={isSelected(hit.prefix)}
-                        onOpen={selectDoc}
-                      />
-                    ))}
-                    {(semanticRows.length > 0 || semanticNote) && (
-                      <li className="docs-divider">
-                        semantic{semanticRows.length ? ` · ${semanticRows.length}` : ""}
-                      </li>
-                    )}
-                    {semanticNote && <li className="docs-divider-note">{semanticNote}</li>}
-                    {semanticRows.map((hit) => (
-                      <ItemRow
-                        key={`s:${hit.prefix}`}
-                        hit={{ ...hit, kind: "semantic" }}
-                        selected={isSelected(hit.prefix)}
-                        onOpen={selectDoc}
-                      />
-                    ))}
-                  </>
+                  searchHits.map((hit) => (
+                    <ItemRow
+                      key={hit.prefix}
+                      hit={hit}
+                      selected={isSelected(hit.prefix)}
+                      onOpen={selectDoc}
+                    />
+                  ))
                 ) : flatMode ? (
                   sortedDocs.map((doc) => (
                     <FlatRow key={doc.prefix} doc={doc} selected={isSelected(doc.prefix)} onOpen={selectDoc} />

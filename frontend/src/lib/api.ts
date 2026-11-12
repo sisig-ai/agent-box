@@ -84,6 +84,8 @@ export interface DocHit {
   prefix: string; author: string | null; tags: string[]; updated_at: string;
   size: number; snippet?: string; excerpt?: string; score?: number;
   prefix_snip?: string;
+  /** "exact" (FTS) or "semantic" (embedder) — set by the unified search. */
+  kind?: "exact" | "semantic";
 }
 export interface DocSearchResponse { hits: DocHit[]; count: number; total: number; took_ms?: number; pending?: number }
 export interface Doc {
@@ -232,6 +234,9 @@ export const docsApi = {
     get<DocSearchResponse>(`/api/docs/search${qs({ ...opts })}`),
   semantic: (opts: { q: string; prefix?: string; prefix_q?: string; author?: string; sort?: string; limit?: number }) =>
     get<DocSearchResponse>(`/api/docs/semantic${qs({ ...opts })}`),
+  /** One ranked list merging exact (FTS) and semantic hits. */
+  unified: (opts: { q?: string; prefix?: string; prefix_q?: string; author?: string; sort?: string; limit?: number }) =>
+    get<DocSearchResponse>(`/api/docs/search-unified${qs({ ...opts })}`),
   indexStatus: () => get<{ indexed: number; pending: number; total: number; model: string; available: boolean }>("/api/docs/index"),
   reindex: () => post<{ queued: number; model: string }>("/api/docs/reindex", {}),
 };

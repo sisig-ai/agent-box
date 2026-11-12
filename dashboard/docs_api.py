@@ -134,8 +134,13 @@ async def docs_search_unified(
     min_score: str | None = None,
     recency_weight: str | None = None,
     recency_tau_days: str | None = None,
+    semantic_limit: str | None = None,
 ):
-    """Single ranked result set merging FTS and semantic hits."""
+    """Single ranked result set merging FTS and semantic hits.
+
+    ``semantic_limit`` caps the semantic-only additions below the exact hits;
+    without it the cosine tail fills the whole list with weak matches.
+    """
     try:
         cleaned = docs.clean_prefix(prefix) if prefix else None
         return await run_in_threadpool(
@@ -149,6 +154,9 @@ async def docs_search_unified(
             min_score=float(min_score) if min_score is not None else None,
             recency_weight=float(recency_weight) if recency_weight is not None else None,
             recency_tau_days=float(recency_tau_days) if recency_tau_days is not None else None,
+            semantic_limit=docs.clean_limit(semantic_limit, default=None)
+            if semantic_limit
+            else None,
         )
     except EmbedError as exc:
         return JSONResponse(status_code=503, content={"error": str(exc), "available": False})
