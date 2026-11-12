@@ -12,6 +12,7 @@ import time
 from . import config, db
 from .dates import now_iso
 from .embed import (
+    DEFAULT_MIN_SCORE,
     EXCERPT_CHARS,
     EmbedError,
     chunk,
@@ -201,7 +202,18 @@ def wait_idle(timeout=30):
 # ---------------------------------------------------------------- search
 
 
-def search(query, prefix=None, prefix_q=None, author=None, limit=50, sort="blend", conn=None, min_score=None, recency_weight=None, recency_tau_days=None):
+def search(
+    query,
+    prefix=None,
+    prefix_q=None,
+    author=None,
+    limit=50,
+    sort="blend",
+    conn=None,
+    min_score=None,
+    recency_weight=None,
+    recency_tau_days=None,
+):
     """Cosine-rank chunks of the active model; best chunk per doc wins."""
     query = (query or "").strip()
     if not query:
@@ -261,7 +273,12 @@ def search(query, prefix=None, prefix_q=None, author=None, limit=50, sort="blend
                 "score": round(score, 4),
                 "excerpt": excerpt,
             }
-    ranked = order_hits(list(best.values()), sort, recency_weight=recency_weight, recency_tau_days=recency_tau_days)
+    ranked = order_hits(
+        list(best.values()),
+        sort,
+        recency_weight=recency_weight,
+        recency_tau_days=recency_tau_days,
+    )
     hits = ranked[: max(1, min(limit, 200))]
     return {
         "q": query,
@@ -271,5 +288,84 @@ def search(query, prefix=None, prefix_q=None, author=None, limit=50, sort="blend
         "indexed": indexed,
         "total": total,
         "pending": max(0, total - indexed),
+        "took_ms": int((time.time() - started) * 1000),
+    }
+
+
+def search_unified(
+    query,
+    prefix=None,
+    prefix_q=None,
+    author=None,
+    limit=50,
+    sort="blend",
+    min_score=None,
+    recency_weight=None,
+    recency_tau_days=None,
+    conn=None,
+):
+    """Merge FTS and semantic hits into a single ranked result set.
+
+    FTS hits get score=1.0 (always above cosine ≤1.0) so exact matches lead,
+    then both sources are blended by recency and sorted together. Semantic-only
+    hits fill in below. Each hit carries ``kind`` ("exact" or "semantic") so the
+    UI can still style them differently if desired.
+    """
+    from . import docs as docs_mod  # local import to avoid circular dependency
+
+    started = time.time()
+    q = (query or "").strip()
+
+    # --- FTS pass ---
+    fts_hits = {}
+    try:
+        fts_data = docs_mod.search(q, prefix=prefix, prefix_q=prefix_q, author=author, limit=limit)
+        for hit in fts_data.get("hits", []):
+            fts_hits[hit["prefix"]] = {
+                **hit,
+                "score": 1.0,
+                "kind": "exact",
+                "excerpt": hit.get("snippet") or hit.get("prefix_snip") or "",
+            }
+    except Exception:
+        pass  # FTS failure is non-fatal; semantic alone is still useful
+
+    # --- Semantic pass ---
+    sem_hits = {}
+    if q:
+        try:
+            sem_data = search(
+                q,
+                prefix=prefix,
+                prefix_q=prefix_q,
+                author=author,
+                limit=limit,
+                sort="score",
+                conn=conn,
+                min_score=min_score,
+                recency_weight=recency_weight,
+                recency_tau_days=recency_tau_days,
+            )
+            for hit in sem_data.get("hits", []):
+                if hit["prefix"] not in fts_hits:
+                    sem_hits[hit["prefix"]] = {**hit, "kind": "semantic"}
+        except EmbedError:
+            pass  # semantic unavailable; FTS alone still works
+
+    # --- Merge and rank ---
+    merged = list(fts_hits.values()) + list(sem_hits.values())
+    ranked = order_hits(
+        merged,
+        sort=sort,
+        recency_weight=recency_weight,
+        recency_tau_days=recency_tau_days,
+    )
+    hits = ranked[: max(1, min(limit, 200))]
+
+    return {
+        "q": query,
+        "model": config.EMBED_MODEL,
+        "hits": hits,
+        "count": len(hits),
         "took_ms": int((time.time() - started) * 1000),
     }

@@ -48,7 +48,7 @@ def test_semantic_search_ranks_by_meaning(client):
     index_cards()
     assert kanban_embed.pending_count() == 0
 
-    result = client.get("/api/opsboard/semantic?q=lighting%20control").get_json()
+    result = client.get("/api/opsboard/semantic?q=lighting%20control&min_score=0").get_json()
     assert result["hits"][0]["id"] == lights["id"]
     assert result["hits"][0]["score"] > result["hits"][1]["score"]
     assert result["hits"][0]["excerpt"]

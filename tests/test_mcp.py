@@ -91,6 +91,7 @@ def test_tools_list_covers_board_comments_lanes_and_notes(client):
         "search_docs",
         "delete_doc",
         "semantic_search_docs",
+        "search_docs_unified",
         "reindex_docs",
         "list_access_logs",
         "semantic_search_cards",

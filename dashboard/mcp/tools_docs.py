@@ -159,9 +159,44 @@ def semantic_search_docs(args):
             author=args.get("author"),
             sort=args.get("sort") or "blend",
             limit=docs.clean_limit(args.get("limit"), default=SEARCH_DEFAULT_LIMIT),
-            min_score=float(args["min_score"]) if args.get("min_score") is not None else None,
-            recency_weight=float(args["recency_weight"]) if args.get("recency_weight") is not None else None,
-            recency_tau_days=float(args["recency_tau_days"]) if args.get("recency_tau_days") is not None else None,
+            min_score=arg_float(args, "min_score"),
+            recency_weight=arg_float(args, "recency_weight"),
+            recency_tau_days=arg_float(args, "recency_tau_days"),
+        )
+    except EmbedError as exc:
+        raise ToolError(str(exc)) from None
+
+
+def arg_float(args: dict, key: str) -> float | None:
+    raw = args.get(key)
+    if raw is None:
+        return None
+    if isinstance(raw, bool) or not isinstance(raw, (int, float)):
+        raise ToolError(f"{key} must be a number")
+    return float(raw)
+
+
+def search_docs_unified(args):
+    query = (args.get("q") or "").strip()
+    if not query:
+        raise ToolError("q is required")
+    prefix = args.get("prefix") or None
+    if prefix:
+        try:
+            prefix = docs.clean_prefix(prefix)
+        except DocsError as exc:
+            raise ToolError(exc.message) from None
+    try:
+        return docs_embed.search_unified(
+            query,
+            prefix=prefix,
+            prefix_q=docs.clean_prefix_query(args.get("prefix_q")),
+            author=args.get("author"),
+            sort=args.get("sort") or "blend",
+            limit=docs.clean_limit(args.get("limit"), default=SEARCH_DEFAULT_LIMIT),
+            min_score=arg_float(args, "min_score"),
+            recency_weight=arg_float(args, "recency_weight"),
+            recency_tau_days=arg_float(args, "recency_tau_days"),
         )
     except EmbedError as exc:
         raise ToolError(str(exc)) from None
@@ -233,9 +268,11 @@ TOOLS = {
         "spec": tool_spec(
             "search_docs",
             "Search Docs",
-            "Full-text search across prefix, content, tags and author. Terms are "
-            'prefix-matched, -word excludes, "two words" is an exact phrase. Hits '
-            "carry a snippet with \\u0001…\\u0002 around the match.",
+            "Full-text search across prefix, content, tags and author. PREFER "
+            "search_docs_unified for most queries — it merges FTS and semantic "
+            "results into a single ranked set. Use this only when you need raw "
+            "FTS output without semantic blending. Terms are prefix-matched, "
+            '-word excludes, "two words" is an exact phrase.',
             {
                 "q": {"type": "string", "description": "Search terms."},
                 "prefix": {
@@ -255,10 +292,12 @@ TOOLS = {
         "spec": tool_spec(
             "semantic_search_docs",
             "Semantic Search Docs",
-            "Meaning-based search over Docs: embeds the query with the local "
-            "Ollama model and cosine-ranks stored chunk vectors, so a hit does not "
-            "need to share words with the query. Best chunk per doc wins, score "
-            "0-1. Use it when exact terms fail; combine with search_docs.",
+            "Meaning-based search over Docs. PREFER search_docs_unified for "
+            "most queries — it merges FTS and semantic results into a single "
+            "ranked set. Use this only when you need pure semantic results "
+            "without FTS merging. Embeds the query with the local Ollama model "
+            "and cosine-ranks stored chunk vectors; best chunk per doc wins, "
+            "score 0-1.",
             {
                 "q": {"type": "string", "description": "What you are looking for, in plain words."},
                 "prefix": {
@@ -273,23 +312,69 @@ TOOLS = {
                     "type": "number",
                     "minimum": 0.0,
                     "maximum": 1.0,
-                    "description": "Minimum cosine score threshold (default 0.35). Lower = more results, higher = stricter.",
+                    "description": "Minimum cosine score threshold (default 0.35). "
+                    "Lower = more results, higher = stricter.",
                 },
                 "recency_weight": {
                     "type": "number",
                     "minimum": 0.0,
-                    "description": "Weight for recency boost in blend sort (default 0.10). Set 0 for pure relevance.",
+                    "description": "Weight for recency boost in blend sort (default 0.10). "
+                    "Set 0 for pure relevance.",
                 },
                 "recency_tau_days": {
                     "type": "number",
                     "minimum": 1.0,
-                    "description": "Decay half-life in days for recency boost (default 30). Larger = slower decay.",
+                    "description": "Decay half-life in days for recency boost (default 30). "
+                    "Larger = slower decay.",
+                },
+            },
+            ["q"],
+        ),
+        "handler": semantic_search_docs,
+    },
+    "search_docs_unified": {
+        "spec": tool_spec(
+            "search_docs_unified",
+            "Search Docs (Unified)",
+            "Single ranked result set merging full-text and semantic search. "
+            "PREFER this over search_docs or semantic_search_docs for most "
+            "queries. Exact matches rank highest (score=1.0), semantic-only "
+            "hits fill in below by cosine similarity, both blended by recency. "
+            "Each hit carries kind='exact' or 'semantic'.",
+            {
+                "q": {"type": "string", "description": "What you are looking for, in plain words."},
+                "prefix": {
+                    **PREFIX,
+                    "description": "Optional path filter (that doc and its descendants).",
+                },
+                "prefix_q": PREFIX_Q,
+                "author": AUTHOR_FILTER,
+                "sort": SORT,
+                "limit": {**LIMIT, "default": SEARCH_DEFAULT_LIMIT},
+                "min_score": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "maximum": 1.0,
+                    "description": "Minimum cosine score threshold for semantic hits "
+                    "(default 0.35).",
+                },
+                "recency_weight": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "description": "Weight for recency boost in blend sort (default 0.10). "
+                    "Set 0 for pure relevance.",
+                },
+                "recency_tau_days": {
+                    "type": "number",
+                    "minimum": 1.0,
+                    "description": "Decay half-life in days for recency boost (default 30). "
+                    "Larger = slower decay.",
                 },
             },
             ["q"],
             read_only=True,
         ),
-        "handler": semantic_search_docs,
+        "handler": search_docs_unified,
     },
     "reindex_docs": {
         "spec": tool_spec(

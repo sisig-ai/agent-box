@@ -13,6 +13,7 @@ import re
 import urllib.error
 import urllib.request
 from datetime import datetime
+
 import numpy as np
 
 from . import config

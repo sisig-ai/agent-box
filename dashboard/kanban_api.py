@@ -183,6 +183,14 @@ async def archived_list(request: Request):
     return (await run_in_threadpool(filtered_board, params, "only"))["cards"]
 
 
+def _param_float(params: dict, key: str) -> float | None:
+    raw = params.get(key)
+    try:
+        return float(raw) if raw is not None else None
+    except (TypeError, ValueError):
+        raise KanbanError(f"{key} must be a number") from None
+
+
 def _semantic(params: dict):
     query = (params.get("q") or "").strip()
     if not query:
@@ -207,9 +215,9 @@ def _semantic(params: dict):
                 opname=params.get("opname") or None,
                 sort=params.get("sort") or "blend",
                 conn=conn,
-                min_score=float(params["min_score"]) if params.get("min_score") is not None else None,
-                recency_weight=float(params["recency_weight"]) if params.get("recency_weight") is not None else None,
-                recency_tau_days=float(params["recency_tau_days"]) if params.get("recency_tau_days") is not None else None,
+                min_score=_param_float(params, "min_score"),
+                recency_weight=_param_float(params, "recency_weight"),
+                recency_tau_days=_param_float(params, "recency_tau_days"),
             )
         except kanban_embed.EmbedError as exc:
             return JSONResponse(status_code=503, content={"error": str(exc), "available": False})

@@ -16,6 +16,7 @@ import threading
 from . import config, db
 from .dates import now_iso
 from .embed import (
+    DEFAULT_MIN_SCORE,
     EXCERPT_CHARS,
     EmbedError,
     chunk,
@@ -269,7 +270,12 @@ def search(
                 "score": round(score, 4),
                 "excerpt": " ".join((row["text"] or "").split())[:EXCERPT_CHARS],
             }
-    ranked = order_hits(list(best.values()), sort, recency_weight=recency_weight, recency_tau_days=recency_tau_days)
+    ranked = order_hits(
+        list(best.values()),
+        sort,
+        recency_weight=recency_weight,
+        recency_tau_days=recency_tau_days,
+    )
     hits = ranked[: max(1, min(int(limit or 15), 200))]
     return {
         "q": query,

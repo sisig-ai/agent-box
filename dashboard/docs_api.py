@@ -123,6 +123,39 @@ async def docs_semantic(
         return error(exc.message, exc.status)
 
 
+@router.get("/api/docs/search-unified")
+async def docs_search_unified(
+    q: str = "",
+    prefix: str | None = None,
+    prefix_q: str | None = None,
+    author: str | None = None,
+    limit: str | None = None,
+    sort: str = "blend",
+    min_score: str | None = None,
+    recency_weight: str | None = None,
+    recency_tau_days: str | None = None,
+):
+    """Single ranked result set merging FTS and semantic hits."""
+    try:
+        cleaned = docs.clean_prefix(prefix) if prefix else None
+        return await run_in_threadpool(
+            docs_embed.search_unified,
+            q,
+            prefix=cleaned,
+            prefix_q=docs.clean_prefix_query(prefix_q),
+            author=author,
+            limit=docs.clean_limit(limit, default=10),
+            sort=sort or "blend",
+            min_score=float(min_score) if min_score is not None else None,
+            recency_weight=float(recency_weight) if recency_weight is not None else None,
+            recency_tau_days=float(recency_tau_days) if recency_tau_days is not None else None,
+        )
+    except EmbedError as exc:
+        return JSONResponse(status_code=503, content={"error": str(exc), "available": False})
+    except DocsError as exc:
+        return error(exc.message, exc.status)
+
+
 @router.get("/api/docs/index")
 async def docs_index_status():
     """How much of the corpus carries vectors for the configured model."""

@@ -69,7 +69,7 @@ def test_index_and_semantic_search(client):
     index(client)
     assert docs_embed.pending_count() == 0
 
-    result = client.get("/api/docs/semantic?q=tuya plugs").get_json()
+    result = client.get("/api/docs/semantic?q=tuya plugs&min_score=0").get_json()
     assert result["model"]
     assert result["hits"][0]["prefix"] == "notes/plugs.md"
     assert result["hits"][0]["score"] > result["hits"][1]["score"]
