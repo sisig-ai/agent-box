@@ -732,3 +732,29 @@
   .procs-table td,
   .procs-table th { padding: 0.18rem 0.22rem; }
 }
+
+/* ---------- phones: telemetry single column, stack cards full width ---------- */
+
+@media (max-width: 700px) {
+  .stack-view {
+    padding: 10px;
+  }
+
+  .telemetry {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .tele-live {
+    font-size: 13px;
+  }
+}
+
+/* ---------- phones: scanner full-width, 16px input ---------- */
+
+@media (max-width: 700px) {
+  .scanner input {
+    font-size: 16px;
+    min-height: 44px;
+  }
+}

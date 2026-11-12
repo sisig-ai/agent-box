@@ -719,3 +719,42 @@ button.docs-tree-twist:hover {
     display: none;
   }
 }
+
+/* ---------- phones: tree/list collapses to a column ---------- */
+
+@media (max-width: 700px) {
+  .docs-head {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .docs-actions {
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .docs-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .docs-body {
+    flex-direction: column;
+  }
+
+  .docs-list-wrap,
+  .docs-body.is-flat .docs-list-wrap {
+    flex: 0 0 auto;
+    max-width: none;
+    max-height: 44dvh;
+    border-right: none;
+    border-bottom: 1px solid var(--obsidian-dashboard-shell-border);
+  }
+
+  .docs-meta {
+    grid-template-columns: 1fr;
+  }
+}

@@ -370,3 +370,31 @@
   justify-content: flex-end;
   gap: 8px;
 }
+
+/* ---------- phones: single-column meters ---------- */
+
+@media (max-width: 700px) {
+  .progress-head {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .progress-actions {
+    width: 100%;
+  }
+
+  .progress-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .pb-meter {
+    height: 16px;
+  }
+
+  .pb-actions {
+    flex-wrap: wrap;
+  }
+}

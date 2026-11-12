@@ -25,3 +25,13 @@ static/css/*.bak-*
 
 # Node tooling (eslint/prettier) installed per checkout
 node_modules/
+
+# Next.js build artifacts (rebuilt by make build-frontend)
+frontend/.next/
+frontend/out/
+frontend/tsconfig.tsbuildinfo
+frontend/tsconfig.e2e.tsbuildinfo
+
+# Playwright e2e output
+frontend/test-results/
+frontend/playwright-report/

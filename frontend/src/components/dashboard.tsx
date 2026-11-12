@@ -5,7 +5,7 @@
 // the keys panel. Replaces the old htpy frame + Alpine chrome component.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { DashboardShell, DashboardButton, type DashboardShellProps } from "@/components/block/dashboard-shell";
+import { DashboardShell, DashboardButton, type DashboardShellProps, type DashboardShellNavItem } from "@/components/block/dashboard-shell";
 import { ThemeProvider, useTheme } from "@/lib/theme";
 import { ModalProvider } from "@/components/modal-provider";
 import { useHashRoute } from "@/hooks/use-hash-route";
@@ -24,6 +24,7 @@ import {
   BookOpen, Table, ScrollText as LogsIcon,
 } from "lucide-react";
 import "./dashboard-chrome.css";
+import "./mobile.css";
 
 /* ----- view ids and hash routes (unchanged from the old router) ----- */
 
@@ -58,6 +59,46 @@ function greeting(hour: number): string {
   if (hour < 12) return "good morning";
   if (hour < 18) return "good afternoon";
   return "good evening";
+}
+
+/* ----- mobile bottom tab bar (shown under the shell's 2xl sidebar breakpoint) ----- */
+
+function MobileTabBar({ activeId, onNavigate }: { activeId: ViewId; onNavigate: (hash: string) => void }) {
+  return (
+    <nav className="mobile-tabs" aria-label="Views">
+      {VIEWS.map((v) => {
+        const Icon = v.icon;
+        const active = v.id === activeId;
+        return (
+          <button
+            key={v.id}
+            type="button"
+            className="mobile-tab"
+            aria-current={active ? "page" : undefined}
+            onClick={() => onNavigate(v.hash)}
+          >
+            <Icon aria-hidden />
+            <span>{v.label}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+/* ----- PWA: register the service worker once, client-side ----- */
+
+function ServiceWorkerBoot() {
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    if (!window.isSecureContext) return;
+    const register = () => {
+      navigator.serviceWorker.register("/sw.js").catch(() => { /* offline hint only */ });
+    };
+    if (document.readyState === "complete") register();
+    else window.addEventListener("load", register, { once: true });
+  }, []);
+  return null;
 }
 
 /* ----- page chrome: config, clock, theme picker ----- */
@@ -135,6 +176,13 @@ function ClockAndTheme({ config }: { config: DashboardConfig | null }) {
 /* ----- keys panel ----- */
 
 function KeysDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  useEffect(() => {
+    if (!open) return;
+    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onEsc);
+    return () => document.removeEventListener("keydown", onEsc);
+  }, [open, onClose]);
+
   if (!open) return null;
   return (
     <div className="chrome-dialog-backdrop" onClick={onClose}>
@@ -258,7 +306,9 @@ function DashboardInner() {
           <ViewRenderer viewId={viewId} hash={hash} />
         </div>
       </DashboardShell>
+      <MobileTabBar activeId={viewId} onNavigate={navigate} />
       <KeysDialog open={keysOpen} onClose={() => setKeysOpen(false)} />
+      <ServiceWorkerBoot />
     </div>
   );
 }

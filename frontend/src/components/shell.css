@@ -215,3 +215,31 @@
     padding: 0.55rem 0.75rem;
   }
 }
+
+/* ---------- phones: term fills, key bar above the tab bar ---------- */
+
+@media (max-width: 700px) {
+  .shell-head {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .term {
+    min-height: 46dvh;
+    font-size: 13px;
+  }
+
+  .term-keys {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    background: var(--obsidian-dashboard-shell-control);
+    padding-bottom: max(6px, var(--safe-bottom, 0px));
+  }
+
+  .term-keys .key-btn {
+    flex: 1;
+    min-height: 40px;
+  }
+}

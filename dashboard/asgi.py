@@ -68,9 +68,9 @@ def create_app() -> FastAPI:
         """Long immutable cache for versioned assets; revalidate entry points."""
         response = await call_next(request)
         path = request.url.path
-        if path.startswith(("/static/fonts/", "/static/vendor/")):
+        if path.startswith(("/static/fonts/", "/static/vendor/", "/_next/static/")):
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
-        elif path in ("/", "/index.html", "/config.json"):
+        elif path in ("/", "/index.html", "/config.json", "/sw.js", "/manifest.webmanifest"):
             response.headers["Cache-Control"] = "no-cache"
         return response
 

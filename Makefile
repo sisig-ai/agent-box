@@ -30,7 +30,7 @@ SLOC_EXEMPT ?= dashboard/progress.py:500 \
 	frontend/src/components/views/kanban.css:1200 \
 	frontend/src/components/views/telemetry.css:800 \
 	frontend/src/components/docs.css:800 \
-	frontend/src/components/tables.css:600 \
+	frontend/src/components/tables.css:700 \
 	frontend/src/components/sitrep.css:600 \
 	frontend/src/components/files.css:600
 

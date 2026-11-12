@@ -1,0 +1,162 @@
+/* macmini mobile chrome. Bottom tab bar replaces the drawer-first flow on
+   phones; safe areas, 44px targets, and bottom-sheet dialogs. The shell's own
+   container query (@2xl/dashboard-shell ≈ 672px) decides "phone" layout — the
+   bar mirrors that breakpoint so the sidebar and bar never show together. */
+
+/* Hide the bar where the sidebar is docked (≥ 2xl container width). */
+.mobile-tabs {
+  display: none;
+}
+
+@media (max-width: 926px) {
+  /* In-flow, below the shell: the shell's own scroll containers never run
+     behind the bar, so no view needs per-view clearance hacks. */
+  .mobile-tabs {
+    display: flex;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 2px;
+    flex: 0 0 auto;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    padding: 6px max(10px, var(--safe-right)) calc(6px + var(--safe-bottom)) max(10px, var(--safe-left));
+    background: var(--obsidian-dashboard-shell-control);
+    border-top: 1px solid var(--obsidian-dashboard-shell-border);
+    box-shadow: 0 -1px 0 rgb(0 0 0 / 0.04), 0 -8px 24px rgb(0 0 0 / 0.08);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mobile-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* The app frame becomes a column: shell above, tab bar below. */
+  .h-dvh {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .h-dvh > .obsidian-dashboard-shell {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .mobile-tab {
+    appearance: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    flex: 1 0 auto;
+    min-height: 48px;
+    min-width: 64px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px 10px;
+    border-radius: 10px;
+    color: var(--obsidian-dashboard-shell-text-muted);
+    transition: color 150ms ease;
+  }
+
+  .mobile-tab svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .mobile-tab span {
+    font-size: 10px;
+    line-height: 1;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    max-width: 64px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mobile-tab[aria-current="page"] span {
+    max-width: 88px;
+  }
+
+  .mobile-tab[aria-current="page"] {
+    color: var(--obsidian-dashboard-shell-accent);
+    font-weight: 600;
+  }
+
+  .mobile-tab:active {
+    transform: scale(0.96);
+  }
+
+  /* Header: tighter on phones, clear the notch. */
+  .obsidian-dashboard-shell > section > header {
+    padding-top: var(--safe-top);
+  }
+
+  /* ObsidianUI dialogs (confirm) pin as bottom sheets. */
+  .obsidian-dashboard-shell-layer.pointer-events-auto {
+    margin: 0 auto;
+    width: 100%;
+    max-width: 640px;
+  }
+
+  /* Chrome dialogs (keys, theme pop) fit small screens. */
+  .chrome-dialog {
+    max-width: none;
+    width: 100%;
+  }
+}
+
+/* Coarse pointers (phones + tablets): 44px minimum hit targets for the
+   dashboard's own controls. ObsidianUI buttons are 32px, so lift them. */
+@media (pointer: coarse) {
+  .mobile-tab {
+    min-height: 48px;
+  }
+
+  .obsidian-dashboard-shell button:not(.obsidian-dashboard-shell-layer button) {
+    min-height: 36px;
+  }
+
+  .obsidian-dashboard-shell input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* Phones: the card modal and progress dialog become near-full sheets. */
+@media (max-width: 700px) {
+  .kbd-backdrop,
+  .pb-dialog-backdrop {
+    align-items: flex-end;
+    padding: 0;
+    padding-top: 10vh;
+  }
+
+  .kbd-modal,
+  .pb-dialog {
+    width: 100%;
+    max-width: none;
+    border-radius: 16px 16px 0 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+    margin: 0;
+    max-height: 90dvh;
+    overflow-y: auto;
+    padding-bottom: calc(16px + var(--safe-bottom));
+  }
+
+  .kbd-backdrop,
+  .pb-dialog-backdrop {
+    scrollbar-width: none;
+  }
+}
+
+/* Standalone PWA: keep the layout inside the visual viewport. */
+@media (display-mode: standalone) {
+  .h-dvh {
+    height: 100dvh;
+  }
+}

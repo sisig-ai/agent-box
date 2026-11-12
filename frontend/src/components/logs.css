@@ -244,3 +244,37 @@ tr.lg-err .lg-entity {
     width: auto;
   }
 }
+
+/* ---------- phones: log rows shed the args column ---------- */
+
+@media (max-width: 700px) {
+  .logs-head {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .logs-actions {
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .logs-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .logs-table {
+    font-size: 12px;
+  }
+
+  .lg-args {
+    display: none;
+  }
+
+  .lg-entity {
+    width: auto;
+  }
+}

@@ -562,3 +562,42 @@
     flex-basis: 9rem;
   }
 }
+
+/* ---------- phones: table list stacks above the sheet ---------- */
+
+@media (max-width: 700px) {
+  .tbl-head {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .tbl-actions {
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .tbl-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tbl-body {
+    flex-direction: column;
+  }
+
+  .tbl-list {
+    flex: 0 0 auto;
+    max-width: none;
+    max-height: 30dvh;
+    overflow-y: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--obsidian-dashboard-shell-border);
+  }
+
+  .tbl-grid {
+    font-size: 12px;
+  }
+}

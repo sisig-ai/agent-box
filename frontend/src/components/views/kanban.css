@@ -1109,3 +1109,57 @@
   color: var(--obsidian-dashboard-shell-text-subtle);
   margin: 4px 0;
 }
+
+/* ---------- phones: one lane per screen, snap scrolling ---------- */
+
+@media (max-width: 700px) {
+  .kanban-head {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .kanban-actions {
+    width: 100%;
+    order: 2;
+  }
+
+  .kb-search {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .kb-search input {
+    width: 100%;
+    font-size: 16px;
+    min-height: 40px;
+  }
+
+  .kanban-board {
+    padding: 4px max(8px, var(--safe-left, 0px)) calc(12px + var(--safe-bottom, 0px)) max(8px, var(--safe-right, 0px));
+    gap: 10px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .kb-lane {
+    flex: 0 0 calc(100vw - 2.4rem);
+    min-width: 0;
+    scroll-snap-align: start;
+    max-height: none;
+  }
+
+  .kb-card {
+    padding: 12px;
+  }
+
+  .kb-card:active {
+    background: var(--obsidian-dashboard-shell-muted-hover);
+  }
+
+  /* two-tap comment delete stays reachable with a thumb */
+  .kbc-del {
+    min-width: 40px;
+    min-height: 40px;
+  }
+}

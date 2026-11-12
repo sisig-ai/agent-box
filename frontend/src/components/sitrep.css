@@ -494,13 +494,16 @@
 @media (max-width: 900px) {
   .sitrep {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr);
     overflow-y: auto;
   }
 
   .sitrep-main {
     border-right: none;
     border-bottom: 1px solid var(--obsidian-dashboard-shell-border);
+    /* On phones the panes need a concrete height or they collapse to their
+       min-height; give the editor the lion's share of the screen. */
+    min-height: 62dvh;
   }
 
   .sitrep-schedule {
@@ -511,5 +514,36 @@
 @media (max-width: 560px) {
   .sitrep-title .sitrep-date-label {
     display: none;
+  }
+}
+
+/* ---------- phones: sitrep editor dominant, toolbar scrollable ---------- */
+
+@media (max-width: 700px) {
+  .sitrep-head {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .sitrep-toolbar {
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .sitrep-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .sitrep-toolbar .tool-btn {
+    min-height: 40px;
+  }
+
+  .sitrep-schedule {
+    max-height: 36dvh;
   }
 }
