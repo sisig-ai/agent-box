@@ -34,8 +34,9 @@ def test_validation(client):
     assert create(client, docs="handoffs/a.md").status_code == 400
     assert create(client, docs=[42]).status_code == 400
     assert create(client, docs=["../escape.md"]).status_code == 400
-    too_many = [f"notes/{index}.md" for index in range(21)]
-    assert create(client, docs=too_many).status_code == 400
+    # No count cap anymore: a long list is valid as long as every entry is.
+    many = [f"notes/{index}.md" for index in range(21)]
+    assert create(client, docs=many).status_code == 201
 
 
 def test_mcp_create_and_update_accept_docs(client):

@@ -74,6 +74,19 @@ def test_patch_replaces_bindings(client):
     assert client.get("/api/docs/specs/one.md").get_json()["cards"] == []
 
 
+def test_docs_have_no_count_limit(client):
+    """A card can carry any number of doc references (the old cap was 20)."""
+    prefixes = [f"specs/doc-{n:02d}.md" for n in range(1, 26)]
+    for prefix in prefixes:
+        client.put(f"/api/docs/{prefix}", json={"content": "x"})
+    card = client.post(
+        "/api/opsboard/cards", json={"title": "many docs", "docs": prefixes}
+    ).get_json()
+    assert [row["prefix"] for row in bindings()] == prefixes
+    fetched = client.get(f"/api/opsboard/cards/{card['id']}").get_json()
+    assert fetched["docs"] == prefixes
+
+
 def test_legacy_json_column_is_migrated_then_dropped(client, env):
     """A database written before the join table keeps its links and loses the column."""
     from dashboard import card_docs, db

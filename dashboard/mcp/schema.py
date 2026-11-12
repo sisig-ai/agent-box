@@ -51,7 +51,7 @@ DOCS = {
     "items": {"type": "string"},
     "description": (
         "Docs prefixes this card points at, e.g. ['handoffs/x.md', 'specs/y.md']. "
-        "At most 20; duplicates collapse; the doc does not need to exist yet. "
+        "No count limit; duplicates collapse; the doc does not need to exist yet. "
         "An empty list clears the links."
     ),
 }

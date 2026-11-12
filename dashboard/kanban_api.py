@@ -80,11 +80,12 @@ def clean_body(raw):
     return body if body.strip() else ""
 
 
-DOCS_MAX = 20
-
-
 def clean_docs(raw):
-    """Doc prefixes this card points at; format checked, existence not."""
+    """Doc prefixes this card points at; format checked, existence not.
+
+    No count cap: a card may reference as many docs as it needs. Duplicates
+    collapse; every entry must pass the docs prefix format check.
+    """
     if raw is None:
         return []
     if not isinstance(raw, list):
@@ -103,8 +104,6 @@ def clean_docs(raw):
             continue
         seen.add(prefix)
         refs.append(prefix)
-    if len(refs) > DOCS_MAX:
-        raise KanbanError(f"at most {DOCS_MAX} doc references per card")
     return refs
 
 

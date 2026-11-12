@@ -179,11 +179,11 @@ Cards and docs are many-to-many: the binding lives in `card_doc(card_id, prefix)
 A card carries `docs: [...]`, a doc carries `cards: [{id, title, status}]`, and
 `/api/docs` rows add `card_count`. Deleting either side drops the binding.
 
-A card can carry `docs`, a list of up to 20 doc prefixes it depends on. Pass it
-to `create_card` / `update_card` (`["handoffs/x.md", "specs/y.md"]`, empty list
-clears). The target does not need to exist yet, so a handoff can link the doc it
-is about to write; the board and the card modal render the refs as clickable
-items that open `#/docs/<prefix>`.
+A card can carry `docs`, a list of doc prefixes it depends on, with no count
+limit. Pass it to `create_card` / `update_card` (`["handoffs/x.md", "specs/y.md"]`,
+empty list clears). The target does not need to exist yet, so a handoff can link
+the doc it is about to write; the board and the card modal render the refs as
+clickable items that open `#/docs/<prefix>`.
 
 **Access logs (what agents actually did here)**
 
