@@ -1,0 +1,515 @@
+/* Daily Sitrep + weekly schedule — ObsidianUI tokens.
+   Ported from the old brief.css / schedule.css, restated on the
+   --obsidian-dashboard-shell-* palette. */
+
+.sitrep {
+  --sitrep-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  height: 100%;
+  min-height: 0;
+}
+
+.sitrep-main {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--obsidian-dashboard-shell-border);
+}
+
+/* ---------- header ---------- */
+
+.sitrep-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--obsidian-dashboard-shell-border);
+}
+
+.sitrep-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.sitrep-title h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+.sitrep-date-label {
+  font-family: var(--sitrep-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  color: var(--obsidian-dashboard-shell-text-muted);
+}
+
+.sitrep-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sitrep-nav input[type="date"] {
+  font-family: var(--sitrep-mono);
+  font-size: 11px;
+  color: var(--obsidian-dashboard-shell-foreground);
+  background: var(--obsidian-dashboard-shell-background);
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  outline: none;
+  color-scheme: light dark;
+}
+
+.sitrep-nav input[type="date"]:focus {
+  border-color: var(--obsidian-dashboard-shell-accent);
+}
+
+/* ---------- toolbar ---------- */
+
+.sitrep-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--obsidian-dashboard-shell-border);
+}
+
+.sitrep-toolbar .tool-btn {
+  appearance: none;
+  font-family: var(--sitrep-mono);
+  font-size: 11px;
+  color: var(--obsidian-dashboard-shell-text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 3px 7px;
+  min-width: 26px;
+  line-height: 1.3;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.sitrep-toolbar .tool-btn:hover {
+  color: var(--obsidian-dashboard-shell-foreground);
+  background: var(--obsidian-dashboard-shell-hover);
+  border-color: var(--obsidian-dashboard-shell-border);
+}
+
+.sitrep-toolbar .tool-btn:active {
+  transform: scale(0.94);
+}
+
+.sitrep-toolbar .tool-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--obsidian-dashboard-shell-border);
+  margin: 0 4px;
+}
+
+/* ---------- tabs ---------- */
+
+.sitrep-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 10px 20px 0;
+}
+
+.sitrep-tabs .tab-btn {
+  appearance: none;
+  font-family: var(--sitrep-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--obsidian-dashboard-shell-text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
+}
+
+.sitrep-tabs .tab-btn:hover {
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+.sitrep-tabs .tab-btn.active {
+  color: var(--obsidian-dashboard-shell-foreground);
+  background: var(--obsidian-dashboard-shell-hover);
+  border-color: var(--obsidian-dashboard-shell-border);
+}
+
+/* ---------- editor + preview ---------- */
+
+.sitrep-panes {
+  flex: 1;
+  min-height: 0;
+  padding: 0 20px 12px;
+  display: flex;
+}
+
+.sitrep-editor,
+.sitrep-preview {
+  flex: 1;
+  min-height: 120px;
+  width: 100%;
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  border-radius: 0 10px 10px 10px;
+  background: var(--obsidian-dashboard-shell-background);
+}
+
+.sitrep-editor {
+  resize: none;
+  font-family: var(--sitrep-mono);
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--obsidian-dashboard-shell-foreground);
+  padding: 14px 16px;
+  outline: none;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.sitrep-editor:focus {
+  border-color: color-mix(in srgb, var(--obsidian-dashboard-shell-accent) 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--obsidian-dashboard-shell-accent) 12%, transparent);
+}
+
+.sitrep-editor::placeholder {
+  color: var(--obsidian-dashboard-shell-text-subtle);
+}
+
+.sitrep-preview {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 18px;
+}
+
+.sitrep-empty {
+  margin: 0;
+  font-family: var(--sitrep-mono);
+  font-size: 12px;
+  color: var(--obsidian-dashboard-shell-text-subtle);
+}
+
+/* ---------- rendered markdown (preview + schedule extras) ---------- */
+
+.sitrep-md {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--obsidian-dashboard-shell-foreground);
+  overflow-wrap: anywhere;
+}
+
+.sitrep-md h1,
+.sitrep-md h2,
+.sitrep-md h3,
+.sitrep-md h4,
+.sitrep-md h5,
+.sitrep-md h6 {
+  margin: 1.1em 0 0.45em;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.sitrep-md h1 { font-size: 20px; }
+.sitrep-md h2 { font-size: 17px; }
+.sitrep-md h3 { font-size: 15px; }
+.sitrep-md h1:first-child,
+.sitrep-md h2:first-child { margin-top: 0; }
+
+.sitrep-md p { margin: 0.55em 0; }
+
+.sitrep-md ul,
+.sitrep-md ol {
+  margin: 0.55em 0;
+  padding-left: 1.4em;
+}
+
+.sitrep-md li { margin: 0.2em 0; }
+.sitrep-md li.task-list-item { list-style: none; }
+
+.sitrep-md input[type="checkbox"] {
+  margin-right: 0.45em;
+  accent-color: var(--obsidian-dashboard-shell-accent);
+  cursor: pointer;
+}
+
+.sitrep-md code {
+  font-family: var(--sitrep-mono);
+  font-size: 0.86em;
+  background: var(--obsidian-dashboard-shell-muted);
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  border-radius: 5px;
+  padding: 0.12em 0.38em;
+}
+
+.sitrep-md pre {
+  font-family: var(--sitrep-mono);
+  background: var(--obsidian-dashboard-shell-muted);
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  margin: 0.7em 0;
+}
+
+.sitrep-md pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.sitrep-md blockquote {
+  margin: 0.7em 0;
+  padding: 0.1em 0 0.1em 1em;
+  border-left: 3px solid var(--obsidian-dashboard-shell-accent);
+  color: var(--obsidian-dashboard-shell-text-muted);
+}
+
+.sitrep-md a {
+  color: var(--obsidian-dashboard-shell-accent);
+  text-decoration: none;
+}
+
+.sitrep-md a:hover { text-decoration: underline; }
+
+.sitrep-md hr {
+  border: none;
+  border-top: 1px solid var(--obsidian-dashboard-shell-border);
+  margin: 1.2em 0;
+}
+
+.sitrep-md table {
+  border-collapse: collapse;
+  margin: 0.7em 0;
+  font-size: 12px;
+}
+
+.sitrep-md th,
+.sitrep-md td {
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  padding: 0.35em 0.7em;
+  text-align: left;
+}
+
+.sitrep-md th { background: var(--obsidian-dashboard-shell-muted); }
+.sitrep-md img { max-width: 100%; border-radius: 8px; }
+
+/* ---------- status line ---------- */
+
+.sitrep-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 8px 20px 10px;
+  font-family: var(--sitrep-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--obsidian-dashboard-shell-text-muted);
+}
+
+.sitrep-save-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sitrep-save-state::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--obsidian-dashboard-shell-text-subtle);
+  transition: background-color 250ms ease, box-shadow 250ms ease;
+}
+
+.sitrep-save-state.saving::before {
+  background: var(--obsidian-dashboard-shell-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--obsidian-dashboard-shell-accent) 70%, transparent);
+}
+
+.sitrep-save-state.saved::before {
+  background: var(--obsidian-dashboard-shell-success);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--obsidian-dashboard-shell-success) 70%, transparent);
+}
+
+.sitrep-save-state.error {
+  color: var(--obsidian-dashboard-shell-danger);
+}
+
+.sitrep-save-state.error::before {
+  background: var(--obsidian-dashboard-shell-danger);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--obsidian-dashboard-shell-danger) 70%, transparent);
+}
+
+/* ---------- schedule pane ---------- */
+
+.sitrep-schedule {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--obsidian-dashboard-shell-muted) 30%, var(--obsidian-dashboard-shell-background));
+}
+
+.schedule-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--obsidian-dashboard-shell-border);
+}
+
+.schedule-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.schedule-title h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+.schedule-week-label {
+  font-family: var(--sitrep-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  color: var(--obsidian-dashboard-shell-text-muted);
+}
+
+.schedule-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.schedule-preview {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--obsidian-dashboard-shell-foreground);
+  padding: 14px 16px;
+}
+
+.schedule-empty {
+  text-align: center;
+  font-family: var(--sitrep-mono);
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  padding: 18px 8px;
+  margin: 0;
+  color: var(--obsidian-dashboard-shell-text-subtle);
+}
+
+/* calendar agenda rows: one row per day, today accented */
+
+.schedule-calendar {
+  display: flex;
+  flex-direction: column;
+}
+
+.cal-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 0 8px 10px;
+  border-left: 2px solid transparent;
+}
+
+.cal-row + .cal-row {
+  border-top: 1px solid var(--obsidian-dashboard-shell-border);
+}
+
+.cal-rowhead {
+  font-family: var(--sitrep-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--obsidian-dashboard-shell-text-muted);
+}
+
+.cal-row.cal-today {
+  border-left-color: var(--obsidian-dashboard-shell-accent);
+}
+
+.cal-row.cal-today .cal-rowhead {
+  color: var(--obsidian-dashboard-shell-accent);
+}
+
+.cal-event {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--obsidian-dashboard-shell-foreground);
+  overflow-wrap: anywhere;
+}
+
+.cal-event.done {
+  color: var(--obsidian-dashboard-shell-text-muted);
+  text-decoration: line-through;
+}
+
+.cal-event.cal-event-empty {
+  color: var(--obsidian-dashboard-shell-text-subtle);
+}
+
+.schedule-extra {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--obsidian-dashboard-shell-border);
+}
+
+/* ---------- narrow layouts ---------- */
+
+@media (max-width: 900px) {
+  .sitrep {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+    overflow-y: auto;
+  }
+
+  .sitrep-main {
+    border-right: none;
+    border-bottom: 1px solid var(--obsidian-dashboard-shell-border);
+  }
+
+  .sitrep-schedule {
+    max-height: 320px;
+  }
+}
+
+@media (max-width: 560px) {
+  .sitrep-title .sitrep-date-label {
+    display: none;
+  }
+}

@@ -9,7 +9,6 @@ import json
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
 
 from . import config, db
 from .access_log import LogError
@@ -25,7 +24,6 @@ from .kanban_subtasks_api import router as subtask_router
 from .logs_api import router as logs_router
 from .mcp import router as mcp_router
 from .notes_api import router as notes_router
-from .page import render_page
 from .procs_api import router as procs_router
 from .progress import ProgressError
 from .progress_api import router as progress_router
@@ -109,24 +107,47 @@ def create_app() -> FastAPI:
     app.include_router(tables_router)
     app.include_router(theme_router)
 
+    # Serve Next.js static export
+    from starlette.staticfiles import StaticFiles
+
+    NEXTJS_OUT = config.STATIC_DIR.parent / "frontend" / "out"
+
     @app.get("/")
     @app.get("/index.html")
     async def index():
-        return HTMLResponse(render_page())
+        index_file = NEXTJS_OUT / "index.html"
+        if not index_file.is_file():
+            return HTMLResponse(
+                "<h1>Frontend not built</h1><p>Run <code>cd frontend && npm run build</code></p>",
+                status_code=503,
+            )
+        return FileResponse(index_file)
+
+    nextjs_next = NEXTJS_OUT / "_next"
+    if nextjs_next.is_dir():
+        app.mount("/_next", StaticFiles(directory=str(nextjs_next)), name="nextjs-assets")
 
     @app.get("/config.json")
     async def config_json():
         return JSONResponse(json.loads((config.STATIC_DIR / "config.json").read_text()))
 
-    app.mount("/static", StaticFiles(directory=str(config.STATIC_DIR)), name="static")
-
+    # Files that live at the site root: manifest, sw.js, llm.txt, icons.
     @app.get("/{filename:path}")
     async def root_static(filename: str):
-        """Files that live at the site root: manifest, sw.js, llms.txt, icons."""
-        target = (config.STATIC_DIR / filename).resolve()
-        if not str(target).startswith(str(config.STATIC_DIR.resolve())) or not target.is_file():
+        if filename.startswith(("api/", "ws/")):
             return JSONResponse(status_code=404, content={"error": "not found"})
-        return FileResponse(target)
+        target = (NEXTJS_OUT / filename).resolve()
+        if str(target).startswith(str(NEXTJS_OUT.resolve())) and target.is_file():
+            return FileResponse(target)
+        static_target = (config.STATIC_DIR / filename).resolve()
+        inside_static = str(static_target).startswith(str(config.STATIC_DIR.resolve()))
+        if inside_static and static_target.is_file():
+            return FileResponse(static_target)
+        # SPA fallback
+        index_file = NEXTJS_OUT / "index.html"
+        if index_file.is_file():
+            return FileResponse(index_file)
+        return JSONResponse(status_code=404, content={"error": "not found"})
 
     def test_client():
         from .testing import Client

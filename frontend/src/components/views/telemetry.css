@@ -1,0 +1,734 @@
+/* ---------- Stack view: telemetry cards + scanner + service grid ----------
+   Modern ObsidianUI restyle of the old ascii telemetry pills: the three
+   cards sit above the scanner as a responsive grid, each expanding into
+   its 1-hour canvas graph. All colors come from the shell tokens, so the
+   light and dark palettes both hold. */
+
+.stack-view {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.25rem;
+  min-height: 100%;
+}
+
+/* ---------- telemetry cards ---------- */
+
+.telemetry {
+  --tele-accent: #72a7ff;
+  --tele-danger: var(--obsidian-dashboard-shell-danger, #e5484d);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.75rem;
+  align-items: start; /* expanded cards must not stretch their siblings */
+}
+
+.tele-card {
+  position: relative;
+  min-width: 0;
+  padding: 0.8rem 0.9rem 0.85rem;
+  border-radius: 12px;
+  background: var(--obsidian-dashboard-shell-surface, var(--obsidian-dashboard-shell-background));
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  color: var(--obsidian-dashboard-shell-foreground);
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tele-card:hover,
+.tele-card:focus-visible {
+  border-color: color-mix(in srgb, var(--tele-accent) 45%, var(--obsidian-dashboard-shell-border));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--tele-accent) 15%, transparent),
+    0 12px 36px -16px color-mix(in srgb, var(--tele-accent) 70%, transparent);
+  outline: none;
+}
+
+.tele-card.expanded {
+  z-index: 4;
+  border-color: color-mix(in srgb, var(--tele-accent) 40%, var(--obsidian-dashboard-shell-border));
+}
+
+.tele-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--obsidian-dashboard-shell-text-subtle);
+  white-space: nowrap;
+}
+
+.tele-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+/* the pulsing green live dot */
+.tele-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.5625rem;
+  letter-spacing: 0.12em;
+  color: var(--obsidian-dashboard-shell-success, #16a34a);
+}
+
+.tele-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--obsidian-dashboard-shell-success, #16a34a);
+  box-shadow: 0 0 6px var(--obsidian-dashboard-shell-success, #16a34a);
+  animation: tele-live-pulse 2s ease-in-out infinite;
+}
+
+@keyframes tele-live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tele-live-dot { animation: none; }
+}
+
+.tele-main {
+  display: flex;
+  align-items: baseline;
+  gap: 0.15rem;
+  margin-top: 0.35rem;
+  font-size: 1.35rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  white-space: nowrap;
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+.tele-unit {
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--obsidian-dashboard-shell-text-muted);
+}
+
+.tele-sub {
+  margin-top: 0.2rem;
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--obsidian-dashboard-shell-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* CPU duo: util + temp share the card 50-50, each with its own readout + bar */
+.tele-duo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  margin-top: 0.3rem;
+}
+
+.tele-half {
+  min-width: 0;
+}
+
+.tele-half .tele-main {
+  margin-top: 0;
+}
+
+.tele-half.is-temp .tele-main span:first-child {
+  color: color-mix(in srgb, var(--tele-accent) 70%, var(--obsidian-dashboard-shell-foreground));
+}
+
+/* thin bar track with an accent fill; no transition — the 1s data snaps */
+.tele-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--obsidian-dashboard-shell-foreground) 10%, transparent);
+  margin-top: 0.45rem;
+  overflow: hidden;
+}
+
+.tele-bar + .tele-bar {
+  margin-top: 0.45rem;
+}
+
+.tele-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--tele-accent);
+}
+
+.tele-half.is-temp .tele-bar i {
+  background: color-mix(in srgb, var(--tele-accent) 65%, var(--obsidian-dashboard-shell-warning, #d97706));
+}
+
+/* ---------- expanded graph area ---------- */
+
+.tele-graph {
+  margin-top: 0.75rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--obsidian-dashboard-shell-border);
+}
+
+.tele-graph-canvas {
+  position: relative;
+  height: 160px;
+}
+
+.tele-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+}
+
+.graph-tip {
+  display: none;
+  position: absolute;
+  top: 2px;
+  left: 0;
+  max-width: calc(100% - 8px);
+  padding: 0.2rem 0.5rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--obsidian-dashboard-shell-foreground);
+  background: var(--obsidian-dashboard-shell-control, #fff);
+  border: 1px solid var(--obsidian-dashboard-shell-border-strong);
+  border-radius: 7px;
+  pointer-events: none;
+  z-index: 2;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.18);
+}
+
+.graph-tip.show {
+  display: block;
+}
+
+/* ---------- power badge + tabs + alerts ---------- */
+
+.pwr-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.625rem;
+  letter-spacing: 0.06em;
+  color: var(--obsidian-dashboard-shell-foreground);
+  background: color-mix(in srgb, var(--tele-accent) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tele-accent) 60%, transparent);
+  border-radius: 20px;
+  padding: 0.15rem 0.3rem 0.15rem 0.5rem;
+  cursor: pointer;
+  box-shadow: 0 0 12px -2px color-mix(in srgb, var(--tele-accent) 70%, transparent);
+}
+
+.pwr-badge:hover {
+  background: color-mix(in srgb, var(--tele-accent) 28%, transparent);
+}
+
+.pwr-badge .pwr-x {
+  display: inline-grid;
+  place-items: center;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  line-height: 1;
+  color: var(--obsidian-dashboard-shell-text-muted);
+}
+
+.pwr-badge:hover .pwr-x {
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+.tele-tabs {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.tele-tab {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--obsidian-dashboard-shell-text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 0.24rem 0.55rem;
+  cursor: pointer;
+}
+
+.tele-tab:hover {
+  color: var(--obsidian-dashboard-shell-foreground);
+  background: var(--obsidian-dashboard-shell-hover);
+}
+
+.tele-tab.active {
+  color: var(--obsidian-dashboard-shell-foreground);
+  background: var(--obsidian-dashboard-shell-muted);
+  border-color: var(--obsidian-dashboard-shell-border);
+}
+
+.tele-alerts {
+  max-height: 128px;
+  overflow-y: auto;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+
+.tele-alert-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.3rem 0.1rem;
+  border-bottom: 1px solid var(--obsidian-dashboard-shell-border);
+}
+
+.tele-alert-row:last-child {
+  border-bottom: none;
+}
+
+.tele-alert-row .w {
+  color: var(--tele-accent);
+  font-weight: 700;
+}
+
+.tele-alert-row time {
+  color: var(--obsidian-dashboard-shell-text-muted);
+}
+
+.tele-alerts-empty,
+.tele-alerts-head {
+  font-size: 0.75rem;
+  color: var(--obsidian-dashboard-shell-text-muted);
+  letter-spacing: 0.03em;
+}
+
+.tele-alerts-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.3rem;
+}
+
+.tele-alerts-clear {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.6875rem;
+  color: var(--obsidian-dashboard-shell-text-muted);
+  background: transparent;
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  border-radius: 6px;
+  padding: 0.18rem 0.5rem;
+  cursor: pointer;
+}
+
+.tele-alerts-clear:hover {
+  color: var(--obsidian-dashboard-shell-foreground);
+  border-color: color-mix(in srgb, var(--tele-accent) 50%, var(--obsidian-dashboard-shell-border));
+}
+
+/* ---------- process table (inside the memory card) ---------- */
+
+.tele-procs {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin-top: 0.6rem;
+}
+
+.procs-bar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-size: 0.625rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--obsidian-dashboard-shell-text-subtle);
+  white-space: nowrap;
+}
+
+.procs-title {
+  color: var(--tele-accent);
+  font-weight: 600;
+}
+
+.procs-meta {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+  letter-spacing: 0;
+  text-transform: none;
+  font-variant-numeric: tabular-nums;
+  color: var(--obsidian-dashboard-shell-text-muted);
+}
+
+.procs-meta.is-bad {
+  color: var(--tele-danger);
+}
+
+.procs-scroll {
+  max-height: 300px;
+  margin-top: 0.4rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.procs-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem; /* 12px rows */
+  font-variant-numeric: tabular-nums;
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+.procs-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.25rem 0.3rem;
+  background: var(--obsidian-dashboard-shell-background);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--obsidian-dashboard-shell-text-muted);
+  border-bottom: 1px solid var(--obsidian-dashboard-shell-border);
+  white-space: nowrap;
+}
+
+.procs-table td {
+  padding: 0.18rem 0.3rem; /* compact 12px rows */
+  border-bottom: 1px solid color-mix(in srgb, var(--obsidian-dashboard-shell-border) 55%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.procs-table tbody tr:hover {
+  background: var(--obsidian-dashboard-shell-hover);
+}
+
+.procs-table .p-pid {
+  width: 4.4rem;
+  color: var(--obsidian-dashboard-shell-text-muted);
+  text-align: right;
+}
+
+.procs-table th.p-pid,
+.procs-table th.p-num {
+  text-align: right;
+}
+
+.procs-table .p-name {
+  width: auto;
+}
+
+.procs-table .p-num {
+  width: 4.3rem;
+  text-align: right;
+}
+
+.procs-table .p-sig {
+  width: 7.4rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.procs-sort {
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: var(--obsidian-dashboard-shell-text-muted);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.procs-sort:hover {
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+.procs-sort[aria-pressed="true"] {
+  color: var(--tele-accent);
+  font-weight: 700;
+}
+
+.p-signal {
+  font: inherit;
+  color: var(--obsidian-dashboard-shell-text-muted);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 0 0.2rem;
+  margin-left: 0.15rem;
+  cursor: pointer;
+}
+
+.p-signal:hover {
+  background: var(--tele-accent);
+  color: #050805;
+}
+
+.p-signal[data-sig="KILL"]:hover {
+  background: var(--tele-danger);
+  color: #fff;
+}
+
+.p-signal:disabled {
+  color: var(--obsidian-dashboard-shell-text-subtle);
+  opacity: 0.35;
+  cursor: not-allowed;
+  background: none;
+}
+
+.p-signal:focus-visible {
+  outline: 1px dotted var(--tele-accent);
+  outline-offset: 1px;
+}
+
+.procs-empty {
+  padding: 0.6rem 0.3rem;
+  font-size: 0.75rem;
+  color: var(--obsidian-dashboard-shell-text-muted);
+}
+
+/* ---------- scanner ---------- */
+
+.scanner {
+  position: relative;
+}
+
+.scanner .glyph {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--obsidian-dashboard-shell-text-subtle);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9rem;
+  pointer-events: none;
+  transition: color 0.2s ease;
+}
+
+.scanner input {
+  width: 100%;
+  padding: 0.75rem 3.5rem 0.75rem 2.6rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.875rem;
+  letter-spacing: 0.04em;
+  color: var(--obsidian-dashboard-shell-foreground);
+  background: var(--obsidian-dashboard-shell-surface, var(--obsidian-dashboard-shell-muted));
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  border-radius: 10px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.scanner input::placeholder {
+  color: var(--obsidian-dashboard-shell-text-subtle);
+}
+
+.scanner input:focus {
+  border-color: color-mix(in srgb, var(--tele-accent) 55%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--tele-accent) 10%, transparent);
+}
+
+.scanner:focus-within .glyph {
+  color: var(--tele-accent);
+}
+
+.scanner .kbd {
+  position: absolute;
+  right: 0.8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.6875rem;
+  color: var(--obsidian-dashboard-shell-text-muted);
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  border-radius: 5px;
+  padding: 0.12rem 0.42rem;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.scanner input:focus ~ .kbd {
+  opacity: 0;
+}
+
+/* ---------- service grid ---------- */
+
+.stack-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.stack-card {
+  --accent: var(--tele-accent);
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.9rem 1rem;
+  border-radius: 12px;
+  background: var(--obsidian-dashboard-shell-surface, var(--obsidian-dashboard-shell-background));
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  text-decoration: none;
+  color: inherit;
+  overflow: hidden;
+  isolation: isolate;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  animation: stack-card-in 0.35s ease backwards;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+
+@keyframes stack-card-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stack-card { animation: none; }
+}
+
+.stack-card:hover,
+.stack-card:focus-visible {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent) 52%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent),
+    0 12px 32px -14px color-mix(in srgb, var(--accent) 80%, transparent);
+  outline: none;
+}
+
+/* accent bloom */
+.stack-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  background: radial-gradient(90% 130% at 8% 0%, var(--accent), transparent 62%);
+  opacity: 0.05;
+  transition: opacity 0.2s ease;
+}
+
+.stack-card:hover::before,
+.stack-card:focus-visible::before {
+  opacity: 0.12;
+}
+
+.stack-pod {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.stack-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.stack-name {
+  display: block;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stack-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.2rem;
+  min-width: 0;
+}
+
+.stack-description {
+  color: var(--obsidian-dashboard-shell-text-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stack-port {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.03em;
+  color: color-mix(in srgb, var(--accent) 78%, var(--obsidian-dashboard-shell-foreground));
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, transparent);
+  border-radius: 5px;
+  padding: 0.05rem 0.34rem;
+  flex-shrink: 0;
+}
+
+.stack-chevron {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.95rem;
+  color: var(--accent);
+  flex-shrink: 0;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.stack-card:hover .stack-chevron,
+.stack-card:focus-visible .stack-chevron {
+  opacity: 1;
+  transform: none;
+}
+
+.stack-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--obsidian-dashboard-shell-text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+  padding: 2.5rem 1rem;
+}
+
+/* ---------- phones ---------- */
+
+@media (max-width: 560px) {
+  .stack-view { padding: 0.85rem; gap: 0.9rem; }
+  .telemetry { grid-template-columns: 1fr; }
+  .procs-table .p-pid { display: none; }
+  .procs-table .p-num { width: 3.5rem; }
+  .procs-table .p-sig { width: 5.8rem; }
+  .procs-table td,
+  .procs-table th { padding: 0.18rem 0.22rem; }
+}

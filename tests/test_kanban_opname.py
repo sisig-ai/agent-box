@@ -168,7 +168,10 @@ def test_migrates_old_database(env):
 
 
 def test_ui_and_docs_mention_opname(client):
-    assert "opname" in client.get("/static/js/kanban/view.js").data.decode()
-    assert "opname" in client.get("/static/js/kanban/detail.js").data.decode()
+    from pathlib import Path
+
+    board = Path("frontend/src/components/views/kanban-view.tsx").read_text()
+    modal = Path("frontend/src/components/views/kanban/card-modal.tsx").read_text()
+    assert "opname" in board and "opname" in modal
     doc = client.get("/llm.txt").data.decode()
     assert "opname" in doc and "/api/opsboard/opnames" in doc

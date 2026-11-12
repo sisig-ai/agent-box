@@ -1,0 +1,1111 @@
+/* Ops Board styling — ObsidianUI tokens. */
+
+.kanban {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.kanban-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 20px 8px;
+}
+
+.kanban-title h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+.kanban-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--obsidian-dashboard-shell-text-subtle);
+}
+
+.kanban-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* group toggle */
+.kb-group {
+  display: inline-flex;
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.kb-group-btn {
+  appearance: none;
+  background: var(--obsidian-dashboard-shell-background);
+  border: none;
+  cursor: pointer;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--obsidian-dashboard-shell-text-muted);
+}
+
+.kb-group-btn.active {
+  background: var(--obsidian-dashboard-shell-muted);
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+.kb-group-btn + .kb-group-btn {
+  border-left: 1px solid var(--obsidian-dashboard-shell-border);
+}
+
+/* search */
+.kb-search {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.kb-search input {
+  width: 200px;
+  border-radius: 8px;
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  background: var(--obsidian-dashboard-shell-background);
+  padding: 6px 26px 6px 10px;
+  font-size: 12px;
+  color: var(--obsidian-dashboard-shell-foreground);
+  outline: none;
+}
+
+.kb-search input:focus {
+  border-color: var(--obsidian-dashboard-shell-accent);
+}
+
+.kb-search-clear {
+  position: absolute;
+  right: 4px;
+  appearance: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--obsidian-dashboard-shell-text-subtle);
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.kb-search-clear:hover {
+  background: var(--obsidian-dashboard-shell-hover);
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+/* filter bar */
+.kb-filters {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.kb-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid color-mix(in srgb, var(--obsidian-dashboard-shell-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--obsidian-dashboard-shell-accent) 10%, transparent);
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+.kb-chip:hover {
+  background: color-mix(in srgb, var(--obsidian-dashboard-shell-accent) 16%, transparent);
+}
+
+.kb-chip-field {
+  color: var(--obsidian-dashboard-shell-text-subtle);
+}
+
+.kb-chip-x {
+  margin-left: 2px;
+  color: var(--obsidian-dashboard-shell-text-subtle);
+  font-size: 12px;
+  padding: 0 2px;
+  border-radius: 4px;
+}
+
+.kb-chip-x:hover {
+  color: var(--obsidian-dashboard-shell-danger);
+}
+
+.kb-filter-add {
+  appearance: none;
+  background: none;
+  border: 1px dashed var(--obsidian-dashboard-shell-border-strong);
+  border-radius: 999px;
+  cursor: pointer;
+  padding: 3px 10px;
+  font-size: 11px;
+  color: var(--obsidian-dashboard-shell-text-muted);
+}
+
+.kb-filter-add:hover {
+  border-color: var(--obsidian-dashboard-shell-accent);
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+/* the two-stage menu */
+.kb-fm {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 55;
+  min-width: 220px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  background: var(--obsidian-dashboard-shell-menu, var(--obsidian-dashboard-shell-control));
+  backdrop-filter: blur(16px) saturate(150%);
+  box-shadow: var(--obsidian-dashboard-shell-menu-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kb-fm-title {
+  font-size: 11px;
+  color: var(--obsidian-dashboard-shell-text-subtle);
+  text-transform: lowercase;
+}
+
+.kb-fm-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.kb-fm-neg {
+  appearance: none;
+  background: var(--obsidian-dashboard-shell-muted);
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 8px;
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+.kb-fm-field,
+.kb-fm-more {
+  appearance: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+.kb-fm-field:hover {
+  background: var(--obsidian-dashboard-shell-hover);
+}
+
+.kb-fm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.kb-fm-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+.kb-fm-opt:hover {
+  background: var(--obsidian-dashboard-shell-hover);
+}
+
+.kb-fm-date {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.kb-fm-date input {
+  border-radius: 6px;
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  background: var(--obsidian-dashboard-shell-background);
+  color: var(--obsidian-dashboard-shell-foreground);
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+/* board */
+.kanban-board {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 14px;
+  align-items: stretch;
+  overflow-x: auto;
+  padding: 4px 20px 10px;
+}
+
+.kb-lane {
+  flex: 0 0 300px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  border-radius: 10px;
+  background: var(--obsidian-dashboard-shell-muted);
+  min-height: 120px;
+  min-width: 280px;
+}
+
+.kb-lane.over {
+  border-color: var(--obsidian-dashboard-shell-accent);
+  box-shadow: 0 0 0 1px var(--obsidian-dashboard-shell-accent);
+}
+
+.kb-lane-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 8px;
+  flex-wrap: wrap;
+}
+
+.kb-lane-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--obsidian-dashboard-shell-foreground);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.kb-lane-name:hover {
+  text-decoration: underline dotted;
+}
+
+.kb-lane-rename,
+.kb-inline {
+  border-radius: 6px;
+  border: 1px solid var(--obsidian-dashboard-shell-accent);
+  background: var(--obsidian-dashboard-shell-background);
+  color: var(--obsidian-dashboard-shell-foreground);
+  font-size: 12px;
+  padding: 2px 6px;
+  outline: none;
+  min-width: 0;
+  width: 100%;
+}
+
+.kb-count {
+  font-size: 11px;
+  color: var(--obsidian-dashboard-shell-text-subtle);
+  background: var(--obsidian-dashboard-shell-background);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+.kb-archive-btn {
+  appearance: none;
+  background: none;
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 10px;
+  padding: 2px 7px;
+  color: var(--obsidian-dashboard-shell-text-muted);
+  margin-left: auto;
+}
+
+.kb-archive-btn:hover:not(:disabled) {
+  color: var(--obsidian-dashboard-shell-foreground);
+  border-color: var(--obsidian-dashboard-shell-border-strong);
+}
+
+.kb-archive-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.kb-icon {
+  appearance: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--obsidian-dashboard-shell-text-subtle);
+  font-size: 13px;
+  padding: 0 5px;
+  border-radius: 6px;
+}
+
+.kb-icon:hover:not(:disabled) {
+  background: var(--obsidian-dashboard-shell-hover);
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+.kb-icon:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.kb-icon.danger:hover:not(:disabled),
+.kb-del:hover:not(:disabled) {
+  color: var(--obsidian-dashboard-shell-danger);
+}
+
+.kb-cards {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 10px 8px;
+}
+
+/* card */
+.kb-card {
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  border-radius: 8px;
+  background: var(--obsidian-dashboard-shell-background);
+  padding: 9px 10px;
+  cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.kb-card:hover {
+  border-color: var(--obsidian-dashboard-shell-border-strong);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.08);
+}
+
+.kb-card:focus-visible {
+  outline: 2px solid var(--obsidian-dashboard-shell-ring);
+  outline-offset: 1px;
+}
+
+.kb-card.dragging {
+  opacity: 0.55;
+}
+
+.kb-card.is-archived {
+  opacity: 0.6;
+}
+
+.kb-card.kb-search-hit {
+  border-color: color-mix(in srgb, #d4b106 55%, transparent);
+}
+
+.kb-card.kb-semantic-hit {
+  border-color: color-mix(in srgb, #8b5cf6 55%, transparent);
+}
+
+.kb-card.attention-unread {
+  background-image: linear-gradient(
+    110deg,
+    transparent 0%,
+    color-mix(in srgb, var(--obsidian-dashboard-shell-accent) 16%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 220% 100%;
+  animation: kb-shimmer 2.4s linear infinite;
+}
+
+@keyframes kb-shimmer {
+  0% { background-position: 130% 0; }
+  100% { background-position: -130% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kb-card.attention-unread { animation: none; }
+}
+
+.kb-hl {
+  background: color-mix(in srgb, #d4b106 32%, transparent);
+  border-radius: 2px;
+}
+
+.kb-opname {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  appearance: none;
+  background: var(--obsidian-dashboard-shell-muted);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  padding: 1px 8px;
+  font-size: 10px;
+  color: var(--obsidian-dashboard-shell-text-muted);
+  margin-bottom: 6px;
+}
+
+.kb-opname.active {
+  border-color: var(--obsidian-dashboard-shell-accent);
+  color: var(--obsidian-dashboard-shell-accent);
+}
+
+.kb-opname-ico {
+  font-size: 9px;
+}
+
+.kb-card-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--obsidian-dashboard-shell-foreground);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.kb-card-preview {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--obsidian-dashboard-shell-text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.kb-card-snippet {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--obsidian-dashboard-shell-text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.kb-snippet-src {
+  color: var(--obsidian-dashboard-shell-accent);
+  margin-right: 3px;
+}
+
+.kb-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 7px;
+  flex-wrap: wrap;
+  font-size: 10px;
+  color: var(--obsidian-dashboard-shell-text-subtle);
+}
+
+.kb-semantic-score {
+  color: #8b5cf6;
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+}
+
+.kb-owner {
+  cursor: pointer;
+  border-radius: 999px;
+  padding: 0 6px;
+}
+
+.kb-owner:hover {
+  background: var(--obsidian-dashboard-shell-hover);
+}
+
+.kb-owner.none {
+  color: var(--obsidian-dashboard-shell-text-subtle);
+}
+
+.kb-badge {
+  border-radius: 4px;
+  padding: 0 4px;
+  background: var(--obsidian-dashboard-shell-muted);
+}
+
+.kb-badge-tasks.done {
+  color: var(--obsidian-dashboard-shell-success);
+}
+
+.kb-id {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.kb-card-docs {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.kb-doc,
+.kbd-doc {
+  font-size: 10px;
+  color: var(--obsidian-dashboard-shell-accent);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.kb-doc:hover,
+.kbd-doc:hover {
+  text-decoration: underline;
+}
+
+/* add card */
+.kb-add {
+  padding: 0 10px 10px;
+}
+
+.kb-add-open {
+  appearance: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  padding: 4px 6px;
+  font-size: 11px;
+  color: var(--obsidian-dashboard-shell-text-subtle);
+  border-radius: 6px;
+  width: 100%;
+}
+
+.kb-add-open:hover {
+  background: var(--obsidian-dashboard-shell-hover);
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+.kb-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--obsidian-dashboard-shell-background);
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.kb-add-form input {
+  border-radius: 6px;
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  background: var(--obsidian-dashboard-shell-background);
+  padding: 5px 7px;
+  font-size: 12px;
+  color: var(--obsidian-dashboard-shell-foreground);
+  outline: none;
+}
+
+.kb-add-form input:focus {
+  border-color: var(--obsidian-dashboard-shell-accent);
+}
+
+.kb-add-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.kb-lane-input {
+  width: 140px;
+  border-radius: 8px;
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  background: var(--obsidian-dashboard-shell-background);
+  padding: 5px 8px;
+  font-size: 12px;
+  color: var(--obsidian-dashboard-shell-foreground);
+  outline: none;
+}
+
+.kb-lane-input:focus {
+  border-color: var(--obsidian-dashboard-shell-accent);
+}
+
+/* owner grouping */
+.kb-owner-col .kb-lane-head {
+  border-bottom: 1px solid var(--obsidian-dashboard-shell-border);
+}
+
+/* status line */
+.kanban-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 20px;
+  border-top: 1px solid var(--obsidian-dashboard-shell-border);
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--obsidian-dashboard-shell-text-muted);
+}
+
+.kanban-status .err {
+  color: var(--obsidian-dashboard-shell-danger);
+}
+
+/* ----- card modal ----- */
+
+.kbd-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  background: rgb(0 0 0 / 0.55);
+  padding: 24px 16px;
+  overflow-y: auto;
+}
+
+.kbd-modal {
+  width: 100%;
+  max-width: 672px;
+  border-radius: 12px;
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  background: var(--obsidian-dashboard-shell-control);
+  box-shadow: var(--obsidian-dashboard-shell-menu-shadow);
+  padding: 16px 18px;
+  margin: auto 0;
+}
+
+.kbd-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.kbd-id {
+  font-size: 11px;
+  color: var(--obsidian-dashboard-shell-text-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.kbd-title {
+  margin: 0;
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--obsidian-dashboard-shell-foreground);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.kbd-title:hover {
+  text-decoration: underline dotted;
+}
+
+.kbd-title-input {
+  flex: 1;
+  border-radius: 6px;
+  border: 1px solid var(--obsidian-dashboard-shell-accent);
+  background: var(--obsidian-dashboard-shell-background);
+  color: var(--obsidian-dashboard-shell-foreground);
+  font-size: 14px;
+  padding: 4px 8px;
+  outline: none;
+}
+
+.kbd-close {
+  font-size: 16px;
+}
+
+.kbd-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+  font-size: 12px;
+  color: var(--obsidian-dashboard-shell-text-muted);
+}
+
+.kbd-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 10px;
+  color: var(--obsidian-dashboard-shell-text-subtle);
+}
+
+.kbd-status,
+.kbd-owner,
+.kbd-opname {
+  border-radius: 6px;
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  background: var(--obsidian-dashboard-shell-background);
+  color: var(--obsidian-dashboard-shell-foreground);
+  font-size: 12px;
+  padding: 3px 7px;
+  outline: none;
+  min-width: 90px;
+}
+
+.kbd-status:focus,
+.kbd-owner:focus,
+.kbd-opname:focus {
+  border-color: var(--obsidian-dashboard-shell-accent);
+}
+
+.kbd-times {
+  font-size: 10px;
+  color: var(--obsidian-dashboard-shell-text-subtle);
+}
+
+/* docs */
+.kbd-docs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 0;
+  border-top: 1px solid var(--obsidian-dashboard-shell-border);
+}
+
+.kbd-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0 6px;
+  border-top: 1px solid var(--obsidian-dashboard-shell-border);
+}
+
+.kbd-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: lowercase;
+  color: var(--obsidian-dashboard-shell-text-subtle);
+}
+
+.kbd-doc-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.kbd-doc.none {
+  color: var(--obsidian-dashboard-shell-text-subtle);
+}
+
+.kbd-doc-input {
+  border-radius: 6px;
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  background: var(--obsidian-dashboard-shell-background);
+  color: var(--obsidian-dashboard-shell-foreground);
+  font-size: 12px;
+  padding: 4px 8px;
+  outline: none;
+}
+
+.kbd-doc-input:focus {
+  border-color: var(--obsidian-dashboard-shell-accent);
+}
+
+.kbd-preview-toggle.toggled,
+.kbc-preview-btn.toggled {
+  background: var(--obsidian-dashboard-shell-muted);
+}
+
+.kbd-edit-btn,
+.kbd-save-btn,
+.kbd-cancel-btn,
+.kbd-preview-toggle,
+.kbd-add-subtask,
+.kbc-more,
+.kbd-parent-link {
+  appearance: none;
+  background: none;
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 3px 8px;
+  color: var(--obsidian-dashboard-shell-text-muted);
+}
+
+.kbd-edit-btn:hover,
+.kbd-save-btn:hover,
+.kbd-cancel-btn:hover,
+.kbd-preview-toggle:hover,
+.kbd-add-subtask:hover,
+.kbc-more:hover,
+.kbd-parent-link:hover {
+  color: var(--obsidian-dashboard-shell-foreground);
+  border-color: var(--obsidian-dashboard-shell-border-strong);
+}
+
+.kbd-save-btn {
+  border-color: var(--obsidian-dashboard-shell-accent);
+  color: var(--obsidian-dashboard-shell-accent);
+}
+
+/* body markdown */
+.kbd-md {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--obsidian-dashboard-shell-foreground);
+  overflow-wrap: anywhere;
+}
+
+.kbd-md h1, .kbd-md h2, .kbd-md h3, .kbd-md h4 {
+  font-size: 13px;
+  margin: 10px 0 4px;
+}
+
+.kbd-md p {
+  margin: 6px 0;
+}
+
+.kbd-md pre {
+  background: var(--obsidian-dashboard-shell-muted);
+  border-radius: 8px;
+  padding: 8px 10px;
+  overflow-x: auto;
+  font-size: 11px;
+}
+
+.kbd-md code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+
+.kbd-md table {
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 11px;
+}
+
+.kbd-md th, .kbd-md td {
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  padding: 3px 8px;
+}
+
+.kbd-md a {
+  color: var(--obsidian-dashboard-shell-accent);
+}
+
+.kbd-md input[type="checkbox"] {
+  pointer-events: auto;
+}
+
+.kbd-editor {
+  display: flex;
+  gap: 10px;
+}
+
+.kbd-editor.split {
+  flex-direction: row;
+}
+
+.kbd-text {
+  flex: 1;
+  min-height: 200px;
+  border-radius: 8px;
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  background: var(--obsidian-dashboard-shell-background);
+  color: var(--obsidian-dashboard-shell-foreground);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  padding: 8px 10px;
+  resize: vertical;
+  outline: none;
+}
+
+.kbd-text:focus {
+  border-color: var(--obsidian-dashboard-shell-accent);
+}
+
+.kbd-editor.split .kbd-preview {
+  flex: 1;
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  overflow-y: auto;
+  max-height: 300px;
+}
+
+.kbd-dirty-hint {
+  font-size: 10px;
+  color: var(--obsidian-dashboard-shell-warning);
+  padding-top: 4px;
+}
+
+/* subtasks */
+.kbd-subtasks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 8px;
+}
+
+.kbd-subtask {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.kbd-subtask-title {
+  appearance: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--obsidian-dashboard-shell-foreground);
+  font-size: 12px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.kbd-subtask-title:hover {
+  background: var(--obsidian-dashboard-shell-hover);
+}
+
+.kbd-subtask-meta {
+  display: flex;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--obsidian-dashboard-shell-text-subtle);
+}
+
+/* message line */
+.kbd-foot {
+  padding: 6px 0;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.kbd-msg {
+  color: var(--obsidian-dashboard-shell-text-muted);
+}
+
+.kbd-msg.err {
+  color: var(--obsidian-dashboard-shell-danger);
+}
+
+/* comments */
+.kbc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.kbc-item {
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  border-radius: 8px;
+  padding: 7px 9px;
+}
+
+.kbc-item.is-new {
+  border-color: color-mix(in srgb, var(--obsidian-dashboard-shell-accent) 45%, transparent);
+}
+
+.kbc-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--obsidian-dashboard-shell-text-subtle);
+  margin-bottom: 4px;
+}
+
+.kbc-author-name {
+  font-weight: 600;
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+.kbc-del.armed {
+  color: var(--obsidian-dashboard-shell-danger);
+}
+
+.kbc-more {
+  align-self: flex-start;
+}
+
+.kbc-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid var(--obsidian-dashboard-shell-border);
+  padding-top: 8px;
+}
+
+.kbc-text {
+  min-height: 64px;
+  border-radius: 8px;
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  background: var(--obsidian-dashboard-shell-background);
+  color: var(--obsidian-dashboard-shell-foreground);
+  font-size: 12px;
+  padding: 6px 8px;
+  resize: vertical;
+  outline: none;
+}
+
+.kbc-text:focus {
+  border-color: var(--obsidian-dashboard-shell-accent);
+}
+
+.kbc-preview {
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.kbc-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kbc-author {
+  width: 130px;
+  border-radius: 6px;
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  background: var(--obsidian-dashboard-shell-background);
+  color: var(--obsidian-dashboard-shell-foreground);
+  font-size: 12px;
+  padding: 3px 7px;
+  outline: none;
+}
+
+.kbc-post {
+  margin-left: auto;
+  appearance: none;
+  background: var(--obsidian-dashboard-shell-accent);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--obsidian-dashboard-shell-accent-foreground);
+  font-size: 11px;
+  padding: 4px 10px;
+}
+
+.kbc-post:hover {
+  background: var(--obsidian-dashboard-shell-accent-hover);
+}
+
+.kbd-empty {
+  font-size: 11px;
+  color: var(--obsidian-dashboard-shell-text-subtle);
+  margin: 4px 0;
+}

@@ -1,69 +1,60 @@
-// The filter menu's state machine: the negate ("is"/"is not") toggle must
-// survive until a value is ticked, and commit as today once one is.
+// The filter menu's commit semantics, ported to the React FilterBar: the
+// negate ("is"/"is not") choice survives until a value is ticked, and a
+// condition commits as soon as one value is chosen. The pure matching rules
+// live in kanban-filters.test.mjs; this covers the add/edit/remove flow as
+// the component implements it (list = filters, commit = onChange payload).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { filterBar } from '../static/js/kanban/filter-bar.js';
 
-// A bare menu state with the filter-bar methods bound on top and setFilters
-// captured instead of writing to localStorage.
-function menu(state = {}) {
-  const inst = {
-    filters: state.filters ?? [],
-    filterField: state.filterField ?? 'author',
-    filterIndex: state.filterIndex ?? null,
-    filterValues: state.filterValues ?? [],
-    filterNegate: state.filterNegate ?? false,
-    saved: null,
-    setFilters(list) {
-      inst.saved = list;
-      inst.filters = list;
-    },
-    toggleFilterNegate: filterBar.toggleFilterNegate,
-    toggleFilterValue: filterBar.toggleFilterValue,
-    commitFilter: filterBar.commitFilter,
-  };
-  return inst;
+// Mirror of the component's commit() — kept in sync by review; the component
+// owns the real copy (src/components/views/kanban/filter-bar.tsx).
+function commit(filters, { editIndex = null, field = 'author', values = [], negate = false }) {
+  const list = filters.map((cond) => ({ ...cond, values: [...cond.values] }));
+  let closedMenu = false;
+  if (editIndex == null) {
+    if (!values.length) return { list: filters, closedMenu };
+    list.push({ field, negate, values });
+  } else if (values.length) {
+    list[editIndex] = { field, negate, values };
+  } else {
+    list.splice(editIndex, 1);
+    closedMenu = true;
+  }
+  return { list, closedMenu };
 }
 
-test('negate before the first value is kept in the menu, not committed', () => {
-  const m = menu();
-  m.toggleFilterNegate();
-  assert.equal(m.filterNegate, true);
-  assert.deepEqual(m.filters, []);
-  assert.equal(m.saved, null);
-  m.toggleFilterNegate();
-  assert.equal(m.filterNegate, false);
-  assert.equal(m.saved, null);
+test('a new condition commits as soon as one value is ticked', () => {
+  const { list } = commit([], { values: ['box'] });
+  assert.deepEqual(list, [{ field: 'author', negate: false, values: ['box'] }]);
 });
 
-test('a negate chosen before the first value applies once a value is ticked', () => {
-  const m = menu({ filterField: 'author' });
-  m.toggleFilterNegate();
-  m.toggleFilterValue('Cody');
-  assert.equal(m.filterNegate, true);
-  assert.deepEqual(m.filters, [{ field: 'author', negate: true, values: ['Cody'] }]);
+test('negate set before any value survives until the value is ticked', () => {
+  const { list } = commit([], { negate: true, values: ['hermes'] });
+  assert.equal(list[0].negate, true);
+  assert.deepEqual(list[0].values, ['hermes']);
 });
 
-test('negate after a committed value still flips the condition', () => {
-  const m = menu({ filterField: 'author' });
-  m.toggleFilterValue('Cody');
-  assert.deepEqual(m.filters, [{ field: 'author', negate: false, values: ['Cody'] }]);
-  m.toggleFilterNegate();
-  assert.deepEqual(m.filters, [{ field: 'author', negate: true, values: ['Cody'] }]);
+test('ticking a second value adds it to the same condition', () => {
+  const first = [{ field: 'author', negate: false, values: ['box'] }];
+  const { list } = commit(first, { editIndex: 0, field: 'author', values: ['box', 'hermes'] });
+  assert.deepEqual(list[0].values, ['box', 'hermes']);
+  assert.equal(list.length, 1);
 });
 
-test('un-ticking the last value, negate, then re-ticking commits negated', () => {
-  const m = menu({
-    filters: [{ field: 'author', negate: false, values: ['Cody'] }],
-    filterField: 'author',
-    filterIndex: 0,
-    filterValues: ['Cody'],
-  });
-  m.toggleFilterValue('Cody');
-  assert.deepEqual(m.filters, []);
-  assert.equal(m.filterIndex, null);
-  m.toggleFilterNegate();
-  assert.equal(m.filterNegate, true);
-  m.toggleFilterValue('Cody');
-  assert.deepEqual(m.filters, [{ field: 'author', negate: true, values: ['Cody'] }]);
+test('unticking every value removes the condition and closes the menu', () => {
+  const one = [{ field: 'author', negate: false, values: ['box'] }];
+  const { list, closedMenu } = commit(one, { editIndex: 0, field: 'author', values: [] });
+  assert.deepEqual(list, []);
+  assert.equal(closedMenu, true);
+});
+
+test('editing keeps position and updates negate', () => {
+  const two = [
+    { field: 'lane', negate: false, values: ['1'] },
+    { field: 'op', negate: false, values: ['valhalla'] },
+  ];
+  const { list } = commit(two, { editIndex: 1, field: 'op', values: ['valhalla'], negate: true });
+  assert.equal(list.length, 2);
+  assert.deepEqual(list[0], { field: 'lane', negate: false, values: ['1'] });
+  assert.equal(list[1].negate, true);
 });

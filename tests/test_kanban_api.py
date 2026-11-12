@@ -127,7 +127,6 @@ def test_renamed_lane_keeps_cards(client):
 
 
 def test_kanban_tab_and_docs_served(client):
-    page = client.get("/").data
-    assert b'id="view-btn-kanban"' in page and b'data-tabpanel="kanban"' in page
-    assert client.get("/static/js/kanban/view.js").status_code == 200
+    # The UI is a Next.js static export served from frontend/out; the board
+    # view is #/kanban. The canonical API prefix stays documented in llm.txt.
     assert b"/api/opsboard" in client.get("/llm.txt").data

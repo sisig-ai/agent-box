@@ -1,0 +1,505 @@
+/* Files explorer: folder table + breadcrumb, details/places sidebar, inline
+   text editor, upload drop zone. All colors come from the ObsidianUI
+   --obsidian-dashboard-shell-* tokens set by the dashboard shell. */
+
+.files-root {
+  --files-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* ---------- header ---------- */
+
+.files-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--obsidian-dashboard-shell-border);
+}
+
+.files-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.files-title h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+.files-path-label {
+  font-family: var(--files-mono);
+  font-size: 11px;
+  color: var(--obsidian-dashboard-shell-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.files-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* armed state for the dotfiles toggle */
+.files-actions .files-armed {
+  background: color-mix(in srgb, var(--obsidian-dashboard-shell-accent) 16%, transparent);
+  color: var(--obsidian-dashboard-shell-accent);
+}
+
+.files-actions .files-armed:hover {
+  background: color-mix(in srgb, var(--obsidian-dashboard-shell-accent) 26%, transparent);
+}
+
+/* ---------- breadcrumb ---------- */
+
+.files-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--obsidian-dashboard-shell-border);
+  font-family: var(--files-mono);
+  font-size: 11px;
+}
+
+.files-crumb {
+  padding: 2px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  color: var(--obsidian-dashboard-shell-text-muted);
+}
+
+.files-crumb:hover {
+  color: var(--obsidian-dashboard-shell-foreground);
+  background: var(--obsidian-dashboard-shell-hover);
+}
+
+.files-crumb.current {
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+.files-crumb-sep {
+  color: var(--obsidian-dashboard-shell-text-subtle);
+}
+
+/* ---------- two-pane body ---------- */
+
+.files-body {
+  display: flex;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* ---------- list pane ---------- */
+
+.files-list-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: auto;
+  border-right: 1px solid var(--obsidian-dashboard-shell-border);
+  transition: box-shadow 0.15s ease;
+}
+
+.files-list-wrap.dragover {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--obsidian-dashboard-shell-accent) 60%, transparent);
+}
+
+.files-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 13px;
+}
+
+.files-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--obsidian-dashboard-shell-background);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--obsidian-dashboard-shell-text-muted);
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--obsidian-dashboard-shell-border);
+  white-space: nowrap;
+  user-select: none;
+  cursor: default;
+}
+
+.files-table thead th[data-sort] {
+  cursor: pointer;
+}
+
+.files-table thead th[data-sort]:hover {
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+.files-table thead th.files-sorted::after {
+  content: " ▾";
+  color: var(--obsidian-dashboard-shell-accent);
+}
+
+.files-table thead th.files-sorted.files-asc::after {
+  content: " ▴";
+}
+
+.files-table td {
+  padding: 4px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--obsidian-dashboard-shell-border) 55%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 0;
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+/* fixed column widths (name takes the rest) */
+.files-table th.col-size,
+.files-table td.files-size {
+  width: 84px;
+}
+
+.files-table th.col-date,
+.files-table td.files-date {
+  width: 160px;
+}
+
+.files-table th.col-mode,
+.files-table td.files-mode {
+  width: 100px;
+}
+
+.files-table th.col-actions,
+.files-table td.files-actions-cell {
+  width: 124px;
+}
+
+.files-row {
+  cursor: pointer;
+}
+
+.files-row:hover {
+  background: color-mix(in srgb, var(--obsidian-dashboard-shell-accent) 7%, transparent);
+}
+
+.files-row.selected {
+  background: color-mix(in srgb, var(--obsidian-dashboard-shell-accent) 14%, transparent);
+}
+
+.files-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.files-icon {
+  width: 14px;
+  text-align: center;
+  flex-shrink: 0;
+  font-family: var(--files-mono);
+  font-size: 11px;
+  color: var(--obsidian-dashboard-shell-text-subtle);
+}
+
+.files-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.files-link-note {
+  flex-shrink: 0;
+  font-family: var(--files-mono);
+  font-size: 10px;
+  color: var(--obsidian-dashboard-shell-text-subtle);
+}
+
+.files-size,
+.files-date,
+.files-mode {
+  font-family: var(--files-mono);
+  font-size: 11px;
+  color: var(--obsidian-dashboard-shell-text-muted);
+}
+
+.files-actions-cell {
+  text-align: right;
+}
+
+.files-row-actions {
+  display: flex;
+  gap: 3px;
+  justify-content: flex-end;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.files-row:hover .files-row-actions,
+.files-row.selected .files-row-actions {
+  opacity: 1;
+}
+
+.files-act {
+  font-family: var(--files-mono);
+  font-size: 11px;
+  line-height: 1;
+  color: var(--obsidian-dashboard-shell-text-muted);
+  background: var(--obsidian-dashboard-shell-muted);
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  border-radius: 6px;
+  padding: 3px 6px;
+  cursor: pointer;
+}
+
+.files-act:hover {
+  color: var(--obsidian-dashboard-shell-foreground);
+  border-color: color-mix(in srgb, var(--obsidian-dashboard-shell-accent) 50%, transparent);
+}
+
+.files-act-danger:hover {
+  color: var(--obsidian-dashboard-shell-danger);
+  border-color: color-mix(in srgb, var(--obsidian-dashboard-shell-danger) 50%, transparent);
+}
+
+.files-empty {
+  padding: 20px 14px;
+  font-family: var(--files-mono);
+  font-size: 12px;
+  color: var(--obsidian-dashboard-shell-text-subtle);
+}
+
+.files-drop-hint {
+  position: sticky;
+  bottom: 0;
+  display: none;
+  text-align: center;
+  font-family: var(--files-mono);
+  font-size: 11px;
+  color: var(--obsidian-dashboard-shell-accent);
+  padding: 8px;
+  background: color-mix(in srgb, var(--obsidian-dashboard-shell-accent) 12%, var(--obsidian-dashboard-shell-background));
+  border-top: 1px solid color-mix(in srgb, var(--obsidian-dashboard-shell-accent) 40%, transparent);
+}
+
+.files-list-wrap.dragover .files-drop-hint {
+  display: block;
+}
+
+/* ---------- details + places sidebar ---------- */
+
+.files-info {
+  flex: 0 0 260px;
+  padding: 12px;
+  overflow-y: auto;
+  font-family: var(--files-mono);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.files-info h3 {
+  margin: 0 0 8px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--obsidian-dashboard-shell-text-muted);
+}
+
+.files-info-empty {
+  color: var(--obsidian-dashboard-shell-text-subtle);
+}
+
+.files-info-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--obsidian-dashboard-shell-foreground);
+  overflow-wrap: anywhere;
+}
+
+.files-info dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 8px;
+  margin: 0;
+}
+
+.files-info-row {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
+}
+
+.files-info dt {
+  color: var(--obsidian-dashboard-shell-text-muted);
+  white-space: nowrap;
+}
+
+.files-info dd {
+  margin: 0;
+  color: var(--obsidian-dashboard-shell-foreground);
+  overflow-wrap: anywhere;
+}
+
+.files-places {
+  margin-top: 16px;
+  border-top: 1px solid var(--obsidian-dashboard-shell-border);
+  padding-top: 10px;
+}
+
+.files-places h3 {
+  margin: 0 0 6px;
+}
+
+.files-place {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  font-family: var(--files-mono);
+  font-size: 11px;
+  color: var(--obsidian-dashboard-shell-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.files-place:hover {
+  color: var(--obsidian-dashboard-shell-foreground);
+  background: var(--obsidian-dashboard-shell-hover);
+}
+
+.files-place.active {
+  color: var(--obsidian-dashboard-shell-foreground);
+  background: color-mix(in srgb, var(--obsidian-dashboard-shell-accent) 14%, transparent);
+}
+
+.files-place-name {
+  flex-shrink: 0;
+  font-weight: 600;
+}
+
+.files-place-path {
+  color: var(--obsidian-dashboard-shell-text-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.files-place.active .files-place-path {
+  color: var(--obsidian-dashboard-shell-text-muted);
+}
+
+/* ---------- inline editor ---------- */
+
+.files-editor {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.files-editor-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--obsidian-dashboard-shell-border);
+}
+
+.files-editor-name {
+  font-family: var(--files-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--obsidian-dashboard-shell-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.files-editor-dirty {
+  flex-shrink: 0;
+  font-family: var(--files-mono);
+  font-size: 10px;
+  color: var(--obsidian-dashboard-shell-warning);
+  border: 1px solid color-mix(in srgb, var(--obsidian-dashboard-shell-warning) 45%, transparent);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.files-editor-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.files-editor-host {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  resize: none;
+  border: none;
+  outline: none;
+  padding: 12px 14px;
+  font-family: var(--files-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  background: var(--obsidian-dashboard-shell-background);
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+/* ---------- status bar ---------- */
+
+.files-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 14px;
+  border-top: 1px solid var(--obsidian-dashboard-shell-border);
+  font-family: var(--files-mono);
+  font-size: 11px;
+  color: var(--obsidian-dashboard-shell-text-muted);
+}
+
+.files-status-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.files-status.error {
+  color: var(--obsidian-dashboard-shell-danger);
+}
+
+.files-count {
+  flex-shrink: 0;
+  white-space: nowrap;
+}

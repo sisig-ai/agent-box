@@ -1,0 +1,246 @@
+/* Access logs — nginx-style table of MCP invocations.
+   ObsidianUI tokens; 13px data rows, sticky header, error rows red-tinted. */
+
+.logs {
+  --logs-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* ---------- header ---------- */
+
+.logs-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--obsidian-dashboard-shell-border);
+}
+
+.logs-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.logs-title h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+.logs-sub {
+  font-family: var(--logs-mono);
+  font-size: 11px;
+  color: var(--obsidian-dashboard-shell-text-subtle);
+}
+
+.logs-sub code {
+  font-family: inherit;
+  font-size: 10px;
+}
+
+.logs-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.logs-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--logs-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--obsidian-dashboard-shell-text-muted);
+}
+
+.logs-filter select {
+  font-family: var(--logs-mono);
+  font-size: 11px;
+  color: var(--obsidian-dashboard-shell-foreground);
+  background: var(--obsidian-dashboard-shell-background);
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  border-radius: 6px;
+  padding: 4px 6px;
+  max-width: 14rem;
+  outline: none;
+}
+
+.logs-filter select:focus {
+  border-color: var(--obsidian-dashboard-shell-accent);
+}
+
+.logs-filter select.active {
+  border-color: color-mix(in srgb, var(--obsidian-dashboard-shell-accent) 55%, transparent);
+  color: var(--obsidian-dashboard-shell-accent);
+}
+
+/* ---------- table ---------- */
+
+.logs-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.logs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--logs-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.logs-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--obsidian-dashboard-shell-background);
+  color: var(--obsidian-dashboard-shell-text-muted);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--obsidian-dashboard-shell-border);
+  white-space: nowrap;
+}
+
+.logs-table td {
+  padding: 5px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--obsidian-dashboard-shell-border) 55%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 0;
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+.logs-table tbody tr:hover {
+  background: var(--obsidian-dashboard-shell-hover);
+}
+
+/* error rows: red tint across the whole row */
+.logs-table tr.lg-err {
+  background: color-mix(in srgb, var(--obsidian-dashboard-shell-danger) 7%, transparent);
+}
+
+.logs-table tr.lg-err:hover {
+  background: color-mix(in srgb, var(--obsidian-dashboard-shell-danger) 11%, transparent);
+}
+
+/* ---------- columns ---------- */
+
+.lg-time {
+  width: 7.5rem;
+}
+
+.lg-time .lg-clock {
+  color: var(--obsidian-dashboard-shell-foreground);
+  margin-right: 6px;
+}
+
+.lg-time .lg-day {
+  font-size: 10px;
+  color: var(--obsidian-dashboard-shell-text-subtle);
+}
+
+.lg-action {
+  width: 12rem;
+  color: var(--obsidian-dashboard-shell-foreground);
+}
+
+.lg-entity {
+  width: 16rem;
+  color: var(--obsidian-dashboard-shell-text-muted);
+}
+
+tr.lg-err .lg-entity {
+  color: var(--obsidian-dashboard-shell-danger);
+}
+
+.lg-ms {
+  width: 4.5rem;
+  text-align: right;
+  color: var(--obsidian-dashboard-shell-text-muted);
+}
+
+.lg-status {
+  width: 5rem;
+}
+
+.lg-args {
+  color: var(--obsidian-dashboard-shell-text-muted);
+}
+
+/* ---------- result pill ---------- */
+
+.lg-pill {
+  display: inline-block;
+  padding: 0 7px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.5;
+}
+
+.lg-pill.ok {
+  color: var(--obsidian-dashboard-shell-success);
+  background: color-mix(in srgb, var(--obsidian-dashboard-shell-success) 10%, transparent);
+}
+
+.lg-pill.err {
+  color: var(--obsidian-dashboard-shell-danger);
+  background: color-mix(in srgb, var(--obsidian-dashboard-shell-danger) 10%, transparent);
+}
+
+/* ---------- empty + status ---------- */
+
+.logs-empty {
+  padding: 16px 14px;
+  margin: 0;
+  font-family: var(--logs-mono);
+  font-size: 12px;
+  color: var(--obsidian-dashboard-shell-text-subtle);
+}
+
+.logs-status {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 8px 14px;
+  font-family: var(--logs-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--obsidian-dashboard-shell-text-muted);
+  border-top: 1px solid var(--obsidian-dashboard-shell-border);
+}
+
+.logs-status .err {
+  color: var(--obsidian-dashboard-shell-danger);
+}
+
+@media (max-width: 900px) {
+  .lg-args {
+    display: none;
+  }
+
+  .lg-entity {
+    width: auto;
+  }
+}

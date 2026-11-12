@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: #ffffff;
+  --foreground: #161616;
+  --card: #ffffff;
+  --card-foreground: #161616;
+  --popover: #ffffff;
+  --popover-foreground: #161616;
+  --primary: #2563eb;
+  --primary-foreground: #f9fbff;
+  --secondary: #efefef;
+  --secondary-foreground: #161616;
+  --muted: #efefef;
+  --muted-foreground: #5c5c5c;
+  --accent: #efefef;
+  --accent-foreground: #161616;
+  --destructive: #e5484d;
+  --destructive-foreground: #ffffff;
+  --border: #e7e7e7;
+  --input: #e7e7e7;
+  --ring: #8b8b8b;
+  --radius: 0.625rem;
+}
+
+.dark {
+  --background: #161616;
+  --foreground: #f9fbff;
+  --card: #161616;
+  --card-foreground: #f9fbff;
+  --popover: #1e1e1e;
+  --popover-foreground: #f9fbff;
+  --primary: #3b82f6;
+  --primary-foreground: #f9fbff;
+  --secondary: #2a2a2a;
+  --secondary-foreground: #f9fbff;
+  --muted: #2a2a2a;
+  --muted-foreground: #9a9a9a;
+  --accent: #2a2a2a;
+  --accent-foreground: #f9fbff;
+  --destructive: #f97373;
+  --destructive-foreground: #ffffff;
+  --border: #232323;
+  --input: #232323;
+  --ring: #676767;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+}

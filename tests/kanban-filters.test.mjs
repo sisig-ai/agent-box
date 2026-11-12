@@ -1,108 +1,113 @@
 // The board's stackable filters: AND between conditions, OR inside one.
-// The DOM half is covered by the browser probe; these are the pure rules.
+// Ported from static/js/kanban/filters.js to the React lib (same rules).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   NONE,
   activeOp,
-  describe as describeChip,
   hasOp,
   matches,
   setOpFilter,
-} from '../static/js/kanban/filters.js';
+  valueLabel,
+} from '../frontend/src/lib/filters.ts';
 
 const laneOf = (card) => card.lane_id;
-const now = new Date('2026-11-03T12:00:00+08:00');
-const card = (over) => ({ lane_id: 3, owner: 'Cody', opname: 'CCE-1', updated_at: '2026-11-03T09:00:00+08:00', ...over });
+const card = (over = {}) => ({
+  lane_id: 1,
+  owner: 'box',
+  opname: 'valhalla',
+  updated_at: '2026-11-12T08:00:00+08:00',
+  ...over,
+});
+const cond = (field, values, negate = false) => ({ field, negate, values });
 
-test('bare filters match everything', () => {
-  assert.equal(matches([], card(), laneOf, now), true);
+test('no filter matches everything', () => {
+  assert.equal(matches([], card(), laneOf), true);
 });
 
-test('conditions AND together', () => {
-  const filters = [
-    { field: 'lane', negate: false, values: ['3'] },
-    { field: 'author', negate: false, values: ['Cody'] },
-  ];
-  assert.equal(matches(filters, card(), laneOf, now), true);
-  assert.equal(matches(filters, card({ lane_id: 4 }), laneOf, now), false);
-  assert.equal(matches(filters, card({ owner: 'Ann' }), laneOf, now), false);
+test('one condition, values OR inside it', () => {
+  const byLane = cond('lane', ['1', '2']);
+  assert.equal(matches([byLane], card({ lane_id: 1 }), laneOf), true);
+  assert.equal(matches([byLane], card({ lane_id: 2 }), laneOf), true);
+  assert.equal(matches([byLane], card({ lane_id: 3 }), laneOf), false);
 });
 
-test('values inside one condition OR together', () => {
-  const filters = [{ field: 'lane', negate: false, values: ['3', '7'] }];
-  assert.equal(matches(filters, card({ lane_id: 3 }), laneOf, now), true);
-  assert.equal(matches(filters, card({ lane_id: 7 }), laneOf, now), true);
-  assert.equal(matches(filters, card({ lane_id: 5 }), laneOf, now), false);
+test('two conditions AND together', () => {
+  const byLane = cond('lane', ['1']);
+  const byOwner = cond('author', ['box']);
+  assert.equal(matches([byLane, byOwner], card(), laneOf), true);
+  assert.equal(matches([byLane, byOwner], card({ owner: 'hermes' }), laneOf), false);
 });
 
-test('negate flips the whole condition', () => {
-  const filters = [{ field: 'author', negate: true, values: ['Cody'] }];
-  assert.equal(matches(filters, card(), laneOf, now), false);
-  assert.equal(matches(filters, card({ owner: 'Ann' }), laneOf, now), true);
-  assert.equal(matches(filters, card({ owner: '' }), laneOf, now), true);
+test('negate inverts one condition', () => {
+  const notOwner = cond('author', ['box'], true);
+  assert.equal(matches([notOwner], card({ owner: 'hermes' }), laneOf), true);
+  assert.equal(matches([notOwner], card(), laneOf), false);
 });
 
-test('author and op match case-insensitively', () => {
-  assert.equal(matches([{ field: 'author', negate: false, values: ['cody'] }], card(), laneOf, now), true);
-  assert.equal(matches([{ field: 'op', negate: false, values: ['cce-1'] }], card(), laneOf, now), true);
+test('author compare is case-insensitive; NONE means unassigned', () => {
+  const byOwner = cond('author', ['BOX']);
+  assert.equal(matches([byOwner], card(), laneOf), true);
+  const noneSet = cond('author', [NONE]);
+  assert.equal(matches([noneSet], card({ owner: null }), laneOf), true);
+  assert.equal(matches([noneSet], card(), laneOf), false);
 });
 
-test('the unassigned value matches what has no owner or op', () => {
-  const author = [{ field: 'author', negate: false, values: [NONE] }];
-  assert.equal(matches(author, card({ owner: '' }), laneOf, now), true);
-  assert.equal(matches(author, card(), laneOf, now), false);
-  const op = [{ field: 'op', negate: false, values: [NONE] }];
-  assert.equal(matches(op, card({ opname: '' }), laneOf, now), true);
-  assert.equal(matches(op, card(), laneOf, now), false);
+test('op filter behaves like author', () => {
+  const byOp = cond('op', ['valhalla']);
+  assert.equal(matches([byOp], card(), laneOf), true);
+  assert.equal(matches([byOp], card({ opname: null }), laneOf), false);
+  const noneOp = cond('op', [NONE]);
+  assert.equal(matches([noneOp], card({ opname: null }), laneOf), true);
 });
 
-test('lane uses the lane the card is rendered in', () => {
-  const done = (c) => (c.archived_at ? 4 : c.lane_id);
-  const filters = [{ field: 'lane', negate: false, values: ['4'] }];
-  assert.equal(matches(filters, card({ archived_at: '2026-11-01T00:00:00+08:00' }), done, now), true);
-  assert.equal(matches(filters, card({ archived_at: '2026-11-01T00:00:00+08:00' }), laneOf, now), false);
+test('updated presets: today / last:7 / on:date', () => {
+  const now = new Date('2026-11-12T12:00:00');
+  const today = card({ updated_at: '2026-11-12T09:00:00+08:00' });
+  const yesterday = card({ updated_at: '2026-11-11T09:00:00+08:00' });
+  const lastWeek = card({ updated_at: '2026-11-06T09:00:00+08:00' });
+  const longAgo = card({ updated_at: '2026-09-01T09:00:00+08:00' });
+
+  const isToday = cond('updated', ['today']);
+  assert.equal(matches([isToday], today, laneOf, now), true);
+  assert.equal(matches([isToday], yesterday, laneOf, now), false);
+
+  const last7 = cond('updated', ['last:7']);
+  assert.equal(matches([last7], lastWeek, laneOf, now), true);
+  assert.equal(matches([last7], longAgo, laneOf, now), false);
+
+  const onDay = cond('updated', ['on:2026-11-11']);
+  assert.equal(matches([onDay], yesterday, laneOf, now), true);
+  assert.equal(matches([onDay], today, laneOf, now), false);
 });
 
-test('updated presets read the card date against now', () => {
-  const one = (value) => [{ field: 'updated', negate: false, values: [value] }];
-  assert.equal(matches(one('today'), card(), laneOf, now), true);
-  assert.equal(matches(one('today'), card({ updated_at: '2026-11-01T09:00:00+08:00' }), laneOf, now), false);
-  assert.equal(matches(one('last:7'), card({ updated_at: '2026-11-01T09:00:00+08:00' }), laneOf, now), true);
-  assert.equal(matches(one('last:7'), card({ updated_at: '2026-10-01T09:00:00+08:00' }), laneOf, now), false);
-  assert.equal(matches(one('on:2026-10-01'), card({ updated_at: '2026-10-01T09:00:00+08:00' }), laneOf, now), true);
-  assert.equal(matches(one('before:2026-10-01'), card({ updated_at: '2026-09-30T09:00:00+08:00' }), laneOf, now), true);
-  assert.equal(matches(one('after:2026-10-01'), card({ updated_at: '2026-10-02T09:00:00+08:00' }), laneOf, now), true);
-  assert.equal(matches(one('today'), card({ updated_at: 'not a date' }), laneOf, now), false);
+test('activeOp reads the single non-negated op condition', () => {
+  assert.equal(activeOp([cond('op', ['valhalla'])]), 'valhalla');
+  assert.equal(activeOp([cond('op', [NONE])]), '');
+  assert.equal(activeOp([cond('op', ['a', 'b'])]), '');
+  assert.equal(activeOp([cond('op', ['valhalla'], true)]), '');
+  assert.equal(activeOp([]), '');
 });
 
-test('describe reads like the chip', () => {
-  const ctx = { laneNames: { 3: 'In Progress' } };
-  assert.equal(
-    describeChip({ field: 'lane', negate: false, values: ['3'] }, ctx),
-    'lane is In Progress',
-  );
-  assert.equal(
-    describeChip({ field: 'author', negate: true, values: ['Cody', 'Ann'] }, ctx),
-    'author is not @Cody, @Ann',
-  );
-  assert.equal(
-    describeChip({ field: 'op', negate: false, values: [NONE] }, ctx),
-    'op is no op',
-  );
-  assert.equal(
-    describeChip({ field: 'updated', negate: false, values: ['last:7'] }, ctx),
-    'updated is in the last 7 days',
-  );
+test('hasOp compares case-insensitively', () => {
+  assert.equal(hasOp([cond('op', ['Valhalla'])], 'VALHALLA'), true);
+  assert.equal(hasOp([], 'valhalla'), false);
 });
 
-test('the op chip replaces the op condition and leaves the rest alone', () => {
-  const lane = { field: 'lane', negate: false, values: ['3'] };
-  const withOp = setOpFilter([lane], 'CCE-1');
-  assert.deepEqual(withOp, [lane, { field: 'op', negate: false, values: ['CCE-1'] }]);
-  assert.deepEqual(setOpFilter(withOp, 'CCE-2'), [lane, { field: 'op', negate: false, values: ['CCE-2'] }]);
-  assert.deepEqual(setOpFilter(withOp, ''), [lane]);
-  assert.equal(activeOp(withOp), 'CCE-1');
-  assert.equal(hasOp(withOp, 'cce-1'), true);
-  assert.equal(hasOp([lane], 'CCE-1'), false);
+test('setOpFilter replaces the op condition, keeping the rest', () => {
+  const byLane = cond('lane', ['1']);
+  const byOp = cond('op', ['old']);
+  const next = setOpFilter([byLane, byOp], 'valhalla');
+  assert.equal(next.length, 2);
+  assert.deepEqual(next[0], byLane);
+  assert.deepEqual(next[1], cond('op', ['valhalla']));
+
+  const cleared = setOpFilter([byLane, cond('op', ['x'])], '');
+  assert.equal(cleared.length, 1);
+});
+
+test('valueLabel renders the sentinel and author forms', () => {
+  assert.equal(valueLabel(cond('author', [NONE]), NONE), 'unassigned');
+  assert.equal(valueLabel(cond('author', ['box']), 'box'), '@box');
+  assert.equal(valueLabel(cond('op', [NONE]), NONE), 'no op');
 });

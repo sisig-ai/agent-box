@@ -1,4 +1,4 @@
-"""PWA shell: manifest, standalone metadata, and the mobile stylesheet."""
+"""PWA shell: manifest, standalone metadata, and the service worker."""
 
 import json
 
@@ -16,10 +16,7 @@ def test_index_has_pwa_metadata(client):
     html = client.get("/").data.decode()
     assert 'rel="manifest"' in html
     assert "apple-mobile-web-app-capable" in html
-    assert "pwa.css" in html
-    assert "serviceWorker" in client.get("/static/js/main.js").data.decode()
 
 
 def test_pwa_assets_served(client):
-    assert client.get("/static/css/pwa.css").status_code == 200
     assert client.get("/sw.js").status_code == 200

@@ -27,24 +27,21 @@ def theme_files(tmp_path, monkeypatch):
     return cfg
 
 
-def test_index_carries_the_saved_theme(client, theme_files):
+def test_theme_choice_is_reported_and_persisted(client, theme_files):
+    # The page is a static export; the saved theme surfaces through the API
+    # that the React ThemeProvider reads on load.
     theme_files.write_text(json.dumps({"theme": "board"}), encoding="utf-8")
-    html = client.get("/").text
-    assert 'data-theme="board"' in html
-    assert 'href="/static/css/themes/board.css"' in html
-    assert 'data-theme-css="board"' in html
+    assert client.get("/api/themes").get_json()["active"] == "board"
 
 
-def test_index_falls_back_on_unknown_theme(client, theme_files):
+def test_falls_back_to_default_on_unknown_theme(client, theme_files):
     theme_files.write_text(json.dumps({"theme": "neon-2077"}), encoding="utf-8")
-    html = client.get("/").text
-    assert 'data-theme="classic-386"' in html
-    assert "/static/css/tui.css" in html
+    assert client.get("/api/themes").get_json()["active"] == "classic-386"
 
 
-def test_index_falls_back_on_broken_config(client, theme_files):
+def test_falls_back_to_default_on_broken_config(client, theme_files):
     theme_files.write_text("{ not json", encoding="utf-8")
-    assert 'data-theme="classic-386"' in client.get("/").text
+    assert client.get("/api/themes").get_json()["active"] == "classic-386"
 
 
 def test_get_themes_marks_the_active_one(client, theme_files):

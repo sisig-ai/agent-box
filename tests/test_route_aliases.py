@@ -70,12 +70,16 @@ def test_kanban_alias_lanes(client):
 
 
 def test_ui_uses_new_names_and_routes(client):
-    page = client.get("/").data.decode()
-    assert "Daily Sitrep" in page and "Ops Board" in page
-    assert "Daily Brief" not in page and "Kanban" not in page
-    assert 'id="view-btn-brief"' in page and 'id="view-btn-kanban"' in page
-    assert "/api/opsboard" in client.get("/static/js/kanban/api.js").data.decode()
-    assert "'/api/sitrep'" in client.get("/static/js/notes/brief.js").data.decode()
+    # The Next.js frontend keeps the product names and the canonical API
+    # prefixes; the labels live in its view sources.
+    from pathlib import Path
+
+    dashboard = Path("frontend/src/components/dashboard.tsx").read_text()
+    assert "Daily Sitrep" in dashboard and "Ops Board" in dashboard
+    assert "Daily Brief" not in dashboard
+    api_client = Path("frontend/src/lib/api.ts").read_text()
+    assert "/api/opsboard" in api_client
+    assert "/api/sitrep" in api_client
 
 
 def test_llm_txt_documents_canonical_and_deprecated(client):
