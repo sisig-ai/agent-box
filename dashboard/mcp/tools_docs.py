@@ -176,6 +176,16 @@ def arg_float(args: dict, key: str) -> float | None:
     return float(raw)
 
 
+def arg_int(args: dict, key: str) -> int | None:
+    """Whole-number knob (counts, limits). Rejects floats and garbage."""
+    raw = args.get(key)
+    if raw is None:
+        return None
+    if isinstance(raw, bool) or not isinstance(raw, (int, float)) or float(raw) != int(raw):
+        raise ToolError(f"{key} must be a whole number")
+    return int(raw)
+
+
 def search_docs_unified(args):
     query = (args.get("q") or "").strip()
     if not query:
@@ -197,6 +207,8 @@ def search_docs_unified(args):
             min_score=arg_float(args, "min_score"),
             recency_weight=arg_float(args, "recency_weight"),
             recency_tau_days=arg_float(args, "recency_tau_days"),
+            semantic_limit=arg_int(args, "semantic_limit"),
+            half_life_days=arg_float(args, "half_life_days"),
         )
     except EmbedError as exc:
         raise ToolError(str(exc)) from None
@@ -336,11 +348,14 @@ TOOLS = {
         "spec": tool_spec(
             "search_docs_unified",
             "Search Docs (Unified)",
-            "Single ranked result set merging full-text and semantic search. "
-            "PREFER this over search_docs or semantic_search_docs for most "
-            "queries. Exact matches rank highest (score=1.0), semantic-only "
-            "hits fill in below by cosine similarity, both blended by recency. "
-            "Each hit carries kind='exact' or 'semantic'.",
+            "One ranked list merging full-text and semantic search via weighted "
+            "reciprocal-rank fusion, then an exponential time decay. PREFER this "
+            "over search_docs or semantic_search_docs for most queries. Exact "
+            "text matches weigh most (the FTS list is weighted double); a doc "
+            "found by both lists fuses above either alone; newer results bubble "
+            "up through a half-life decay (default 30 days, half_life_days=0 "
+            "disables). Each hit carries kind='exact' or 'semantic', and rank "
+            "is the fused score.",
             {
                 "q": {"type": "string", "description": "What you are looking for, in plain words."},
                 "prefix": {
@@ -369,6 +384,19 @@ TOOLS = {
                     "minimum": 1.0,
                     "description": "Decay half-life in days for recency boost (default 30). "
                     "Larger = slower decay.",
+                },
+                "semantic_limit": {
+                    "type": "number",
+                    "minimum": 1.0,
+                    "description": "Cap on semantic-only hits below the exact ones "
+                    "(default: same as limit).",
+                },
+                "half_life_days": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "description": "Exponential age half-life in days for the unified "
+                    "ranking (default 30; 0 disables the decay). Newer results "
+                    "bubble up multiplicatively.",
                 },
             },
             ["q"],

@@ -10,6 +10,7 @@ import threading
 import time
 
 from . import config, db
+from . import embed as embed_mod
 from .dates import now_iso
 from .embed import (
     DEFAULT_MIN_SCORE,
@@ -303,22 +304,27 @@ def search_unified(
     recency_weight=None,
     recency_tau_days=None,
     semantic_limit=None,
+    half_life_days=None,
     conn=None,
 ):
-    """Merge FTS and semantic hits into a single ranked result set.
+    """Merge FTS and semantic hits into one list via weighted RRF + decay.
 
-    FTS hits get score=1.0 (always above cosine ≤1.0) so exact matches lead,
-    then both sources are blended by recency and sorted together. Semantic-only
-    hits fill in below, capped at ``semantic_limit`` when given (the weak-match
-    tail of a cosine search is usually noise). Each hit carries ``kind``
-    ("exact" or "semantic") so the UI can still style them differently.
+    Both passes run independently: FTS ordered by bm25 (position in its list),
+    semantic by cosine. ``rrf_fuse`` merges the two rank lists — the FTS list
+    carries ``EXACT_WEIGHT`` so exact-text matches weigh most, and a doc found
+    by both lists fuses above either alone — then multiplies an exponential
+    half-life over age so newer results bubble up. ``rank`` on each hit is the
+    fused score; ``score`` stays the raw source score (1.0 for FTS, cosine for
+    semantic). ``semantic_limit`` caps the semantic-only additions (the weak-
+    match tail of a cosine search is usually noise). Each hit carries ``kind``
+    ("exact" or "semantic") so the UI can style them differently.
     """
     from . import docs as docs_mod  # local import to avoid circular dependency
 
     started = time.time()
     q = (query or "").strip()
 
-    # --- FTS pass ---
+    # --- FTS pass (bm25 order is the rank order) ---
     fts_hits = {}
     try:
         fts_data = docs_mod.search(q, prefix=prefix, prefix_q=prefix_q, author=author, limit=limit)
@@ -332,7 +338,7 @@ def search_unified(
     except Exception:
         pass  # FTS failure is non-fatal; semantic alone is still useful
 
-    # --- Semantic pass ---
+    # --- Semantic pass (cosine order is the rank order) ---
     sem_hits = {}
     if q:
         try:
@@ -354,15 +360,28 @@ def search_unified(
         except EmbedError:
             pass  # semantic unavailable; FTS alone still works
 
-    # --- Merge and rank ---
-    merged = list(fts_hits.values()) + list(sem_hits.values())
-    ranked = order_hits(
-        merged,
-        sort=sort,
-        recency_weight=recency_weight,
-        recency_tau_days=recency_tau_days,
+    # --- Fuse (weighted RRF) and decay (half-life over age) ---
+    by_prefix = {**fts_hits, **sem_hits}
+    fused = embed_mod.rrf_fuse(
+        [
+            (embed_mod.EXACT_WEIGHT, list(fts_hits.keys())),
+            (1.0, list(sem_hits.keys())),
+        ],
+        ages={p: hit.get("updated_at") for p, hit in by_prefix.items()},
+        half_life_days=(
+            embed_mod.DECAY_HALF_LIFE_DAYS if half_life_days is None else half_life_days
+        ),
     )
-    hits = ranked[: max(1, min(limit, 200))]
+    ordered = sorted(
+        by_prefix.items(),
+        key=lambda pair: (fused[pair[0]], pair[1]["score"]),
+        reverse=True,
+    )
+    if sort == "recent":
+        ordered.sort(key=lambda pair: str(pair[1].get("updated_at") or ""), reverse=True)
+    hits = []
+    for prefix, hit in ordered[: max(1, min(limit, 200))]:
+        hits.append({**hit, "rank": round(fused[prefix], 6)})
 
     return {
         "q": query,

@@ -137,13 +137,16 @@ author.
 | `list_docs(prefix?, limit?, offset?)` | Metadata only (no content), newest update first; `prefix` narrows to a path and its descendants. |
 | `search_docs(q?, prefix?, prefix_q?, limit?)` | 15 rows unless `limit` says otherwise. Full-text search; terms are prefix-matched, `-word` excludes, `"two words"` is a phrase. `prefix` scopes to a path and its descendants; `prefix_q` matches any part of the key (`card-389`, `handoffs/`). With `q` empty and `prefix_q` set it is a prefix listing, newest first. Hits carry a snippet with `\\u0001`/`\\u0002` around the match. |
 | `semantic_search_docs(q, prefix?, prefix_q?, sort?, limit?)` | 15 rows unless `limit` says otherwise. Meaning-based search: embeds the query with the local Ollama model and ranks stored chunk vectors by cosine. A hit does not need to share words with the query. `prefix_q` narrows to a substring of the key (a vector search always needs `q`). |
-| `search_docs_unified(q, prefix?, prefix_q?, author?, sort?, limit?, min_score?, recency_weight?, recency_tau_days?, semantic_limit?)` | One ranked list merging FTS and semantic hits: exact matches lead (score 1.0), semantic-only hits fill in below, capped at `semantic_limit` when set (default: same as `limit`). Prefer this for most queries. |
+| `search_docs_unified(q, prefix?, prefix_q?, author?, sort?, limit?, min_score?, recency_weight?, recency_tau_days?, semantic_limit?, half_life_days?)` | One ranked list merging FTS and semantic hits by weighted reciprocal-rank fusion: the FTS list is weighted double so exact text matches weigh most, a doc found by both lists fuses above either alone, and an exponential half-life over age (default 30 days, `half_life_days=0` disables) bubbles newer results up. `semantic_limit` caps the semantic-only additions (default: same as `limit`). Prefer this for most queries. |
 | `reindex_docs()` | Queue every doc whose vectors are stale, missing or from another model. Indexing already happens on each write; this is for backfill. |
 | `delete_doc(prefix)` | Remove one doc. Irreversible; only when asked. |
 
 Semantic hits default to `sort=blend`: `rank = score + 0.1 * exp(-age_days / 30)`,
 so a fresh item wins a tie against a stale one, and a month-old item keeps a
-0.037 nudge. Pass `sort=score` for pure cosine or `sort=recent` for newest first.
+0.037 nudge. Pass `sort=score` for pure cosine or `sort=recent` for newest
+first. The unified search does not use this additive nudge; it fuses the two
+rank lists with weighted RRF (k=60, FTS weighted 2.0) and then multiplies an
+exponential half-life over age, so freshness genuinely reorders results.
 
 Semantic search runs fully offline: Ollama on this host (`DASH_OLLAMA_URL`,
 default `http://127.0.0.1:11434`) with `DASH_EMBED_MODEL` (default
@@ -220,7 +223,7 @@ view, not an archive.
 - `GET /api/procs?sort=rss|cpu|pid|name&order=desc|asc&limit=40` — host processes with `rss_bytes`, `cpu_percent` (one 0.12s sample), `user`, `status`, `cmdline`, and `protected` (init or the dashboard's own ancestry). `POST /api/procs/:pid/signal` with `{"signal":"TERM"|"KILL"}` sends a signal; other users' processes return 403.
 - Files (host FS rooted at `~`): `GET /api/fs/list|stat|read|download`, `PUT /api/fs/write`, `POST /api/fs/upload|mkdir|touch|rename`, `DELETE /api/fs?path=…`.
 - Shell (tmux-backed tty in `~`): `POST /api/shell/new|input|key|resize|kill`, `GET /api/shell/pane|list`, and the live websocket at `ws://macmini:5556/ws/shell?id=<sid>`.
-- Docs REST: `GET /api/docs?prefix=&limit=&offset=&content=1`, `GET|PUT|PATCH|DELETE /api/docs/<path:prefix>`, `POST /api/docs` (body carries `prefix`, 409 if taken), `GET /api/docs/search?q=&prefix=&prefix_q=`, `GET /api/docs/semantic?q=&prefix=&prefix_q=&sort=&limit=`, `GET /api/docs/search-unified?q=&prefix=&prefix_q=&author=&sort=&limit=&min_score=&semantic_limit=`, `GET /api/docs/index`, `POST /api/docs/reindex`, `GET /api/docs/prefixes`, `GET /api/docs/tree?per=5`.
+- Docs REST: `GET /api/docs?prefix=&limit=&offset=&content=1`, `GET|PUT|PATCH|DELETE /api/docs/<path:prefix>`, `POST /api/docs` (body carries `prefix`, 409 if taken), `GET /api/docs/search?q=&prefix=&prefix_q=`, `GET /api/docs/semantic?q=&prefix=&prefix_q=&sort=&limit=`, `GET /api/docs/search-unified?q=&prefix=&prefix_q=&author=&sort=&limit=&min_score=&semantic_limit=&half_life_days=`, `GET /api/docs/index`, `POST /api/docs/reindex`, `GET /api/docs/prefixes`, `GET /api/docs/tree?per=5`.
 - Ops Board semantic: `GET /api/opsboard/semantic?q=&limit=&status=&owner=&opname=&archived=&sort=`, `POST /api/opsboard/reindex`.
 - MCP access log: `GET /api/logs?limit=&tool=&entity=&ok=1|0` — every `tools/call`, newest first, plus `retention_days` and the retained daily files; `POST /api/logs/rotate` forces a new day file and sweeps the window. Files live in `data/logs/access-YYYY-MM-DD.log`, one JSON object per line, 7-day retention.
 - Themes: `GET /api/themes` lists the installed looks with the active one; `POST /api/theme` with `{"theme":"<id>"}` saves the choice to `config.json`. The theme registry is `static/themes.json`; the choice is applied server-side on the next page load and live client-side from the header clock.

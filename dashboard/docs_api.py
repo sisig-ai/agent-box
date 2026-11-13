@@ -135,14 +135,21 @@ async def docs_search_unified(
     recency_weight: str | None = None,
     recency_tau_days: str | None = None,
     semantic_limit: str | None = None,
+    half_life_days: str | None = None,
 ):
-    """Single ranked result set merging FTS and semantic hits.
+    """One ranked list: weighted RRF over FTS + semantic ranks, decayed by age.
 
     ``semantic_limit`` caps the semantic-only additions below the exact hits;
-    without it the cosine tail fills the whole list with weak matches.
+    ``half_life_days`` (default 30) is the exponential age half-life — newer
+    results bubble up, 0 disables the decay.
     """
     try:
         cleaned = docs.clean_prefix(prefix) if prefix else None
+        half = None
+        if half_life_days is not None:
+            half = float(half_life_days)
+            if not half >= 0:
+                return error("half_life_days must be >= 0")
         return await run_in_threadpool(
             docs_embed.search_unified,
             q,
@@ -157,6 +164,7 @@ async def docs_search_unified(
             semantic_limit=docs.clean_limit(semantic_limit, default=None)
             if semantic_limit
             else None,
+            half_life_days=half,
         )
     except EmbedError as exc:
         return JSONResponse(status_code=503, content={"error": str(exc), "available": False})

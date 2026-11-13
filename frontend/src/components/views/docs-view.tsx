@@ -113,6 +113,7 @@ interface ItemHit {
   snippet?: string;
   excerpt?: string;
   score?: number;
+  rank?: number;
   prefix_snip?: string;
   kind?: "exact" | "semantic";
 }
@@ -128,8 +129,13 @@ function ItemRow({ hit, selected, onOpen }: { hit: ItemHit; selected: boolean; o
     >
       <div className="docs-item-head">
         <span className="docs-item-name"><Marked text={hit.prefix_snip || hit.prefix} /></span>
-        {hit.kind === "semantic" && typeof hit.score === "number" && hit.score > 0 && (
-          <span className="docs-score">{hit.score.toFixed(2)}</span>
+        {hit.kind === "semantic" && (
+          <span className="docs-kind" aria-label="semantic match">sem</span>
+        )}
+        {typeof hit.rank === "number" && hit.rank > 0 && (
+          <span className="docs-score" title="Fused rank (weighted RRF, decayed by age)">
+            {hit.rank.toFixed(3)}
+          </span>
         )}
       </div>
       {snip && <p className="docs-item-snip"><Marked text={snip} /></p>}

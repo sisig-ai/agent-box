@@ -351,6 +351,17 @@ button.docs-tree-twist:hover {
   font-variant-numeric: tabular-nums;
 }
 
+.docs-kind {
+  font-size: 9px;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 999px;
+  border: 1px solid var(--obsidian-dashboard-shell-border);
+  color: var(--obsidian-dashboard-shell-text-subtle);
+  flex: none;
+  margin-left: 6px;
+}
+
 .docs-hl {
   background: var(--docs-hl-bg);
   color: var(--docs-hl-ink);

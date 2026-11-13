@@ -205,3 +205,105 @@ def test_semantic_filters_by_author(client):
     index(client)
     hits = client.get("/api/docs/semantic?q=tuya&author=amy").get_json()["hits"]
     assert [hit["prefix"] for hit in hits] == ["notes/amy.md"]
+
+
+# ---------- unified search: weighted RRF + half-life decay ----------
+
+
+def _age_doc(client, prefix, days):
+    """Rewind one doc's updated_at by ``days`` so age-driven ranking is testable."""
+    from datetime import datetime, timedelta
+
+    from dashboard import db
+
+    row = docs.fetch(prefix)
+    conn = db.connect()
+    try:
+        stamp = (datetime.now().astimezone() - timedelta(days=days)).isoformat(timespec="seconds")
+        with conn:
+            conn.execute("UPDATE doc SET updated_at = ? WHERE id = ?", (stamp, row["id"]))
+    finally:
+        conn.close()
+
+
+def test_unified_exact_weighs_most(client):
+    """An exact-text match outranks a merely-similar semantic hit."""
+    docs.put("notes/exact.md", content="tuya handoff procedure")
+    docs.put("notes/lookalike.md", content="tuya handoff")  # shorter, still FTS
+    docs.put("notes/mere-related.md", content="procedural handover notes for smart plugs")
+    index(client)
+    hits = client.get("/api/docs/search-unified?q=tuya&limit=10").get_json()["hits"]
+    kinds = {hit["prefix"]: hit["kind"] for hit in hits}
+    assert kinds["notes/exact.md"] == "exact"
+    assert hits[0]["kind"] == "exact"
+    assert "rank" in hits[0]
+    # every semantic hit sits below every exact hit
+    exact_ranks = [h["rank"] for h in hits if h["kind"] == "exact"]
+    sem_ranks = [h["rank"] for h in hits if h["kind"] == "semantic"]
+    assert all(r >= s for r in exact_ranks for s in sem_ranks)
+
+
+def test_unified_both_lists_fuse_above_single(client):
+    """A doc found by FTS and semantic fuses above hits from one list alone.
+
+    FTS words are ANDed, so a doc found by both lists must contain every query
+    word — here "tuya" and "handoff". notes/sem-only.md shares the semantic
+    vector space (tuya axis) but fails the FTS AND, so it appears in one list
+    only and fuses lower than notes/both.md at the same rank positions.
+    """
+    docs.put("notes/both.md", content="tuya handoff procedure")
+    docs.put("notes/sem-only.md", content="tuya notes about a handover procedure")
+    index(client)
+    hits = client.get("/api/docs/search-unified?q=tuya handoff&limit=20").get_json()["hits"]
+    kinds = {hit["prefix"]: hit["kind"] for hit in hits}
+    ranks = {hit["prefix"]: hit["rank"] for hit in hits}
+    assert kinds["notes/both.md"] == "exact"
+    assert kinds["notes/sem-only.md"] == "semantic"
+    assert ranks["notes/both.md"] > ranks["notes/sem-only.md"]
+
+
+def test_unified_decay_bubbles_fresh_docs(client):
+    """Same relevance, different age: the fresh doc ranks first."""
+    docs.put("notes/stale-doc.md", content="tuya handoff")
+    docs.put("notes/fresh-doc.md", content="tuya handoff")
+    index(client)
+    _age_doc(client, "notes/stale-doc.md", days=120)
+    hits = client.get("/api/docs/search-unified?q=tuya&limit=10").get_json()["hits"]
+    assert hits[0]["prefix"] == "notes/fresh-doc.md"
+
+    # half_life_days=0 disables the decay: both tie again (order falls back
+    # to list order / score).
+    hits = client.get("/api/docs/search-unified?q=tuya&half_life_days=0").get_json()["hits"]
+    assert {hit["prefix"] for hit in hits} == {"notes/fresh-doc.md", "notes/stale-doc.md"}
+
+
+def test_unified_decay_can_promote_semantic_over_stale_exact(client):
+    """The decay is multiplicative: a fresh semantic hit can pass a stale exact one."""
+    docs.put("notes/stale-exact.md", content="tuya appendix")  # exact hit, will age
+    docs.put("notes/fresh-related.md", content="tuya handoff")  # also exact…
+    index(client)
+    _age_doc(client, "notes/stale-exact.md", days=400)
+    hits = client.get("/api/docs/search-unified?q=tuya&limit=10").get_json()["hits"]
+    ranks = {hit["prefix"]: hit["rank"] for hit in hits}
+    assert ranks["notes/fresh-related.md"] > ranks["notes/stale-exact.md"]
+
+
+def test_unified_mcp_accepts_decay_knobs(client):
+    """search_docs_unified passes half_life_days and semantic_limit through."""
+    docs.put("notes/mcp-doc.md", content="tuya handoff")
+    index(client)
+
+    def call(name, arguments):
+        payload = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {"name": name, "arguments": arguments},
+        }
+        res = client.post("/mcp", json=payload)
+        assert res.status_code == 200
+        return res.get_json()["result"]
+
+    result = call("search_docs_unified", {"q": "tuya", "half_life_days": 7, "semantic_limit": 3})
+    hits = result["structuredContent"]["hits"]
+    assert hits and "rank" in hits[0]

@@ -125,6 +125,41 @@ def blend_rank(score, updated_at, now=None, weight=RECENCY_WEIGHT, tau_days=RECE
     return score + weight * math.exp(-age_days(updated_at, now) / tau_days)
 
 
+# Weighted reciprocal-rank fusion for the unified search. Classic RRF (Cormack
+# et al. 2009) merges ranked lists with incomparable score scales by comparing
+# positions instead of scores: each list contributes 1/(k + rank). k=60 is the
+# paper's robust constant — it dampens the top-vs-second gap so one list's
+# ordering noise cannot dominate. Lists may carry weights (standard weighted
+# RRF): the FTS list gets EXACT_WEIGHT so exact-text matches outweigh equal-
+# ranking semantic hits, and a doc found by both lists fuses above either alone.
+# Decay then multiplies an exponential half-life over age so newer results
+# bubble up; it is a multiplier (not an additive nudge) so a fresh doc can
+# genuinely overtake a stale one rather than just win ties.
+RRF_K = 60
+EXACT_WEIGHT = 2.0
+DECAY_HALF_LIFE_DAYS = 30.0
+
+
+def rrf_fuse(rank_lists, ages=None, k=RRF_K, now=None, half_life_days=DECAY_HALF_LIFE_DAYS):
+    """Fuse ranked lists into one score per key.
+
+    ``rank_lists`` is [(weight, [key, ...]), ...] best-first within each list.
+    ``ages`` maps key -> updated_at for the half-life decay; a key with no age
+    or ``half_life_days=None`` skips the decay. Returns {key: fused score}.
+    """
+    fused = {}
+    for weight, keys in rank_lists:
+        for position, key in enumerate(keys, start=1):
+            fused.setdefault(key, 0.0)
+            fused[key] += weight * (1.0 / (k + position))
+    if half_life_days and ages:
+        decay = math.log(2) / float(half_life_days)
+        for key, updated_at in ages.items():
+            if key in fused:
+                fused[key] *= math.exp(-decay * age_days(updated_at, now))
+    return fused
+
+
 def order_hits(hits, sort="blend", now=None, recency_weight=None, recency_tau_days=None):
     """Annotate hits with ``rank`` and return them in the requested order."""
     if sort not in SORTS:

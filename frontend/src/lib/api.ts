@@ -86,6 +86,8 @@ export interface DocHit {
   prefix_snip?: string;
   /** "exact" (FTS) or "semantic" (embedder) — set by the unified search. */
   kind?: "exact" | "semantic";
+  /** Fused rank: weighted RRF over both lists, decayed by age. */
+  rank?: number;
 }
 export interface DocSearchResponse { hits: DocHit[]; count: number; total: number; took_ms?: number; pending?: number }
 export interface Doc {
